@@ -9,17 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+   public function up(): void
     {
-        Schema::create('purchase_payments', function (Blueprint $table) {
+        Schema::create('order_payments', function (Blueprint $table) {
             $table->id();
 
             $table->foreignId('tenant_id')
                 ->constrained('tenants')
                 ->cascadeOnDelete();
 
-            $table->foreignId('purchase_id')
-                ->constrained('purchases')
+            $table->foreignId('order_id')
+                ->constrained('orders')
                 ->cascadeOnDelete();
 
             $table->foreignId('recorded_by')
@@ -38,34 +38,19 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->index([
-                'tenant_id',
-                'purchase_id',
-            ]);
+            $table->index(['tenant_id', 'order_id']);
+            $table->index(['tenant_id', 'paid_at']);
+            $table->index(['tenant_id', 'method']);
 
-            $table->index([
-                'tenant_id',
-                'paid_at',
-            ]);
-
-            $table->index([
-                'tenant_id',
-                'method',
-            ]);
-
-            $table->unique([
-                'tenant_id',
-                'reference',
-            ]);
+            $table->unique(['tenant_id', 'reference']);
         });
     }
-
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('purchase_payments');
+        Schema::dropIfExists('order_payments');
     }
 };
