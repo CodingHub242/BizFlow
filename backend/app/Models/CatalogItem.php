@@ -56,4 +56,9 @@ class CatalogItem extends Model
     {
         return $this->hasMany(InventoryMovement::class);
     }
+
+    public function suppliers()
+    {
+        return $this->hasMany(SupplierCatalogItem::class);
+    }
 }

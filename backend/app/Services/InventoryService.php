@@ -78,8 +78,10 @@ class InventoryService
         int $branchId,
         int $catalogItemId,
         float $quantity,
-        ?string $notes = null
-    ): Inventory {
+        ?string $notes = null,
+        ?string $referenceType = null,
+        ?int $referenceId = null
+        ): Inventory {
         if ($quantity <= 0) {
             throw new RuntimeException(
                 'Received quantity must be greater than zero.'
@@ -91,7 +93,9 @@ class InventoryService
             $branchId,
             $catalogItemId,
             $quantity,
-            $notes
+            $notes,
+            $referenceType,
+            $referenceId
         ) {
             $catalogItem = CatalogItem::query()
                 ->where('tenant_id', $tenantId)
@@ -131,6 +135,8 @@ class InventoryService
                 'type' => InventoryMovementType::PURCHASE,
                 'quantity' => $quantity,
                 'notes' => $notes,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
             ]);
 
             return $inventory->fresh();
@@ -150,7 +156,7 @@ class InventoryService
         float $requestedQuantity,
         ?string $referenceType = null,
         ?int $referenceId = null
-    ): array {
+        ): array {
         if ($requestedQuantity <= 0) {
             throw new RuntimeException(
                 'Requested quantity must be greater than zero.'
