@@ -2,33 +2,29 @@
 
 namespace App\Models;
 
-use App\InvoicePaymentMethod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class InvoicePayment extends Model
+class InvoicePaymentReversal extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'tenant_id',
-        'invoice_id',
+        'invoice_payment_id',
         'recorded_by',
         'amount',
-        'method',
-        'reference',
+        'reason',
         'notes',
-        'paid_at',
+        'reversed_at',
     ];
 
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
-            'method' => InvoicePaymentMethod::class,
-            'paid_at' => 'datetime',
+            'reversed_at' => 'datetime',
         ];
     }
 
@@ -37,18 +33,13 @@ class InvoicePayment extends Model
         return $this->belongsTo(Tenant::class);
     }
 
-    public function invoice(): BelongsTo
+    public function invoicePayment(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->belongsTo(InvoicePayment::class);
     }
 
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
-    }
-
-    public function reversal(): HasOne
-    {
-        return $this->hasOne(InvoicePaymentReversal::class);
     }
 }

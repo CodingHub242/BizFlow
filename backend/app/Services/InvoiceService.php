@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Customer;
+use App\Models\InvoicePaymentReversal;
 use App\Models\InvoicePayment;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -191,6 +192,19 @@ class InvoiceService
                 ->whereKey($invoice->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            if ($invoice->status === \App\InvoiceStatus::CANCELLED) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Cancelled invoices cannot receive payments.',
+                ]);
+            }
+
+            if ($invoice->status === \App\InvoiceStatus::DRAFT) {
+                throw ValidationException::withMessages([
+                    'invoice' => 'Draft invoices cannot receive payments.',
+                ]);
+            }
+
 
             $recordedBy = User::query()
                 ->where('tenant_id', $invoice->tenant_id)
@@ -469,6 +483,102 @@ class InvoiceService
             $invoice->save();
 
             return $invoice->fresh();
+        });
+    }
+
+    public function reversePayment(
+        InvoicePayment $payment,
+        int $recordedBy,
+        string $reason,
+        ?string $notes = null
+        ): InvoicePaymentReversal {
+        return DB::transaction(function () use (
+            $payment,
+            $recordedBy,
+            $reason,
+            $notes
+        ) {
+            $payment = InvoicePayment::query()
+                ->where('tenant_id', $payment->tenant_id)
+                ->whereKey($payment->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $invoice = Invoice::query()
+                ->where('tenant_id', $payment->tenant_id)
+                ->whereKey($payment->invoice_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $user = User::query()
+                ->where('tenant_id', $payment->tenant_id)
+                ->whereKey($recordedBy)
+                ->first();
+
+            if (! $user) {
+                throw ValidationException::withMessages([
+                    'recorded_by' => 'The recording user does not belong to this tenant.',
+                ]);
+            }
+
+            if ($payment->reversal()->exists()) {
+                throw ValidationException::withMessages([
+                    'payment' => 'This payment has already been reversed.',
+                ]);
+            }
+
+            if (trim($reason) === '') {
+                throw ValidationException::withMessages([
+                    'reason' => 'A reversal reason is required.',
+                ]);
+            }
+
+            if (mb_strlen($reason) > 255) {
+                throw ValidationException::withMessages([
+                    'reason' => 'The reversal reason cannot exceed 255 characters.',
+                ]);
+            }
+
+            if ($payment->amount <= 0) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Payment amount must be greater than zero.',
+                ]);
+            }
+
+            $reversal = InvoicePaymentReversal::create([
+                'tenant_id' => $payment->tenant_id,
+                'invoice_payment_id' => $payment->id,
+                'recorded_by' => $recordedBy,
+                'amount' => $payment->amount,
+                'reason' => $reason,
+                'notes' => $notes,
+                'reversed_at' => now(),
+            ]);
+
+            $totalPaid = (float) $invoice->payments()
+                ->whereDoesntHave('reversal')
+                ->sum('amount');
+
+            if ($totalPaid <= 0) {
+                $invoice->payment_status = \App\PaymentStatus::UNPAID;
+
+                if ($invoice->status === \App\InvoiceStatus::PAID) {
+                    $invoice->status = \App\InvoiceStatus::ISSUED;
+                }
+            } elseif ($totalPaid < (float) $invoice->total) {
+                $invoice->payment_status = \App\PaymentStatus::PARTIALLY_PAID;
+
+                if (
+                    $invoice->status === \App\InvoiceStatus::PAID ||
+                    $invoice->status === \App\InvoiceStatus::PARTIALLY_PAID
+                ) {
+                    $invoice->status = \App\InvoiceStatus::PARTIALLY_PAID;
+                }
+            }
+
+            $invoice->save();
+
+            return $reversal;
         });
     }
 }

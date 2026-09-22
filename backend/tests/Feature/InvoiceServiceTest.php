@@ -1140,6 +1140,8 @@ class InvoiceServiceTest extends TestCase
             ],
         ]);
 
+        $invoiceService->issue($invoice);
+
         $invoiceService->recordPayment($invoice, [
             'recorded_by' => $user->id,
             'amount' => 400,
@@ -1415,6 +1417,8 @@ class InvoiceServiceTest extends TestCase
             ],
         ]);
 
+        $invoiceService->issue($invoice);
+
         $invoiceService->recordPayment($invoice, [
             'recorded_by' => $user->id,
             'amount' => 500,
@@ -1469,6 +1473,8 @@ class InvoiceServiceTest extends TestCase
                 ],
             ],
         ]);
+
+        $invoiceService->issue($invoice);
 
         $invoiceService->recordPayment($invoice, [
             'recorded_by' => $user->id,
@@ -1547,6 +1553,8 @@ class InvoiceServiceTest extends TestCase
                 ],
             ],
         ]);
+
+        $invoiceService->issue($invoice);
 
         $invoiceService->recordPayment($invoice, [
             'recorded_by' => $user->id,
@@ -1802,7 +1810,7 @@ class InvoiceServiceTest extends TestCase
                 ],
             ],
         ]);
-
+       // $invoiceService->issue($invoice);
         $this->assertSame(
             InvoiceStatus::DRAFT,
             $invoice->status
@@ -2110,6 +2118,8 @@ class InvoiceServiceTest extends TestCase
             ],
         ]);
 
+        
+
        $cancelledInvoice = $invoiceService->cancel($invoice);
 
         $this->assertSame(
@@ -2173,4 +2183,1087 @@ class InvoiceServiceTest extends TestCase
             $cancelledInvoice->payment_status
         );
     }
+
+    public function test_partially_paid_invoice_cannot_be_cancelled(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-CANCEL-PARTIAL-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 400,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'CANCEL-PARTIAL-001',
+            'paid_at' => now(),
+        ]);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $invoiceService->cancel($invoice->fresh());
+    }
+
+    public function test_fully_paid_invoice_cannot_be_cancelled(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-CANCEL-PAID-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 1000,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'CANCEL-PAID-001',
+            'paid_at' => now(),
+        ]);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $invoiceService->cancel($invoice->fresh());
+    }
+
+    public function test_cancelled_invoice_cannot_receive_payment(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-CANCEL-PAYMENT-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->cancel($invoice);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 500,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'CANCELLED-INVOICE-PAY-001',
+            'paid_at' => now(),
+        ]);
+    }
+
+    public function test_draft_invoice_cannot_receive_payment(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-DRAFT-PAYMENT-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $invoiceService->recordPayment($invoice, [
+            'recorded_by' => $user->id,
+            'amount' => 500,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'DRAFT-INVOICE-PAY-001',
+            'paid_at' => now(),
+        ]);
+    }
+
+    public function test_paid_invoice_payment_can_be_reversed(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-REVERSAL-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $payment = $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 1000,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'REVERSAL-PAY-001',
+            'paid_at' => now(),
+        ]);
+
+        $this->assertEquals(
+            \App\PaymentStatus::PAID,
+            $invoice->fresh()->payment_status
+        );
+
+        // This method does not exist yet.
+        $invoiceService->reversePayment(
+            $payment,
+            $user->id,
+            'Customer refund'
+        );
+
+        $invoice->refresh();
+
+        $this->assertEquals(
+            \App\PaymentStatus::UNPAID,
+            $invoice->payment_status
+        );
+
+        $this->assertEquals(
+            \App\InvoiceStatus::ISSUED,
+            $invoice->status
+        );
+
+        $this->assertDatabaseHas('invoice_payments', [
+            'id' => $payment->id,
+            'invoice_id' => $invoice->id,
+            'amount' => 1000,
+        ]);
+    }
+
+    public function test_reversing_one_of_multiple_payments_makes_invoice_partially_paid(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-REVERSAL-PARTIAL-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $paymentOne = $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 600,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'REVERSAL-PARTIAL-001',
+            'paid_at' => now(),
+        ]);
+
+        $paymentTwo = $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 400,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'REVERSAL-PARTIAL-002',
+            'paid_at' => now(),
+        ]);
+
+        $this->assertEquals(
+            \App\PaymentStatus::PAID,
+            $invoice->fresh()->payment_status
+        );
+
+        $invoiceService->reversePayment(
+            $paymentTwo,
+            $user->id,
+            'Customer refund'
+        );
+
+        $invoice->refresh();
+
+        $this->assertEquals(
+            \App\PaymentStatus::PARTIALLY_PAID,
+            $invoice->payment_status
+        );
+
+        $this->assertEquals(
+            \App\InvoiceStatus::PARTIALLY_PAID,
+            $invoice->status
+        );
+
+        $this->assertDatabaseHas('invoice_payment_reversals', [
+            'invoice_payment_id' => $paymentTwo->id,
+            'amount' => 400,
+        ]);
+    }
+
+    public function test_invoice_payment_reversal_cannot_use_payment_from_another_tenant(): void
+    {
+        $tenantA = Tenant::factory()->create();
+        $tenantB = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenantA->id,
+        ]);
+
+        $userA = User::factory()->create([
+            'tenant_id' => $tenantA->id,
+        ]);
+
+        $userB = User::factory()->create([
+            'tenant_id' => $tenantB->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenantA->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenantA->id,
+            'branch_id' => $branch->id,
+            'created_by' => $userA->id,
+            'invoice_number' => 'INV-CROSS-TENANT-REVERSAL-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $payment = $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $userA->id,
+            'amount' => 1000,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'CROSS-TENANT-REVERSAL-001',
+            'paid_at' => now(),
+        ]);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+
+        $invoiceService->reversePayment(
+            new \App\Models\InvoicePayment([
+                'id' => $payment->id,
+                'tenant_id' => $tenantB->id,
+            ]),
+            $userB->id,
+            'Unauthorized reversal attempt'
+        );
+    }
+
+    public function test_invoice_payment_reversal_cannot_be_recorded_by_user_from_another_tenant(): void
+    {
+        $tenantA = Tenant::factory()->create();
+        $tenantB = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenantA->id,
+        ]);
+
+        $userA = User::factory()->create([
+            'tenant_id' => $tenantA->id,
+        ]);
+
+        $userB = User::factory()->create([
+            'tenant_id' => $tenantB->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenantA->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenantA->id,
+            'branch_id' => $branch->id,
+            'created_by' => $userA->id,
+            'invoice_number' => 'INV-REVERSAL-USER-TENANT-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $payment = $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $userA->id,
+            'amount' => 1000,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'REVERSAL-USER-TENANT-001',
+            'paid_at' => now(),
+        ]);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $invoiceService->reversePayment(
+            $payment,
+            $userB->id,
+            'Unauthorized reversal'
+        );
+    }
+
+    public function test_reversed_payment_cannot_be_reversed_again(): void
+    {
+        $tenant = Tenant::factory()->create();
+
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $catalogItem = CatalogItem::factory()->create([
+            'tenant_id' => $tenant->id,
+            'type' => CatalogItemType::PRODUCT,
+            'selling_price' => 1000,
+        ]);
+
+        $invoiceService = app(\App\Services\InvoiceService::class);
+
+        $invoice = $invoiceService->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-DOUBLE-REVERSAL-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $invoiceService->issue($invoice);
+
+        $payment = $invoiceService->recordPayment($invoice->fresh(), [
+            'recorded_by' => $user->id,
+            'amount' => 1000,
+            'method' => InvoicePaymentMethod::CASH,
+            'reference' => 'DOUBLE-REVERSAL-001',
+            'paid_at' => now(),
+        ]);
+
+        $invoiceService->reversePayment(
+            $payment,
+            $user->id,
+            'First reversal'
+        );
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $invoiceService->reversePayment(
+            $payment->fresh(),
+            $user->id,
+            'Second reversal'
+        );
+    }
+
+public function test_reversing_payment_preserves_original_payment_record(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSE-AUDIT-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSE-AUDIT-001',
+        'paid_at' => now(),
+    ]);
+
+    $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        'Customer refund'
+    );
+
+    $this->assertDatabaseHas('invoice_payments', [
+        'id' => $payment->id,
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 1000,
+        'reference' => 'REVERSE-AUDIT-001',
+    ]);
+
+    $this->assertDatabaseHas('invoice_payment_reversals', [
+        'invoice_payment_id' => $payment->id,
+        'tenant_id' => $tenant->id,
+        'amount' => 1000,
+        'reason' => 'Customer refund',
+        'recorded_by' => $user->id,
+    ]);
+}
+public function test_payment_reversal_reason_is_required(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-REASON-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-REASON-001',
+        'paid_at' => now(),
+    ]);
+
+    $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+    $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        ''
+    );
+}
+
+public function test_payment_reversal_whitespace_only_reason_is_rejected(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-WHITESPACE-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-WHITESPACE-001',
+        'paid_at' => now(),
+    ]);
+
+    $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+    $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        '     '
+    );
+}
+
+public function test_payment_reversal_reason_cannot_exceed_255_characters(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-LENGTH-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-LENGTH-001',
+        'paid_at' => now(),
+    ]);
+
+    $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+    $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        str_repeat('A', 256)
+    );
+}
+
+public function test_payment_reversal_reason_can_be_exactly_255_characters(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-255-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-255-001',
+        'paid_at' => now(),
+    ]);
+
+    $reason = str_repeat('A', 255);
+
+    $reversal = $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        $reason
+    );
+
+    $this->assertEquals($reason, $reversal->reason);
+    $this->assertEquals(255, mb_strlen($reversal->reason));
+}
+
+public function test_payment_reversal_notes_are_optional(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-NOTES-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-NOTES-001',
+        'paid_at' => now(),
+    ]);
+
+    $reversal = $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        'Customer refund'
+    );
+
+    $this->assertNull($reversal->notes);
+
+    $this->assertDatabaseHas('invoice_payment_reversals', [
+        'id' => $reversal->id,
+        'reason' => 'Customer refund',
+        'notes' => null,
+    ]);
+}
+
+public function test_payment_reversal_notes_are_preserved(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-NOTES-PRESERVE-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-NOTES-PRESERVE-001',
+        'paid_at' => now(),
+    ]);
+
+    $notes = 'Customer requested a refund after the original payment was successfully recorded.';
+
+    $reversal = $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        'Customer refund',
+        $notes
+    );
+
+    $this->assertEquals($notes, $reversal->notes);
+
+    $this->assertDatabaseHas('invoice_payment_reversals', [
+        'id' => $reversal->id,
+        'notes' => $notes,
+    ]);
+}
+
+public function test_payment_reversal_amount_matches_original_payment(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1500,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-AMOUNT-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1500,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1500,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-AMOUNT-001',
+        'paid_at' => now(),
+    ]);
+
+    $reversal = $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        'Customer refund'
+    );
+
+    $this->assertEquals(
+        (string) $payment->amount,
+        (string) $reversal->amount
+    );
+
+    $this->assertDatabaseHas('invoice_payment_reversals', [
+        'id' => $reversal->id,
+        'amount' => $payment->amount,
+    ]);
+}
+
+public function test_reversing_only_payment_changes_paid_invoice_back_to_issued(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REVERSAL-STATUS-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $payment = $invoiceService->recordPayment($invoice->fresh(), [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'REVERSAL-STATUS-001',
+        'paid_at' => now(),
+    ]);
+
+    $paidInvoice = $invoice->fresh();
+
+    $this->assertSame(\App\InvoiceStatus::PAID, $paidInvoice->status);
+    $this->assertSame(\App\PaymentStatus::PAID, $paidInvoice->payment_status);
+
+    $invoiceService->reversePayment(
+        $payment,
+        $user->id,
+        'Customer refund'
+    );
+
+    $invoice = $invoice->fresh();
+
+    $this->assertSame(\App\InvoiceStatus::ISSUED, $invoice->status);
+    $this->assertSame(\App\PaymentStatus::UNPAID, $invoice->payment_status);
+}
 }
