@@ -27,7 +27,10 @@ return new class extends Migration
                 ->restrictOnDelete();
 
             // Customer will be connected once the Customers module exists.
-            $table->unsignedBigInteger('customer_id')->nullable();
+          $table->foreignId('customer_id')
+            ->nullable()
+            ->constrained('customers')
+            ->nullOnDelete();
 
             $table->string('order_number');
 
