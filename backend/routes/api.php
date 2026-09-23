@@ -6,6 +6,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CatalogItemController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\ExpenseController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -44,4 +45,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/inventory/receive', [InventoryController::class, 'receive']);
     Route::post('/inventory/adjust', [InventoryController::class, 'adjust']);
     Route::post('/inventory/transfer', [InventoryController::class, 'transfer']);
+
+    //EXPENSES
+    Route::post('/expenses', [ExpenseController::class, 'store']);
+    Route::get('/expenses', [ExpenseController::class, 'index']);
+    Route::get('/expenses/{expense}', [ExpenseController::class, 'show']);
+    Route::put('/expenses/{expense}', [ExpenseController::class, 'update']);
+    Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
 });
