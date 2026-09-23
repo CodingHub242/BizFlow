@@ -7,6 +7,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CatalogItemController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\DashboardController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -52,4 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/expenses/{expense}', [ExpenseController::class, 'show']);
     Route::put('/expenses/{expense}', [ExpenseController::class, 'update']);
     Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
+
+    //DASHBOARD
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 });
