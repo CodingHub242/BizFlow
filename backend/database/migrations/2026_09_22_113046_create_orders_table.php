@@ -28,9 +28,7 @@ return new class extends Migration
 
             // Customer will be connected once the Customers module exists.
           $table->foreignId('customer_id')
-            ->nullable()
-            ->constrained('customers')
-            ->nullOnDelete();
+            ->nullable();
 
             $table->string('order_number');
 
