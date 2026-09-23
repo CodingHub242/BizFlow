@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CatalogItemController;
+use App\Http\Controllers\InventoryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -35,4 +36,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/catalog-items/{catalogItem}', [CatalogItemController::class, 'destroy']);
     Route::post('/catalog-items/{catalogItem}/restore', [CatalogItemController::class, 'restore'])
     ->withTrashed();
+
+    //INVENTORY
+    Route::get('/inventory', [InventoryController::class, 'index']);
+    Route::get('/inventory/movements', [InventoryController::class, 'movements']);
+    Route::get('/inventory/{inventory}', [InventoryController::class, 'show']);
+    Route::post('/inventory/receive', [InventoryController::class, 'receive']);
+    Route::post('/inventory/adjust', [InventoryController::class, 'adjust']);
+    Route::post('/inventory/transfer', [InventoryController::class, 'transfer']);
 });

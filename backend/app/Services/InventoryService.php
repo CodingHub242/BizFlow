@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\InventoryMovementType;
 use App\Models\CatalogItem;
+use App\Models\Branch;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,8 @@ class InventoryService
             );
         }
 
+        
+
         return DB::transaction(function () use (
             $tenantId,
             $branchId,
@@ -97,6 +100,11 @@ class InventoryService
             $referenceType,
             $referenceId
         ) {
+            $branch = Branch::query()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($branchId)
+            ->firstOrFail();
+
             $catalogItem = CatalogItem::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($catalogItemId)
@@ -231,6 +239,184 @@ class InventoryService
                     $requestedQuantity - $fulfilled
                 ),
                 'tracks_inventory' => true,
+            ];
+        });
+    }
+
+    public function adjustStock(int $tenantId,int $branchId,int $catalogItemId,float $quantity,?string $notes = null): Inventory 
+    {
+        if ($quantity === 0.0) {
+            throw new RuntimeException(
+                'Adjustment quantity cannot be zero.'
+            );
+        }
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $branchId,
+            $catalogItemId,
+            $quantity,
+            $notes
+        ) {
+            $branch = Branch::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($branchId)
+                ->firstOrFail();
+
+            $catalogItem = CatalogItem::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($catalogItemId)
+                ->firstOrFail();
+
+            if (! $catalogItem->track_inventory) {
+                throw new RuntimeException(
+                    'This catalog item does not track inventory.'
+                );
+            }
+
+            $inventory = Inventory::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $branchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $inventory) {
+                throw new RuntimeException(
+                    'Inventory record not found.'
+                );
+            }
+
+            $newQuantity = $inventory->quantity + $quantity;
+
+            if ($newQuantity < 0) {
+                throw new RuntimeException(
+                    'Stock adjustment cannot result in negative inventory.'
+                );
+            }
+
+            $inventory->quantity = $newQuantity;
+            $inventory->save();
+
+            InventoryMovement::create([
+                'tenant_id' => $tenantId,
+                'branch_id' => $branchId,
+                'catalog_item_id' => $catalogItemId,
+                'type' => InventoryMovementType::ADJUSTMENT,
+                'quantity' => $quantity,
+                'notes' => $notes,
+            ]);
+
+            return $inventory->fresh();
+        });
+    }
+
+    public function transferStock(int $tenantId,int $fromBranchId,int $toBranchId,int $catalogItemId,float $quantity,?string $notes = null): array 
+    {
+        if ($quantity <= 0) {
+            throw new RuntimeException(
+                'Transfer quantity must be greater than zero.'
+            );
+        }
+
+        if ($fromBranchId === $toBranchId) {
+            throw new RuntimeException(
+                'Source and destination branches must be different.'
+            );
+        }
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $fromBranchId,
+            $toBranchId,
+            $catalogItemId,
+            $quantity,
+            $notes
+        ) {
+            $fromBranch = Branch::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($fromBranchId)
+                ->firstOrFail();
+
+            $toBranch = Branch::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($toBranchId)
+                ->firstOrFail();
+
+            $catalogItem = CatalogItem::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($catalogItemId)
+                ->firstOrFail();
+
+            if (! $catalogItem->track_inventory) {
+                throw new RuntimeException(
+                    'This catalog item does not track inventory.'
+                );
+            }
+
+            $fromInventory = Inventory::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $fromBranchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $fromInventory) {
+                throw new RuntimeException(
+                    'Source inventory record not found.'
+                );
+            }
+
+            if ($fromInventory->quantity < $quantity) {
+                throw new RuntimeException(
+                    'Insufficient stock for transfer.'
+                );
+            }
+
+            $toInventory = Inventory::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $toBranchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $toInventory) {
+                $toInventory = Inventory::create([
+                    'tenant_id' => $tenantId,
+                    'branch_id' => $toBranchId,
+                    'catalog_item_id' => $catalogItemId,
+                    'quantity' => 0,
+                    'reorder_level' => 0,
+                ]);
+            }
+
+            $fromInventory->quantity -= $quantity;
+            $fromInventory->save();
+
+            $toInventory->quantity += $quantity;
+            $toInventory->save();
+
+            InventoryMovement::create([
+                'tenant_id' => $tenantId,
+                'branch_id' => $fromBranchId,
+                'catalog_item_id' => $catalogItemId,
+                'type' => InventoryMovementType::TRANSFER_OUT,
+                'quantity' => $quantity,
+                'notes' => $notes,
+            ]);
+
+            InventoryMovement::create([
+                'tenant_id' => $tenantId,
+                'branch_id' => $toBranchId,
+                'catalog_item_id' => $catalogItemId,
+                'type' => InventoryMovementType::TRANSFER_IN,
+                'quantity' => $quantity,
+                'notes' => $notes,
+            ]);
+
+            return [
+                'from_inventory' => $fromInventory->fresh(),
+                'to_inventory' => $toInventory->fresh(),
             ];
         });
     }
