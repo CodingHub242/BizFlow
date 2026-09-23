@@ -100,4 +100,20 @@ class InvoiceController extends Controller
             'data' => new \App\Http\Resources\InvoiceResource($invoice),
         ]);
     }
+
+    public function cancel(Invoice $invoice,InvoiceService $invoiceService): JsonResponse 
+    {
+        abort_unless(
+            $invoice->tenant_id === request()->user()->tenant_id,
+            404
+        );
+
+        $invoice = $invoiceService->cancel($invoice);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invoice cancelled successfully.',
+            'data' => new \App\Http\Resources\InvoiceResource($invoice),
+        ]);
+    }
 }

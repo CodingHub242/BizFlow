@@ -1148,4 +1148,84 @@ public function test_invoice_from_another_tenant_cannot_be_issued(): void
     ]);
 }
 
+public function test_authenticated_user_can_cancel_draft_invoice(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => InvoiceStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+        'subtotal' => 1000,
+        'total' => 1000,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson("/api/invoices/{$invoice->id}/cancel");
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonPath(
+            'data.status',
+            InvoiceStatus::CANCELLED->value
+        );
+
+    $this->assertDatabaseHas('invoices', [
+        'id' => $invoice->id,
+        'status' => InvoiceStatus::CANCELLED->value,
+    ]);
+}
+
+public function test_invoice_from_another_tenant_cannot_be_cancelled(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $branchA = Branch::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $userA = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $userB = User::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'branch_id' => $branchA->id,
+        'created_by' => $userA->id,
+        'status' => InvoiceStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    $response = $this
+        ->actingAs($userB)
+        ->postJson("/api/invoices/{$invoice->id}/cancel");
+
+    $response->assertStatus(404);
+
+    $this->assertDatabaseHas('invoices', [
+        'id' => $invoice->id,
+        'tenant_id' => $tenantA->id,
+        'status' => InvoiceStatus::DRAFT->value,
+    ]);
+}
+
 }
