@@ -7,6 +7,7 @@ use App\MigrationSource;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use App\Models\MigrationAnalysisResult;
+use App\Models\MigrationValidationResult;
 use App\Models\MigrationSession;
 use App\Services\MigrationCsvAnalyzer;
 
@@ -94,6 +95,165 @@ class MigrationSessionService
             'row_count' => $result['row_count'],
             'headers' => $result['headers'],
             'sample_rows' => $analysis['sample_rows'],
+        ]);
+    }
+
+    public function validateMappedRows(MigrationSession $session,string $entityType,array $mapping): array 
+    {
+        if ($session->status !== \App\MigrationSessionStatus::UPLOADED) {
+            throw new \RuntimeException(
+                'Migration session must be uploaded before validation.'
+            );
+        }
+
+        if (!$session->file_path) {
+            throw new \RuntimeException(
+                'The migration session does not have an uploaded file.'
+            );
+        }
+
+        app(\App\Services\MigrationMappingService::class)
+            ->validate($entityType, $mapping);
+
+        $stream = \Illuminate\Support\Facades\Storage::disk('local')
+            ->readStream($session->file_path);
+
+        if ($stream === false) {
+            throw new \RuntimeException(
+                'Unable to open the migration file.'
+            );
+        }
+
+        $headers = fgetcsv($stream);
+
+        if ($headers === false) {
+            fclose($stream);
+
+            $result = [
+                'total_rows' => 0,
+                'valid_rows' => 0,
+                'invalid_rows' => 0,
+                'errors' => [],
+            ];
+
+            \App\Models\MigrationValidationResult::updateOrCreate(
+                [
+                    'tenant_id' => $session->tenant_id,
+                    'migration_session_id' => $session->id,
+                    'entity_type' => $entityType,
+                ],
+                $result
+            );
+
+            return $result;
+        }
+
+        $mappingService = app(
+            \App\Services\MigrationMappingService::class
+        );
+
+        $validationService = app(
+            \App\Services\MigrationValidationService::class
+        );
+
+        $rows = [];
+
+        while (($row = fgetcsv($stream)) !== false) {
+            if ($row === [null] || $row === []) {
+                continue;
+            }
+
+            $rows[] = $mappingService->transformRow(
+                $entityType,
+                array_combine($headers, $row),
+                $mapping
+            );
+        }
+
+        fclose($stream);
+
+        $result = $validationService->validateRows(
+            $entityType,
+            $rows
+        );
+
+        \App\Models\MigrationValidationResult::updateOrCreate(
+            [
+                'tenant_id' => $session->tenant_id,
+                'migration_session_id' => $session->id,
+                'entity_type' => $entityType,
+            ],
+            [
+                'total_rows' => $result['total_rows'],
+                'valid_rows' => $result['valid_rows'],
+                'invalid_rows' => $result['invalid_rows'],
+                'errors' => $result['errors'],
+            ]
+        );
+
+        return $result;
+    }
+
+    public function createImportBatch(MigrationSession $session,int $createdBy,string $entityType): \App\Models\MigrationImportBatch 
+    {
+        if ($session->status !== \App\MigrationSessionStatus::UPLOADED) {
+            throw new \RuntimeException(
+                'Migration session must be uploaded before import.'
+            );
+        }
+
+        if (!$session->file_path) {
+            throw new \RuntimeException(
+                'The migration session does not have an uploaded file.'
+            );
+        }
+
+        if ($session->tenant_id === null) {
+            throw new \RuntimeException(
+                'Migration session must belong to a tenant.'
+            );
+        }
+
+        $validationResult = \App\Models\MigrationValidationResult::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->where('entity_type', $entityType)
+            ->first();
+
+        if (!$validationResult) {
+            throw new \RuntimeException(
+                'Migration data must be validated before import.'
+            );
+        }
+
+        if ($validationResult->invalid_rows > 0) {
+            throw new \RuntimeException(
+                'Migration cannot be imported while validation errors exist.'
+            );
+        }
+
+        $existingBatch = \App\Models\MigrationImportBatch::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->where('entity_type', $entityType)
+            ->exists();
+
+        if ($existingBatch) {
+            throw new \RuntimeException(
+                'An import batch already exists for this migration entity.'
+            );
+        }
+
+        return \App\Models\MigrationImportBatch::create([
+            'tenant_id' => $session->tenant_id,
+            'migration_session_id' => $session->id,
+            'created_by' => $createdBy,
+            'entity_type' => $entityType,
+            'status' => 'pending',
+            'total_rows' => $validationResult->total_rows,
+            'successful_rows' => 0,
+            'failed_rows' => 0,
+            'errors' => [],
         ]);
     }
 }

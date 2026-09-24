@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\MigrationMapping;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MigrationSession extends Model
@@ -43,5 +44,20 @@ class MigrationSession extends Model
     public function analysisResult(): HasOne
     {
         return $this->hasOne(MigrationAnalysisResult::class);
+    }
+
+    public function mapping(): HasOne
+    {
+        return $this->hasOne(MigrationMapping::class);
+    }
+
+    public function validationResults()
+    {
+        return $this->hasMany(MigrationValidationResult::class);
+    }
+
+    public function importBatches()
+    {
+        return $this->hasMany(MigrationImportBatch::class);
     }
 }
