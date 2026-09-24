@@ -4,18 +4,27 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Expense;
 use App\Models\Customer;
+use App\Models\Category;
 use App\Models\Supplier;
 use App\MigrationSource;
+use App\InvoicePaymentMethod;
 use App\Models\CatalogItem;
+use App\Services\MigrationInvoicePaymentImporter;
+use App\Services\MigrationImportService;
 use App\Services\MigrationCatalogItemImporter;
 use App\Services\MigrationInvoiceImporter;
+use App\Services\MigrationExpenseImporter;
 use App\MigrationSessionStatus;
 use App\Models\Branch;
 use App\Models\Invoice;
 use App\Services\MigrationCustomerResolver;
+use App\Services\MigrationInvoiceResolver;
+use App\Services\MigrationCategoryResolver;
 use App\CatalogItemType;
 use App\Services\MigrationCatalogItemCreator;
+use App\Services\MigrationInvoicePaymentCreator;
 use App\Models\MigrationSession;
 use App\Models\MigrationMapping;
 use App\Models\MigrationImportBatch;
@@ -24,6 +33,7 @@ use App\Services\MigrationSupplierImporter;
 use App\Models\MigrationValidationResult;
 use App\Services\MigrationSessionService;
 use App\Services\MigrationCustomerCreator;
+use App\Services\MigrationExpenseCreator;
 use App\Services\MigrationInvoiceCreator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +41,7 @@ use App\Services\MigrationCsvAnalyzer;
 use RuntimeException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+
 
 class MigrationSessionTest extends TestCase
 {
@@ -3011,5 +3022,1353 @@ public function test_invoice_importer_resolves_customers_and_completes_batch(): 
             ->where('tenant_id', $tenant->id)
             ->count()
     );
+}
+public function test_migration_expense_creator_creates_expense(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $expense = app(MigrationExpenseCreator::class)->create(
+        $tenant->id,
+        [
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'amount' => 750,
+            'expense_date' => '2026-09-24 00:00:00',
+            'description' => 'Office supplies',
+            'payment_method' => 'cash',
+        ]
+    );
+
+    $this->assertDatabaseHas('expenses', [
+        'id' => $expense->id,
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'amount' => 750,
+        'expense_date' => '2026-09-24 00:00:00',
+        'description' => 'Office supplies',
+        'payment_method' => 'cash',
+    ]);
+}
+public function test_expense_importer_imports_validated_expenses_and_completes_batch(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $stationery = Category::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Stationery',
+    ]);
+
+    $internet = Category::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Internet',
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::PENDING,
+    ]);
+
+    $file = UploadedFile::fake()->createWithContent(
+        'expenses.csv',
+        "Date,Payee,Category,Amount,Payment Method\n"
+        . "2026-09-01,Office Supplies,Stationery,750,Cash\n"
+        . "2026-09-02,MTN Ghana,Internet,300,Mobile Money\n"
+    );
+
+    app(MigrationSessionService::class)->attachFile(
+        $session,
+        $file
+    );
+
+    $session->refresh();
+
+    MigrationValidationResult::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'expenses',
+        'total_rows' => 2,
+        'valid_rows' => 2,
+        'invalid_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $batch = app(MigrationSessionService::class)->createImportBatch(
+        $session,
+        $user->id,
+        'expenses'
+    );
+
+    $result = app(MigrationExpenseImporter::class)->import(
+        $session,
+        $batch,
+        [
+            'Date' => 'expense_date',
+            'Payee' => 'description',
+            'Category' => 'category_id',
+            'Amount' => 'amount',
+            'Payment Method' => 'payment_method',
+        ],
+        $branch->id
+    );
+
+   $this->assertSame(
+        'completed',
+        $result->status,
+        json_encode($result->errors, JSON_PRETTY_PRINT)
+    );
+    $this->assertSame(2, $result->total_rows);
+    $this->assertSame(2, $result->successful_rows);
+    $this->assertSame(0, $result->failed_rows);
+    $this->assertSame([], $result->errors);
+
+    $this->assertDatabaseHas('expenses', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'amount' => 750,
+        'description' => 'Office Supplies',
+       'payment_method' => 'cash',
+    ]);
+
+    $this->assertDatabaseHas('expenses', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'amount' => 300,
+        'description' => 'MTN Ghana',
+        'payment_method' => 'mobile_money',
+    ]);
+
+    $this->assertSame(
+        2,
+        Expense::query()
+            ->where('tenant_id', $tenant->id)
+            ->count()
+    );
+}
+public function test_migration_category_resolver_resolves_category_within_tenant_only(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $category = Category::create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Stationery',
+    ]);
+
+    Category::create([
+        'tenant_id' => $otherTenant->id,
+        'name' => 'Stationery',
+    ]);
+
+    $resolver = app(MigrationCategoryResolver::class);
+
+    $result = $resolver->resolve(
+        $tenant->id,
+        'stationery'
+    );
+
+    $this->assertSame($category->id, $result->id);
+    $this->assertSame($tenant->id, $result->tenant_id);
+}
+public function test_migration_invoice_payment_creator_creates_payment(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $customer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'customer_id' => $customer->id,
+        'created_by' => $user->id,
+    ]);
+
+    $payment = app(MigrationInvoicePaymentCreator::class)->create(
+        $tenant->id,
+        [
+            'invoice_id' => $invoice->id,
+            'recorded_by' => $user->id,
+            'amount' => 500,
+            'method' => InvoicePaymentMethod::CASH->value,
+            'reference' => 'QB-PAY-001',
+            'notes' => 'QuickBooks historical payment',
+            'paid_at' => '2026-09-10 10:00:00',
+        ]
+    );
+
+    $this->assertDatabaseHas('invoice_payments', [
+        'id' => $payment->id,
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'recorded_by' => $user->id,
+        'amount' => 500,
+        'method' => 'cash',
+        'reference' => 'QB-PAY-001',
+    ]);
+
+    $this->assertSame(
+        '2026-09-10 10:00:00',
+        $payment->paid_at->format('Y-m-d H:i:s')
+    );
+}
+public function test_migration_invoice_resolver_resolves_invoice_within_tenant_only(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $customer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherCustomer = Customer::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'customer_id' => $customer->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-1001',
+    ]);
+
+    Invoice::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'customer_id' => $otherCustomer->id,
+        'created_by' => $otherUser->id,
+        'invoice_number' => 'INV-1001',
+    ]);
+
+    $resolver = app(MigrationInvoiceResolver::class);
+
+    $invoice = $resolver->resolve(
+        $tenant->id,
+        'INV-1001'
+    );
+
+    $this->assertSame($tenant->id, $invoice->tenant_id);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        "Invoice 'INV-9999' could not be found for this tenant."
+    );
+
+    $resolver->resolve(
+        $tenant->id,
+        'INV-9999'
+    );
+}
+public function test_invoice_payment_importer_resolves_invoices_and_completes_batch(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $customer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Acme Ltd',
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'customer_id' => $customer->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-1001',
+        'total' => 1000,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::PENDING,
+    ]);
+
+    $file = UploadedFile::fake()->createWithContent(
+        'payments.csv',
+        "Payment Date,Customer,Invoice Number,Amount,Payment Method\n"
+        . "2026-09-10,Acme Ltd,INV-1001,500,Cash\n"
+    );
+
+    app(MigrationSessionService::class)->attachFile(
+        $session,
+        $file
+    );
+
+    $session->refresh();
+
+    MigrationValidationResult::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'payments',
+        'total_rows' => 1,
+        'valid_rows' => 1,
+        'invalid_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $batch = app(MigrationSessionService::class)->createImportBatch(
+        $session,
+        $user->id,
+        'payments'
+    );
+
+    $result = app(MigrationInvoicePaymentImporter::class)->import(
+        $session,
+        $batch,
+        [
+            'Payment Date' => 'paid_at',
+            'Customer' => 'customer_id',
+            'Invoice Number' => 'invoice_id',
+            'Amount' => 'amount',
+            'Payment Method' => 'method',
+        ]
+    );
+
+    $this->assertSame(
+        'completed',
+        $result->status,
+        json_encode($result->errors, JSON_PRETTY_PRINT)
+    );
+
+    $this->assertSame(1, $result->total_rows);
+    $this->assertSame(1, $result->successful_rows);
+    $this->assertSame(0, $result->failed_rows);
+    $this->assertSame([], $result->errors);
+
+    $this->assertDatabaseHas('invoice_payments', [
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'recorded_by' => $user->id,
+        'amount' => 500,
+        'method' => 'cash',
+    ]);
+}
+public function test_authenticated_user_can_create_migration_session(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson('/api/migration-sessions', [
+            'source' => 'quickbooks',
+        ]);
+
+    $response
+        ->assertCreated()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Migration session created successfully.',
+            'data' => [
+                'source' => 'quickbooks',
+                'status' => 'pending',
+            ],
+        ]);
+
+    $this->assertDatabaseHas('migration_sessions', [
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => 'quickbooks',
+        'status' => 'pending',
+    ]);
+}
+public function test_authenticated_user_can_upload_quickbooks_csv_to_migration_session(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::PENDING,
+    ]);
+
+    $file = UploadedFile::fake()->createWithContent(
+        'customers.csv',
+        "Customer,Email,Phone\n"
+        . "Acme Ltd,acme@example.com,0244000000\n"
+    );
+
+    $response = $this
+        ->actingAs($user)
+        ->post(
+            "/api/migration-sessions/{$session->id}/upload",
+            ['file' => $file]
+        );
+
+    $response
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Migration file uploaded successfully.',
+            'data' => [
+                'id' => $session->id,
+                'source' => 'quickbooks',
+                'status' => 'uploaded',
+                'original_filename' => 'customers.csv',
+                'mime_type' => 'text/csv',
+            ],
+        ]);
+
+    $session->refresh();
+
+    $this->assertSame(
+        MigrationSessionStatus::UPLOADED,
+        $session->status
+    );
+
+    Storage::disk('local')->assertExists($session->file_path);
+}
+public function test_authenticated_user_can_analyze_uploaded_quickbooks_file(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::PENDING,
+    ]);
+
+    $file = UploadedFile::fake()->createWithContent(
+        'customers.csv',
+        "Customer,Email,Phone\n"
+        . "Acme Ltd,acme@example.com,0244000000\n"
+        . "Beta Ltd,beta@example.com,0244111111\n"
+    );
+
+    app(MigrationSessionService::class)->attachFile(
+        $session,
+        $file
+    );
+
+    $session->refresh();
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/analyze"
+        );
+
+    $response
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Migration file analyzed successfully.',
+            'data' => [
+                'migration_session_id' => $session->id,
+                'entity_type' => 'customers',
+                'row_count' => 2,
+                'headers' => [
+                    'Customer',
+                    'Email',
+                    'Phone',
+                ],
+            ],
+        ]);
+
+    $this->assertDatabaseHas('migration_analysis_results', [
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'row_count' => 2,
+    ]);
+
+    $session->refresh();
+
+    $this->assertSame(
+        MigrationSessionStatus::ANALYZING,
+        $session->status
+    );
+}
+public function test_authenticated_user_can_save_migration_mapping(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $mapping = [
+        'Customer' => 'name',
+        'Email' => 'email',
+        'Phone' => 'phone',
+        'Company' => 'company_name',
+    ];
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/mapping",
+            [
+                'entity_type' => 'customers',
+                'field_mapping' => $mapping,
+            ]
+        );
+
+    $response
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Migration mapping saved successfully.',
+            'data' => [
+                'migration_session_id' => $session->id,
+                'entity_type' => 'customers',
+                'field_mapping' => $mapping,
+            ],
+        ]);
+
+    $this->assertDatabaseHas('migration_mappings', [
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+    ]);
+}
+public function test_authenticated_user_can_validate_migration_data(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::PENDING,
+    ]);
+
+    $file = UploadedFile::fake()->createWithContent(
+        'customers.csv',
+        "Customer,Email,Phone\n"
+        . "Acme Ltd,acme@example.com,0244000000\n"
+        . "Beta Ltd,beta@example.com,0244111111\n"
+    );
+
+    app(MigrationSessionService::class)->attachFile(
+        $session,
+        $file
+    );
+
+    $session->refresh();
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/validate",
+            [
+                'entity_type' => 'customers',
+                'field_mapping' => [
+                    'Customer' => 'name',
+                    'Email' => 'email',
+                    'Phone' => 'phone',
+                ],
+            ]
+        );
+
+    $response
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Migration data validated successfully.',
+            'data' => [
+                'total_rows' => 2,
+                'valid_rows' => 2,
+                'invalid_rows' => 0,
+                'errors' => [],
+            ],
+        ]);
+
+    $this->assertDatabaseHas('migration_validation_results', [
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'total_rows' => 2,
+        'valid_rows' => 2,
+        'invalid_rows' => 0,
+    ]);
+}
+public function test_authenticated_user_can_create_migration_import_batch(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::PENDING,
+    ]);
+
+    $file = UploadedFile::fake()->createWithContent(
+        'customers.csv',
+        "Customer,Email\n"
+        . "Acme Ltd,acme@example.com\n"
+        . "Beta Ltd,beta@example.com\n"
+    );
+
+    app(MigrationSessionService::class)->attachFile(
+        $session,
+        $file
+    );
+
+    $session->refresh();
+
+    MigrationValidationResult::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'total_rows' => 2,
+        'valid_rows' => 2,
+        'invalid_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/batches",
+            [
+                'entity_type' => 'customers',
+            ]
+        );
+
+    $response
+        ->assertCreated()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Migration import batch created successfully.',
+            'data' => [
+                'migration_session_id' => $session->id,
+                'entity_type' => 'customers',
+                'status' => 'pending',
+                'total_rows' => 2,
+                'successful_rows' => 0,
+                'failed_rows' => 0,
+                'errors' => [],
+            ],
+        ]);
+
+    $this->assertDatabaseHas('migration_import_batches', [
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'pending',
+        'total_rows' => 2,
+    ]);
+}
+public function test_migration_import_service_routes_customer_batch_to_customer_importer(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+    'tenant_id' => $tenant->id,
+    'migration_session_id' => $session->id,
+    'created_by' => $user->id,
+    'entity_type' => 'customers',
+    'status' => 'pending',
+]);
+
+    $mapping = [
+        'Customer' => 'name',
+        'Email' => 'email',
+        'Phone' => 'phone',
+    ];
+
+    $customerImporter = $this->mock(MigrationCustomerImporter::class);
+
+    $customerImporter
+        ->shouldReceive('import')
+        ->once()
+        ->with($session, $batch, $mapping)
+        ->andReturn($batch);
+
+    $service = app(MigrationImportService::class);
+
+    $result = $service->import(
+        $session,
+        $batch,
+        $mapping
+    );
+
+    $this->assertSame($batch->id, $result->id);
+}
+public function test_migration_import_service_requires_branch_for_invoice_import(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'invoices',
+        'status' => 'pending',
+    ]);
+
+    $mapping = [
+        'Invoice Number' => 'invoice_number',
+        'Customer' => 'customer_id',
+        'Invoice Date' => 'issued_at',
+        'Due Date' => 'due_at',
+        'Amount' => 'total',
+    ];
+
+    $this->mock(MigrationInvoiceImporter::class);
+
+    $service = app(MigrationImportService::class);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'A branch ID is required for this migration entity type.'
+    );
+
+    $service->import(
+        $session,
+        $batch,
+        $mapping
+    );
+}
+public function test_migration_import_service_routes_invoice_batch_with_branch(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'invoices',
+        'status' => 'pending',
+    ]);
+
+    $mapping = [
+        'Invoice Number' => 'invoice_number',
+        'Customer' => 'customer_id',
+        'Invoice Date' => 'issued_at',
+        'Due Date' => 'due_at',
+        'Amount' => 'total',
+    ];
+
+    $invoiceImporter = $this->mock(MigrationInvoiceImporter::class);
+
+    $invoiceImporter
+        ->shouldReceive('import')
+        ->once()
+        ->with($session, $batch, $mapping, $branch->id)
+        ->andReturn($batch);
+
+    $service = app(MigrationImportService::class);
+
+    $result = $service->import(
+        $session,
+        $batch,
+        $mapping,
+        $branch->id
+    );
+
+    $this->assertSame($batch->id, $result->id);
+}
+public function test_migration_import_service_requires_branch_for_expense_import(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'expenses',
+        'status' => 'pending',
+    ]);
+
+    $mapping = [
+        'Date' => 'expense_date',
+        'Payee' => 'description',
+        'Category' => 'category_id',
+        'Amount' => 'amount',
+        'Payment Method' => 'payment_method',
+    ];
+
+    $this->mock(MigrationExpenseImporter::class);
+
+    $service = app(MigrationImportService::class);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'A branch ID is required for this migration entity type.'
+    );
+
+    $service->import(
+        $session,
+        $batch,
+        $mapping
+    );
+}
+public function test_migration_import_service_routes_standard_entity_batches(): void
+{
+    $cases = [
+        [
+            'entity_type' => 'suppliers',
+            'importer' => MigrationSupplierImporter::class,
+        ],
+        [
+            'entity_type' => 'catalog_items',
+            'importer' => MigrationCatalogItemImporter::class,
+        ],
+        [
+            'entity_type' => 'payments',
+            'importer' => MigrationInvoicePaymentImporter::class,
+        ],
+    ];
+
+    foreach ($cases as $case) {
+        $tenant = Tenant::factory()->create();
+
+        $user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
+
+        $session = MigrationSession::create([
+            'tenant_id' => $tenant->id,
+            'created_by' => $user->id,
+            'source' => MigrationSource::QUICKBOOKS,
+            'status' => MigrationSessionStatus::UPLOADED,
+        ]);
+
+        $batch = MigrationImportBatch::create([
+            'tenant_id' => $tenant->id,
+            'migration_session_id' => $session->id,
+            'created_by' => $user->id,
+            'entity_type' => $case['entity_type'],
+            'status' => 'pending',
+        ]);
+
+        $mapping = [
+            'Name' => 'name',
+            'Email' => 'email',
+        ];
+
+        $importer = $this->mock($case['importer']);
+
+        $importer
+            ->shouldReceive('import')
+            ->once()
+            ->with($session, $batch, $mapping)
+            ->andReturn($batch);
+
+        $service = app(MigrationImportService::class);
+
+        $result = $service->import(
+            $session,
+            $batch,
+            $mapping
+        );
+
+        $this->assertSame($batch->id, $result->id);
+    }
+}
+public function test_authenticated_user_can_run_migration_import_batch(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->actingAs($user);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+        'original_filename' => 'customers.csv',
+        'file_path' => 'migration-imports/customers.csv',
+        'file_size' => 100,
+        'mime_type' => 'text/csv',
+    ]);
+
+    Storage::disk('local')->put(
+        'migration-imports/customers.csv',
+        "Customer,Email,Phone\nJohn Doe,john@example.com,0244000000"
+    );
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'pending',
+        'total_rows' => 1,
+    ]);
+
+    MigrationValidationResult::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'total_rows' => 1,
+        'valid_rows' => 1,
+        'invalid_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $response = $this->postJson(
+        "/api/migration-sessions/{$session->id}/batches/{$batch->id}/import",
+        [
+            'mapping' => [
+                'Customer' => 'name',
+                'Email' => 'email',
+                'Phone' => 'phone',
+            ],
+        ]
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath(
+            'data.status',
+            'completed'
+        )
+        ->assertJsonPath(
+            'data.successful_rows',
+            1
+        )
+        ->assertJsonPath(
+            'data.failed_rows',
+            0
+        );
+
+    $this->assertDatabaseHas('customers', [
+        'tenant_id' => $tenant->id,
+        'name' => 'John Doe',
+        'email' => 'john@example.com',
+    ]);
+}
+public function test_user_cannot_run_migration_import_for_another_tenant(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $otherTenant->id,
+        'created_by' => $otherUser->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $otherTenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $otherUser->id,
+        'entity_type' => 'customers',
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($user);
+
+    $response = $this->postJson(
+        "/api/migration-sessions/{$session->id}/batches/{$batch->id}/import",
+        [
+            'mapping' => [
+                'Customer' => 'name',
+                'Email' => 'email',
+            ],
+        ]
+    );
+
+    $response->assertNotFound();
+
+    $this->assertDatabaseMissing('customers', [
+        'tenant_id' => $otherTenant->id,
+    ]);
+}
+public function test_migration_import_exception_does_not_expose_internal_details(): void
+{
+   $tenant = Tenant::factory()->create();
+
+$user = User::factory()->create([
+    'tenant_id' => $tenant->id,
+]);
+
+    $session = MigrationSession::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+   $batch = MigrationImportBatch::create([
+    'tenant_id' => $user->tenant_id,
+    'migration_session_id' => $session->id,
+    'created_by' => $user->id,
+    'entity_type' => 'customers',
+    'status' => 'pending',
+    'total_rows' => 1,
+    'successful_rows' => 0,
+    'failed_rows' => 0,
+]);
+
+    $response = $this->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/batches/{$batch->id}/import",
+            [
+                'mapping' => [
+                    'name' => 'Display Name',
+                ],
+            ]
+        );
+
+    $response
+        ->assertStatus(422)
+        ->assertJson([
+            'success' => false,
+            'message' => 'Migration import failed.',
+        ])
+        ->assertJsonMissing(['exception'])
+        ->assertJsonMissing(['file'])
+        ->assertJsonMissing(['trace']);
+}
+public function test_migration_import_service_rejects_completed_batch(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'completed',
+    ]);
+
+    $mapping = [
+        'Customer' => 'name',
+        'Email' => 'email',
+    ];
+
+    $customerImporter = $this->mock(MigrationCustomerImporter::class);
+
+    $customerImporter
+        ->shouldNotReceive('import');
+
+    $service = app(MigrationImportService::class);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'Only pending migration import batches can be imported.'
+    );
+
+    $service->import(
+        $session,
+        $batch,
+        $mapping
+    );
+}
+public function test_migration_import_service_rejects_session_and_batch_from_different_tenants(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $userA = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $userB = User::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenantA->id,
+        'created_by' => $userA->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenantB->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $userB->id,
+        'entity_type' => 'customers',
+        'status' => 'pending',
+    ]);
+
+    $customerImporter = $this->mock(MigrationCustomerImporter::class);
+
+    $customerImporter
+        ->shouldNotReceive('import');
+
+    $service = app(MigrationImportService::class);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'Migration session and import batch must belong to the same tenant.'
+    );
+
+    $service->import(
+        $session,
+        $batch,
+        [
+            'Customer' => 'name',
+            'Email' => 'email',
+        ]
+    );
+}
+public function test_authenticated_user_can_review_validated_migration(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+        'original_filename' => 'customers.csv',
+        'file_path' => 'migration-imports/customers.csv',
+        'file_size' => 1024,
+        'mime_type' => 'text/csv',
+    ]);
+
+    \App\Models\MigrationAnalysisResult::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'row_count' => 2,
+        'headers' => ['Customer', 'Email'],
+        'sample_rows' => [
+            [
+                'Customer' => 'John Doe',
+                'Email' => 'john@example.com',
+            ],
+        ],
+    ]);
+
+    \App\Models\MigrationMapping::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'field_mapping' => [
+            'Customer' => 'name',
+            'Email' => 'email',
+        ],
+    ]);
+
+    \App\Models\MigrationValidationResult::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'entity_type' => 'customers',
+        'total_rows' => 2,
+        'valid_rows' => 2,
+        'invalid_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson(
+            "/api/migration-sessions/{$session->id}/review?entity_type=customers"
+        );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath(
+            'data.session.id',
+            $session->id
+        )
+        ->assertJsonPath(
+            'data.analysis.entity_type',
+            'customers'
+        )
+        ->assertJsonPath(
+            'data.analysis.row_count',
+            2
+        )
+        ->assertJsonPath(
+            'data.mapping.field_mapping.Customer',
+            'name'
+        )
+        ->assertJsonPath(
+            'data.validation.total_rows',
+            2
+        )
+        ->assertJsonPath(
+            'data.validation.valid_rows',
+            2
+        )
+        ->assertJsonPath(
+            'data.validation.invalid_rows',
+            0
+        )
+        ->assertJsonPath(
+            'data.import.ready',
+            true
+        )
+        ->assertJsonPath(
+            'data.import.batch_exists',
+            false
+        );
 }
 }

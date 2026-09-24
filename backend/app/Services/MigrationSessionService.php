@@ -84,16 +84,14 @@ class MigrationSessionService
             'status' => MigrationSessionStatus::ANALYZING,
         ]);
 
-        $result = app(MigrationCsvAnalyzer::class)->analyze($session);
-
         $analysis = app(MigrationCsvAnalyzer::class)->analyze($session);
 
         return MigrationAnalysisResult::create([
             'tenant_id' => $session->tenant_id,
             'entity_type' => $analysis['entity_type'],
             'migration_session_id' => $session->id,
-            'row_count' => $result['row_count'],
-            'headers' => $result['headers'],
+            'row_count' => $analysis['row_count'],
+            'headers' => $analysis['headers'],
             'sample_rows' => $analysis['sample_rows'],
         ]);
     }
@@ -192,6 +190,100 @@ class MigrationSessionService
         );
 
         return $result;
+    }
+
+    public function review(MigrationSession $session, string $entityType): array
+    {
+        if ($session->status !== MigrationSessionStatus::UPLOADED) {
+            throw new \RuntimeException(
+                'Migration session must be uploaded before review.'
+            );
+        }
+
+        $analysis = MigrationAnalysisResult::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->where('entity_type', $entityType)
+            ->first();
+
+        if (!$analysis) {
+            throw new \RuntimeException(
+                'Migration analysis must be completed before review.'
+            );
+        }
+
+        $mapping = \App\Models\MigrationMapping::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->where('entity_type', $entityType)
+            ->first();
+
+        if (!$mapping) {
+            throw new \RuntimeException(
+                'Migration mapping must be completed before review.'
+            );
+        }
+
+        $validation = MigrationValidationResult::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->where('entity_type', $entityType)
+            ->first();
+
+        if (!$validation) {
+            throw new \RuntimeException(
+                'Migration data must be validated before review.'
+            );
+        }
+
+        $batch = \App\Models\MigrationImportBatch::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->where('entity_type', $entityType)
+            ->first();
+
+        return [
+            'session' => [
+                'id' => $session->id,
+                'source' => $session->source->value,
+                'status' => $session->status->value,
+                'original_filename' => $session->original_filename,
+            ],
+
+            'analysis' => [
+                'id' => $analysis->id,
+                'entity_type' => $analysis->entity_type,
+                'row_count' => $analysis->row_count,
+                'headers' => $analysis->headers,
+                'sample_rows' => $analysis->sample_rows,
+            ],
+
+            'mapping' => [
+                'id' => $mapping->id,
+                'entity_type' => $mapping->entity_type,
+                'field_mapping' => $mapping->field_mapping,
+            ],
+
+            'validation' => [
+                'total_rows' => $validation->total_rows,
+                'valid_rows' => $validation->valid_rows,
+                'invalid_rows' => $validation->invalid_rows,
+                'errors' => $validation->errors,
+            ],
+
+            'import' => [
+                'ready' => $validation->invalid_rows === 0,
+                'batch_exists' => $batch !== null,
+                'batch' => $batch ? [
+                    'id' => $batch->id,
+                    'status' => $batch->status,
+                    'total_rows' => $batch->total_rows,
+                    'successful_rows' => $batch->successful_rows,
+                    'failed_rows' => $batch->failed_rows,
+                    'errors' => $batch->errors,
+                ] : null,
+            ],
+        ];
     }
 
     public function createImportBatch(MigrationSession $session,int $createdBy,string $entityType): \App\Models\MigrationImportBatch 
