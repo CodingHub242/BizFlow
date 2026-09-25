@@ -8,6 +8,7 @@ use App\Models\Expense;
 use App\Models\Customer;
 use App\Models\Category;
 use App\Models\Supplier;
+use Mockery;
 use App\MigrationSource;
 use App\InvoicePaymentMethod;
 use App\Models\CatalogItem;
@@ -3809,6 +3810,18 @@ public function test_migration_import_service_requires_branch_for_invoice_import
         'status' => MigrationSessionStatus::UPLOADED,
     ]);
 
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'completed',
+        'total_rows' => 1,
+        'successful_rows' => 1,
+        'failed_rows' => 0,
+        'errors' => [],
+    ]);
+
     $batch = MigrationImportBatch::create([
         'tenant_id' => $tenant->id,
         'migration_session_id' => $session->id,
@@ -3857,6 +3870,18 @@ public function test_migration_import_service_routes_invoice_batch_with_branch()
         'created_by' => $user->id,
         'source' => MigrationSource::QUICKBOOKS,
         'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'completed',
+        'total_rows' => 1,
+        'successful_rows' => 1,
+        'failed_rows' => 0,
+        'errors' => [],
     ]);
 
     $batch = MigrationImportBatch::create([
@@ -3957,6 +3982,8 @@ public function test_migration_import_service_routes_standard_entity_batches(): 
         ],
     ];
 
+    
+
     foreach ($cases as $case) {
         $tenant = Tenant::factory()->create();
 
@@ -3964,12 +3991,29 @@ public function test_migration_import_service_routes_standard_entity_batches(): 
             'tenant_id' => $tenant->id,
         ]);
 
+        
         $session = MigrationSession::create([
             'tenant_id' => $tenant->id,
             'created_by' => $user->id,
             'source' => MigrationSource::QUICKBOOKS,
             'status' => MigrationSessionStatus::UPLOADED,
         ]);
+
+        
+
+       if ($case['entity_type'] === 'payments') {
+            MigrationImportBatch::create([
+                'tenant_id' => $tenant->id,
+                'migration_session_id' => $session->id,
+                'created_by' => $user->id,
+                'entity_type' => 'invoices',
+                'status' => 'completed',
+                'total_rows' => 1,
+                'successful_rows' => 1,
+                'failed_rows' => 0,
+                'errors' => [],
+            ]);
+        }
 
         $batch = MigrationImportBatch::create([
             'tenant_id' => $tenant->id,
@@ -3978,6 +4022,8 @@ public function test_migration_import_service_routes_standard_entity_batches(): 
             'entity_type' => $case['entity_type'],
             'status' => 'pending',
         ]);
+
+        
 
         $mapping = [
             'Name' => 'name',
@@ -4370,5 +4416,460 @@ public function test_authenticated_user_can_review_validated_migration(): void
             'data.import.batch_exists',
             false
         );
+}
+public function test_migration_import_service_enforces_entity_dependencies(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $paymentBatch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'payments',
+        'status' => 'pending',
+        'total_rows' => 1,
+        'successful_rows' => 0,
+        'failed_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $invoicePaymentImporter = $this->mock(
+        MigrationInvoicePaymentImporter::class
+    );
+
+    $invoicePaymentImporter
+        ->shouldNotReceive('import');
+
+    $service = app(MigrationImportService::class);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        "Migration dependency 'invoices' must be imported before 'payments'."
+    );
+
+    $service->import(
+        $session,
+        $paymentBatch,
+        [
+            'Invoice Number' => 'invoice_number',
+            'Amount' => 'amount',
+            'Payment Date' => 'payment_date',
+            'Payment Method' => 'payment_method',
+        ]
+    );
+}
+public function test_failed_migration_import_batch_can_be_retried(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+    'tenant_id' => $tenant->id,
+    'migration_session_id' => $session->id,
+    'created_by' => $user->id,
+    'entity_type' => 'customers',
+    'status' => 'failed',
+    'total_rows' => 2,
+    'successful_rows' => 0,
+    'failed_rows' => 2,
+    'errors' => [
+        [
+            'row' => 2,
+            'message' => 'Temporary import failure',
+        ],
+    ],
+]);
+
+    $importer = Mockery::mock(MigrationCustomerImporter::class);
+
+    $importer
+        ->shouldReceive('import')
+        ->once()
+        ->andReturnUsing(function (
+            MigrationSession $session,
+            MigrationImportBatch $batch,
+            array $mapping
+        ) {
+            $batch->update([
+                'status' => 'completed',
+                'successful_rows' => 2,
+                'failed_rows' => 0,
+                'errors' => [],
+            ]);
+
+            return $batch->fresh();
+        });
+
+    $service = new MigrationImportService(
+        $importer,
+        Mockery::mock(MigrationSupplierImporter::class),
+        Mockery::mock(MigrationCatalogItemImporter::class),
+        Mockery::mock(MigrationInvoiceImporter::class),
+        Mockery::mock(MigrationExpenseImporter::class),
+        Mockery::mock(MigrationInvoicePaymentImporter::class),
+    );
+
+    $result = $service->retry(
+        $session,
+        $batch,
+        [
+            'name' => 'Display Name',
+            'email' => 'Email',
+            'phone' => 'Phone',
+        ]
+    );
+
+    $this->assertSame('completed', $result->status);
+    $this->assertSame(2, $result->successful_rows);
+    $this->assertSame(0, $result->failed_rows);
+    $this->assertSame([], $result->errors);
+
+    $this->assertDatabaseHas('migration_import_batches', [
+        'id' => $batch->id,
+        'status' => 'completed',
+        'successful_rows' => 2,
+        'failed_rows' => 0,
+    ]);
+}
+public function test_completed_migration_import_batch_cannot_be_retried(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+    'tenant_id' => $tenant->id,
+    'migration_session_id' => $session->id,
+    'created_by' => $user->id,
+    'entity_type' => 'customers',
+    'status' => 'completed',
+]);
+
+    $service = app(MigrationImportService::class);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'Only failed migration import batches can be retried.'
+    );
+
+    $service->retry(
+        $session,
+        $batch,
+        [
+            'name' => 'Display Name',
+            'email' => 'Email',
+            'phone' => 'Phone',
+        ]
+    );
+}
+public function test_authenticated_user_can_retry_failed_migration_import(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'failed',
+        'total_rows' => 1,
+        'successful_rows' => 0,
+        'failed_rows' => 1,
+        'errors' => [
+            [
+                'row' => 2,
+                'message' => 'Temporary import failure',
+            ],
+        ],
+    ]);
+
+    $mock = Mockery::mock(MigrationImportService::class);
+
+    $result = $batch->fresh();
+
+    $result->status = 'completed';
+    $result->successful_rows = 1;
+    $result->failed_rows = 0;
+    $result->errors = [];
+
+   $mock->shouldReceive('retry')
+    ->once()
+    ->with(
+        Mockery::on(fn ($value) => $value->id === $session->id),
+        Mockery::on(fn ($value) => $value->id === $batch->id),
+        [
+            'name' => 'Display Name',
+            'email' => 'Email',
+        ],
+        null
+    )
+    ->andReturn($result);
+
+    $this->app->instance(MigrationImportService::class, $mock);
+
+    $response = $this
+        ->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/batches/{$batch->id}/retry",
+            [
+                'mapping' => [
+                    'name' => 'Display Name',
+                    'email' => 'Email',
+                ],
+            ]
+        );
+
+    $response
+        ->assertOk()
+        ->assertJson([
+            'message' => 'Migration import retried successfully.',
+        ]);
+
+    $response->assertJsonPath('batch.status', 'completed');
+    $response->assertJsonPath('batch.successful_rows', 1);
+    $response->assertJsonPath('batch.failed_rows', 0);
+}
+public function test_migration_session_report_summarizes_import_batches(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'completed',
+        'total_rows' => 100,
+        'successful_rows' => 100,
+        'failed_rows' => 0,
+        'errors' => [],
+    ]);
+
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'invoices',
+        'status' => 'failed',
+        'total_rows' => 150,
+        'successful_rows' => 100,
+        'failed_rows' => 50,
+        'errors' => [
+            [
+                'row' => 12,
+                'message' => 'Customer not found.',
+            ],
+        ],
+    ]);
+
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'payments',
+        'status' => 'pending',
+        'total_rows' => 75,
+        'successful_rows' => 0,
+        'failed_rows' => 0,
+        'errors' => [],
+    ]);
+
+    $service = app(MigrationSessionService::class);
+
+    $report = $service->report($session);
+
+    $this->assertSame(3, $report['summary']['total_batches']);
+    $this->assertSame(1, $report['summary']['completed_batches']);
+    $this->assertSame(1, $report['summary']['failed_batches']);
+    $this->assertSame(1, $report['summary']['pending_batches']);
+
+    $this->assertSame(325, $report['summary']['total_rows']);
+    $this->assertSame(200, $report['summary']['successful_rows']);
+    $this->assertSame(50, $report['summary']['failed_rows']);
+
+    $this->assertFalse($report['summary']['complete']);
+
+    $this->assertCount(3, $report['batches']);
+
+    $this->assertSame(
+        'customers',
+        $report['batches'][0]['entity_type']
+    );
+
+    $this->assertSame(
+        'completed',
+        $report['batches'][0]['status']
+    );
+
+    $this->assertSame(
+        'invoices',
+        $report['batches'][1]['entity_type']
+    );
+
+    $this->assertSame(
+        'failed',
+        $report['batches'][1]['status']
+    );
+
+    $this->assertSame(
+        'payments',
+        $report['batches'][2]['entity_type']
+    );
+
+    $this->assertSame(
+        'pending',
+        $report['batches'][2]['status']
+    );
+}
+public function test_authenticated_user_can_view_migration_report(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'completed',
+        'total_rows' => 100,
+        'successful_rows' => 100,
+        'failed_rows' => 0,
+        'errors' => [],
+    ]);
+
+    MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'invoices',
+        'status' => 'failed',
+        'total_rows' => 50,
+        'successful_rows' => 40,
+        'failed_rows' => 10,
+        'errors' => [
+            [
+                'row' => 5,
+                'message' => 'Customer not found.',
+            ],
+        ],
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson(
+            "/api/migration-sessions/{$session->id}/report"
+        );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('summary.total_batches', 2)
+        ->assertJsonPath('summary.completed_batches', 1)
+        ->assertJsonPath('summary.failed_batches', 1)
+        ->assertJsonPath('summary.pending_batches', 0)
+        ->assertJsonPath('summary.total_rows', 150)
+        ->assertJsonPath('summary.successful_rows', 140)
+        ->assertJsonPath('summary.failed_rows', 10)
+        ->assertJsonPath('summary.complete', false);
+
+    $response->assertJsonCount(2, 'batches');
+
+    $this->assertSame(
+        'customers',
+        $response->json('batches.0.entity_type')
+    );
+
+    $this->assertSame(
+        'completed',
+        $response->json('batches.0.status')
+    );
+
+    $this->assertSame(
+        'invoices',
+        $response->json('batches.1.entity_type')
+    );
+
+    $this->assertSame(
+        'failed',
+        $response->json('batches.1.status')
+    );
+
+    $otherTenant = Tenant::factory()->create();
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $this
+        ->actingAs($otherUser)
+        ->getJson(
+            "/api/migration-sessions/{$session->id}/report"
+        )
+        ->assertNotFound()
+        ->assertJson([
+            'message' => 'Migration session not found.',
+        ]);
 }
 }

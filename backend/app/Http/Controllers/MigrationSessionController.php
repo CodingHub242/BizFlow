@@ -13,7 +13,9 @@ use App\Models\MigrationSession;
 use App\Services\MigrationSessionService;
 use App\Services\MigrationMappingService;
 use App\Http\Requests\UploadMigrationFileRequest;
+use App\Http\Requests\RetryMigrationImportRequest;
 use Illuminate\Http\JsonResponse;
+use Throwable;
 
 class MigrationSessionController extends Controller
 {
@@ -259,5 +261,57 @@ class MigrationSessionController extends Controller
                 'errors' => $batch->errors,
             ],
         ]);
+    }
+
+    public function retry(RetryMigrationImportRequest $request,MigrationSession $session,MigrationImportBatch $batch,MigrationImportService $service): JsonResponse 
+    {
+        if ($session->tenant_id !== $request->user()->tenant_id) {
+            return response()->json([
+                'message' => 'Migration session not found.',
+            ], 404);
+        }
+
+        if ($batch->tenant_id !== $request->user()->tenant_id) {
+            return response()->json([
+                'message' => 'Migration batch not found.',
+            ], 404);
+        }
+
+        try {
+            $result = $service->retry(
+                $session,
+                $batch,
+                $request->validated('mapping'),
+                $request->validated('branch_id')
+            );
+
+            return response()->json([
+                'message' => 'Migration import retried successfully.',
+                'batch' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function report(MigrationSession $session,MigrationSessionService $service): JsonResponse 
+    {
+        if ($session->tenant_id !== request()->user()->tenant_id) {
+            return response()->json([
+                'message' => 'Migration session not found.',
+            ], 404);
+        }
+
+        try {
+            return response()->json(
+                $service->report($session)
+            );
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Unable to generate migration report.',
+            ], 422);
+        }
     }
 }

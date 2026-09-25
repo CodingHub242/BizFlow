@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Database\Seeders\BizFlowRolePermissionSeeder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tenant extends Model
@@ -20,6 +21,14 @@ class Tenant extends Model
         'logo_path',
         'status',
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Tenant $tenant) {
+            app(BizFlowRolePermissionSeeder::class)
+                ->provisionTenantRoles($tenant->id);
+        });
+    }
 
     /**
      * Get all users belonging to this tenant.
@@ -87,5 +96,10 @@ class Tenant extends Model
     public function invoicePaymentReversals(): HasMany
     {
         return $this->hasMany(InvoicePaymentReversal::class);
+    }
+
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
     }
 }

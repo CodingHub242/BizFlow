@@ -712,7 +712,7 @@ public function test_invoice_payment_cannot_exceed_outstanding_balance(): void
         'reference' => 'PAY-API-OVER-001',
     ]);
 
-$response->dump();
+//$response->dump();
 
 $response->assertStatus(422);
 }

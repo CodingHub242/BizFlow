@@ -41,10 +41,11 @@ class TenantPermissionTest extends TestCase
 
         app(PermissionRegistrar::class)->setPermissionsTeamId($tenantA->id);
 
-        $roleA = Role::create([
-            'name' => 'Manager',
-            'guard_name' => 'web',
-        ]);
+        $roleA = Role::query()
+            ->where('tenant_id', $tenantA->id)
+            ->where('name', 'Manager')
+            ->where('guard_name', 'web')
+            ->firstOrFail();
 
         $userA->assignRole($roleA);
 

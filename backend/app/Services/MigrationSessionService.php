@@ -7,6 +7,7 @@ use App\MigrationSource;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use App\Models\MigrationAnalysisResult;
+use App\Models\MigrationImportBatch;
 use App\Models\MigrationValidationResult;
 use App\Models\MigrationSession;
 use App\Services\MigrationCsvAnalyzer;
@@ -347,5 +348,67 @@ class MigrationSessionService
             'failed_rows' => 0,
             'errors' => [],
         ]);
+    }
+
+    public function report(MigrationSession $session): array
+    {
+        $batches = MigrationImportBatch::query()
+            ->where('tenant_id', $session->tenant_id)
+            ->where('migration_session_id', $session->id)
+            ->orderBy('id')
+            ->get();
+
+        $totalRows = $batches->sum('total_rows');
+        $successfulRows = $batches->sum('successful_rows');
+        $failedRows = $batches->sum('failed_rows');
+
+        $completedBatches = $batches
+            ->where('status', 'completed')
+            ->count();
+
+        $failedBatches = $batches
+            ->where('status', 'failed')
+            ->count();
+
+        $pendingBatches = $batches
+            ->where('status', 'pending')
+            ->count();
+
+        $totalBatches = $batches->count();
+
+        return [
+            'session' => [
+                'id' => $session->id,
+                'tenant_id' => $session->tenant_id,
+                'source' => $session->source,
+                'status' => $session->status,
+            ],
+
+            'summary' => [
+                'total_batches' => $totalBatches,
+                'completed_batches' => $completedBatches,
+                'failed_batches' => $failedBatches,
+                'pending_batches' => $pendingBatches,
+                'total_rows' => $totalRows,
+                'successful_rows' => $successfulRows,
+                'failed_rows' => $failedRows,
+                'complete' => $totalBatches > 0
+                    && $completedBatches === $totalBatches,
+            ],
+
+            'batches' => $batches->map(function (
+                MigrationImportBatch $batch
+            ) {
+                return [
+                    'id' => $batch->id,
+                    'entity_type' => $batch->entity_type,
+                    'status' => $batch->status,
+                    'total_rows' => $batch->total_rows,
+                    'successful_rows' => $batch->successful_rows,
+                    'failed_rows' => $batch->failed_rows,
+                    'errors' => $batch->errors ?? [],
+                ];
+            })->values()->all(),
+        ];
     }
 }
