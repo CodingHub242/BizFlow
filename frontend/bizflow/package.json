@@ -36,6 +36,8 @@
     "@angular/language-service": "22.1.7",
     "@capacitor/cli": "8.5.2",
     "@ionic/angular-toolkit": "^13.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/mocha": "^10.0.10",
     "angular-eslint": "22.0.0",
     "eslint": "^10.10.0",
     "jsdom": "^26.0.0",

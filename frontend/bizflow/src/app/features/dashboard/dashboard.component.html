@@ -1,0 +1,302 @@
+<section class="dashboard">
+  <div class="dashboard-header">
+    <div>
+      <p class="eyebrow">Business overview</p>
+      <h2>Good afternoon</h2>
+      <p class="subtitle">
+        Here's what's happening with your business today.
+      </p>
+    </div>
+
+    <button class="primary-action" type="button">
+      <ion-icon name="cart-outline"></ion-icon>
+      New Sale
+    </button>
+  </div>
+
+  <div class="metric-grid">
+    <article class="metric-card">
+      <div class="metric-header">
+        <span>Revenue</span>
+
+        <span class="metric-icon revenue">
+          <ion-icon name="wallet-outline"></ion-icon>
+        </span>
+      </div>
+
+      <strong class="metric-value">GH₵ {{ dashboardData.sales_total | number: '1.2-2' }}</strong>
+
+      <div class="metric-change positive">
+        <ion-icon name="arrow-up-outline"></ion-icon>
+        <span>12.5%</span>
+        <small>vs last month</small>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-header">
+        <span>Sales</span>
+
+        <span class="metric-icon sales">
+          <ion-icon name="cart-outline"></ion-icon>
+        </span>
+      </div>
+
+      <strong class="metric-value"> {{ dashboardData.sales_count | number }}</strong>
+
+      <div class="metric-change positive">
+        <ion-icon name="arrow-up-outline"></ion-icon>
+        <span>8.2%</span>
+        <small>vs last month</small>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-header">
+        <span>Outstanding Invoices</span>
+
+        <span class="metric-icon invoices">
+          <ion-icon name="document-text-outline"></ion-icon>
+        </span>
+      </div>
+
+      <strong class="metric-value">GH₵ {{ dashboardData.outstanding_invoice_total | number: '1.2-2' }}</strong>
+
+      <div class="metric-change negative">
+        <ion-icon name="arrow-down-outline"></ion-icon>
+        <span>3.4%</span>
+        <small>vs last month</small>
+      </div>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-header">
+        <span>Customers</span>
+
+        <span class="metric-icon customers">
+          <ion-icon name="people-outline"></ion-icon>
+        </span>
+      </div>
+
+      <strong class="metric-value"> {{ dashboardData.customer_count | number }}</strong>
+
+      <div class="metric-change positive">
+        <ion-icon name="arrow-up-outline"></ion-icon>
+        <span>5.8%</span>
+        <small>vs last month</small>
+      </div>
+    </article>
+  </div>
+
+  <div class="dashboard-grid">
+    <section class="panel sales-panel">
+      <div class="panel-header">
+        <div>
+          <h3>Sales overview</h3>
+          <p>Revenue generated over the last 7 months</p>
+        </div>
+
+        <button class="period-button" type="button">
+          Last 7 months
+          <ion-icon name="ellipsis-horizontal-outline"></ion-icon>
+        </button>
+      </div>
+
+      <div class="chart">
+        <div class="chart-y-axis">
+          <span>30k</span>
+          <span>20k</span>
+          <span>10k</span>
+          <span>0</span>
+        </div>
+
+        <div class="chart-area">
+          <div class="grid-line"></div>
+          <div class="grid-line"></div>
+          <div class="grid-line"></div>
+          <div class="grid-line"></div>
+
+          <svg
+            class="sales-line"
+            viewBox="0 0 700 220"
+            preserveAspectRatio="none"
+            aria-label="Sales trend chart"
+            role="img"
+          >
+            <polyline
+              [attr.points]="
+                salesChartPoints
+                  .map((point) => point.x + ',' + point.y)
+                  .join(' ')
+              "
+              fill="none"
+              stroke="currentColor"
+              stroke-width="3"
+            />
+
+            @for (point of salesChartPoints; track $index) {
+              <circle
+                [attr.cx]="point.x"
+                [attr.cy]="point.y"
+                r="4"
+              ></circle>
+            }
+          </svg>
+
+         <div class="chart-labels">
+            @for (label of getSalesChartLabels(); track $index) {
+              <span>{{ label }}</span>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel activity-panel">
+      <div class="panel-header">
+        <div>
+          <h3>Recent activity</h3>
+          <p>Latest business transactions</p>
+        </div>
+
+        <button class="text-action" type="button">
+          View all
+          <ion-icon name="arrow-forward-outline"></ion-icon>
+        </button>
+      </div>
+
+      <div class="activity-list">
+        <div class="activity-item">
+          <span class="activity-avatar sale">SA</span>
+
+          <div class="activity-info">
+            <strong>Sale completed</strong>
+            <span>Order #ORD-10482</span>
+          </div>
+
+          <div class="activity-amount">
+            <strong>GH₵ 1,250.00</strong>
+            <small>Today, 14:32</small>
+          </div>
+        </div>
+
+        <div class="activity-item">
+          <span class="activity-avatar payment">PM</span>
+
+          <div class="activity-info">
+            <strong>Payment received</strong>
+            <span>Invoice #INV-00942</span>
+          </div>
+
+          <div class="activity-amount">
+            <strong>GH₵ 850.00</strong>
+            <small>Today, 13:18</small>
+          </div>
+        </div>
+
+        <div class="activity-item">
+          <span class="activity-avatar customer">CU</span>
+
+          <div class="activity-info">
+            <strong>New customer</strong>
+            <span>Kwame Trading Ltd.</span>
+          </div>
+
+          <div class="activity-amount">
+            <strong>Customer</strong>
+            <small>Today, 11:46</small>
+          </div>
+        </div>
+
+        <div class="activity-item">
+          <span class="activity-avatar expense">EX</span>
+
+          <div class="activity-info">
+            <strong>Expense recorded</strong>
+            <span>Office supplies</span>
+          </div>
+
+          <div class="activity-amount">
+            <strong>GH₵ 320.00</strong>
+            <small>Today, 10:12</small>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bottom-grid">
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>Low stock</h3>
+          <p>Items requiring attention</p>
+        </div>
+
+        <button class="text-action" type="button">
+          View inventory
+          <ion-icon name="arrow-forward-outline"></ion-icon>
+        </button>
+      </div>
+
+      <div class="stock-list">
+        @for (item of dashboardData.low_stock_items; track item.id) {
+        <div class="stock-item">
+          <div>
+            <strong>{{ item.name }}</strong>
+            <span>SKU: {{ item.sku || 'N/A' }}</span>
+          </div>
+
+          <span class="stock-warning">
+            {{ item.quantity | number }} left
+          </span>
+        </div>
+        }
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h3>Outstanding invoices</h3>
+          <p>Invoices awaiting payment</p>
+        </div>
+
+        <button class="text-action" type="button">
+          View invoices
+          <ion-icon name="arrow-forward-outline"></ion-icon>
+        </button>
+      </div>
+
+     <div class="invoice-summary">
+        <div class="invoice-total">
+          <span>Total outstanding</span>
+          <strong>
+            GH₵ {{ dashboardData.outstanding_invoice_total | number: '1.2-2' }}
+          </strong>
+        </div>
+
+        <div class="invoice-list">
+          @for (invoice of dashboardData.outstanding_invoices; track invoice.id) {
+            <div class="invoice-item">
+              <div>
+                <strong>{{ invoice.invoice_number }}</strong>
+                <span>{{ invoice.customer_name || 'Walk-in Customer' }}</span>
+              </div>
+
+              <div class="invoice-amount">
+                <strong>
+                  GH₵ {{ invoice.outstanding | number: '1.2-2' }}
+                </strong>
+
+                <small>
+                  Due {{ invoice.due_at | date: 'mediumDate' }}
+                </small>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
+</section>

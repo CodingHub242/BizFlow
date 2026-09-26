@@ -1,3 +1,92 @@
-<p>
-  sidebar works!
-</p>
+<aside class="sidebar">
+  <div class="brand">
+    <!-- <div class="brand-mark">B</div> -->
+
+    <div class="brand-text">
+      <span class="brand-name">BizFlow</span>
+      <span class="brand-subtitle">Business Management</span>
+    </div>
+  </div>
+
+  <nav class="navigation">
+    <a
+      routerLink="/dashboard"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      class="nav-item"
+    >
+      <ion-icon name="grid-outline"></ion-icon>
+      <span>Dashboard</span>
+    </a>
+
+    <a
+      routerLink="/customers"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="people-outline"></ion-icon>
+      <span>Customers</span>
+    </a>
+
+    <a
+      routerLink="/catalog"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="cube-outline"></ion-icon>
+      <span>Products & Services</span>
+    </a>
+
+    <a
+      routerLink="/inventory"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="layers-outline"></ion-icon>
+      <span>Inventory</span>
+    </a>
+
+    <a
+      routerLink="/sales"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="cart-outline"></ion-icon>
+      <span>Sales</span>
+    </a>
+
+    <a
+      routerLink="/invoices"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="document-text-outline"></ion-icon>
+      <span>Invoices</span>
+    </a>
+
+    <a
+      routerLink="/expenses"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="wallet-outline"></ion-icon>
+      <span>Expenses</span>
+    </a>
+
+    <a
+      routerLink="/reports"
+      routerLinkActive="active"
+      class="nav-item"
+    >
+      <ion-icon name="bar-chart-outline"></ion-icon>
+      <span>Reports</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a routerLink="/settings" class="nav-item">
+      <ion-icon name="settings-outline"></ion-icon>
+      <span>Settings</span>
+    </a>
+  </div>
+</aside>
