@@ -1,0 +1,7 @@
+{
+  "name": "bizflow",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}

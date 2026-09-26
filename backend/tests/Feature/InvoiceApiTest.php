@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Branch;
 use App\Models\CatalogItem;
+use App\CatalogItemType;
 use App\Models\Tenant;
 use App\Models\Order;
 use App\Models\Invoice;
+use Spatie\Permission\Models\Role;
 use App\InvoiceStatus;
 use App\PaymentStatus;
 use App\InvoicePaymentMethod;
@@ -19,6 +21,20 @@ class InvoiceApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function assignRole(
+    User $user,
+    string $roleName = 'Accountant'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
+
     public function test_authenticated_user_can_create_invoice(): void
     {
         $tenant = Tenant::factory()->create();
@@ -29,7 +45,7 @@ class InvoiceApiTest extends TestCase
 
         $user = User::factory()->create([
             'tenant_id' => $tenant->id,
-        ]);
+        ]);$this->assignRole($user);
 
         $catalogItem = CatalogItem::factory()->create([
             'tenant_id' => $tenant->id,
@@ -62,7 +78,7 @@ class InvoiceApiTest extends TestCase
 
         $user = User::factory()->create([
             'tenant_id' => $tenant->id,
-        ]);
+        ]);$this->assignRole($user);
 
         $catalogItem = CatalogItem::factory()->create([
             'tenant_id' => $tenant->id,
@@ -103,7 +119,7 @@ class InvoiceApiTest extends TestCase
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -137,7 +153,7 @@ public function test_invoice_cannot_use_catalog_item_from_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -188,7 +204,7 @@ public function test_invoice_cannot_use_customer_from_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -226,7 +242,7 @@ public function test_invoice_cannot_use_order_from_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -264,7 +280,7 @@ public function test_create_invoice_returns_invoice_data(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -306,7 +322,7 @@ public function test_create_invoice_returns_invoice_items(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -344,7 +360,7 @@ public function test_create_invoice_returns_expected_status_values(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -380,7 +396,7 @@ public function test_create_invoice_requires_invoice_number(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -412,7 +428,7 @@ public function test_create_invoice_requires_branch(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -448,7 +464,7 @@ public function test_create_invoice_requires_items(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -474,7 +490,7 @@ public function test_create_invoice_accepts_multiple_items(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $itemOne = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -520,7 +536,7 @@ public function test_create_invoice_can_include_customer(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -566,7 +582,7 @@ public function test_create_invoice_can_include_order(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $order = Order::factory()->create([
         'tenant_id' => $tenant->id,
@@ -613,7 +629,7 @@ public function test_authenticated_user_can_record_invoice_payment(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -670,7 +686,7 @@ public function test_invoice_payment_cannot_exceed_outstanding_balance(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -727,7 +743,7 @@ public function test_unauthenticated_user_cannot_record_invoice_payment(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenant->id,
@@ -762,9 +778,13 @@ public function test_invoice_payment_cannot_target_invoice_from_another_tenant()
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -806,7 +826,7 @@ public function test_invoice_payment_requires_positive_amount(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenant->id,
@@ -843,7 +863,7 @@ public function test_invoice_payment_updates_invoice_to_partially_paid(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenant->id,
@@ -891,7 +911,7 @@ public function test_invoice_payment_updates_invoice_to_paid(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenant->id,
@@ -941,7 +961,7 @@ public function test_authenticated_user_can_view_invoice(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1001,9 +1021,13 @@ public function test_invoice_from_another_tenant_cannot_be_viewed(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -1036,9 +1060,13 @@ public function test_authenticated_user_can_list_invoices_for_their_tenant(): vo
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     Invoice::factory()->count(2)->create([
         'tenant_id' => $tenantA->id,
@@ -1081,7 +1109,7 @@ public function test_authenticated_user_can_issue_invoice(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1123,9 +1151,13 @@ public function test_invoice_from_another_tenant_cannot_be_issued(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -1158,7 +1190,7 @@ public function test_authenticated_user_can_cancel_draft_invoice(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user, 'Administrator');
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1203,9 +1235,13 @@ public function test_invoice_from_another_tenant_cannot_be_cancelled(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA, 'Administrator');
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB, 'Administrator');
 
     $invoice = Invoice::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -1227,5 +1263,40 @@ public function test_invoice_from_another_tenant_cannot_be_cancelled(): void
         'status' => InvoiceStatus::DRAFT->value,
     ]);
 }
+public function test_user_without_invoice_create_permission_cannot_create_invoice(): void
+{
+    $tenant = Tenant::factory()->create();
 
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson('/api/invoices', [
+            'invoice_number' => 'INV-UNAUTHORIZED-001',
+            'branch_id' => $branch->id,
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity' => 1,
+                    'unit_price' => 100,
+                ],
+            ],
+        ])
+        ->assertStatus(403);
+
+    $this->assertDatabaseMissing('invoices', [
+        'tenant_id' => $tenant->id,
+        'invoice_number' => 'INV-UNAUTHORIZED-001',
+    ]);
+}
 }

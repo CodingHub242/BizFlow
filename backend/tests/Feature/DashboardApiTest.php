@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Tenant;
+use Spatie\Permission\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -15,13 +16,27 @@ class DashboardApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function assignRole(
+    User $user,
+    string $roleName = 'Accountant'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
+
 public function test_authenticated_user_can_retrieve_dashboard_summary(): void
 {
     $tenant = Tenant::factory()->create();
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -81,7 +96,7 @@ public function test_dashboard_rejects_invalid_date_filters(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     Sanctum::actingAs($user);
 
@@ -96,7 +111,7 @@ public function test_dashboard_only_returns_data_for_authenticated_users_tenant(
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $tenantBranch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -144,7 +159,7 @@ public function test_dashboard_returns_numeric_financial_values(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     Sanctum::actingAs($user);
 

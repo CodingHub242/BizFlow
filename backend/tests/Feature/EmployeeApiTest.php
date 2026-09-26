@@ -6,12 +6,27 @@ use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\Tenant;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class EmployeeApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function assignRole(
+    User $user,
+    string $roleName = 'Administrator'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
 
     public function test_authenticated_user_can_create_employee_but_cannot_cross_tenant_boundaries(): void
     {
@@ -22,9 +37,13 @@ class EmployeeApiTest extends TestCase
             'tenant_id' => $tenantA->id,
         ]);
 
+        $this->assignRole($userA);
+
         $userB = User::factory()->create([
             'tenant_id' => $tenantB->id,
         ]);
+
+        $this->assignRole($userB);
 
         $branchA = Branch::factory()->create([
             'tenant_id' => $tenantA->id,
@@ -112,4 +131,30 @@ class EmployeeApiTest extends TestCase
             Employee::first()->tenant_id
         );
     }
+
+    public function test_user_without_employee_create_permission_cannot_create_employee(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson('/api/employees', [
+            'name' => 'Unauthorized Employee',
+            'email' => 'unauthorized.employee@example.com',
+            'phone' => '0244000000',
+            'employee_number' => 'EMP-UNAUTHORIZED-001',
+            'job_title' => 'Salesperson',
+            'employment_status' => 'active',
+            'hired_at' => '2026-09-25',
+        ])
+        ->assertStatus(403);
+
+    $this->assertDatabaseMissing('employees', [
+        'tenant_id' => $tenant->id,
+        'employee_number' => 'EMP-UNAUTHORIZED-001',
+    ]);
+}
 }

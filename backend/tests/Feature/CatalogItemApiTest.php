@@ -5,12 +5,27 @@ namespace Tests\Feature;
 use App\Models\CatalogItem;
 use App\Models\Tenant;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class CatalogItemApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function assignRole(
+    User $user,
+    string $roleName = 'Manager'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
 
 public function test_authenticated_user_can_create_product_for_their_tenant(): void
 {
@@ -19,6 +34,8 @@ public function test_authenticated_user_can_create_product_for_their_tenant(): v
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -79,6 +96,8 @@ public function test_product_is_created_under_authenticated_users_tenant(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/catalog-items', [
@@ -120,6 +139,8 @@ public function test_product_creation_requires_name_and_type(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/catalog-items', [
@@ -150,6 +171,8 @@ public function test_product_creation_rejects_invalid_type(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -183,6 +206,8 @@ public function test_product_creation_rejects_negative_prices(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -218,6 +243,8 @@ public function test_product_creation_rejects_negative_tax_rate(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/catalog-items', [
@@ -250,6 +277,8 @@ public function test_product_creation_rejects_duplicate_sku_within_same_tenant()
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -300,6 +329,8 @@ public function test_product_creation_allows_same_sku_for_different_tenants(): v
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/catalog-items', [
@@ -340,6 +371,8 @@ public function test_authenticated_user_can_create_service_for_their_tenant(): v
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/catalog-items', [
@@ -377,6 +410,8 @@ public function test_service_can_be_created_without_inventory_tracking(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/catalog-items', [
@@ -411,6 +446,8 @@ public function test_authenticated_user_can_create_inactive_catalog_item(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -455,6 +492,8 @@ public function test_authenticated_user_can_list_catalog_items_for_their_tenant(
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Premium Rice',
@@ -498,6 +537,8 @@ public function test_catalog_item_list_does_not_include_other_tenants(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->create([
         'tenant_id' => $tenantA->id,
         'name' => 'Tenant A Product',
@@ -540,6 +581,8 @@ public function test_catalog_item_resource_does_not_expose_tenant_id(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Private Product',
@@ -564,6 +607,8 @@ public function test_authenticated_user_can_view_catalog_item_from_their_tenant(
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -600,6 +645,8 @@ public function test_user_cannot_view_catalog_item_from_another_tenant(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($user);
+
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenantB->id,
         'name' => 'Private Product',
@@ -635,6 +682,8 @@ public function test_authenticated_user_can_update_catalog_item_from_their_tenan
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user, 'Administrator');
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -679,6 +728,8 @@ public function test_user_cannot_update_catalog_item_from_another_tenant(): void
     $user = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+
+    $this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenantB->id,
@@ -739,6 +790,8 @@ public function test_catalog_item_update_rejects_negative_prices(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Existing Product',
@@ -777,6 +830,8 @@ public function test_catalog_item_update_rejects_negative_tax_rate(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Existing Product',
@@ -811,6 +866,8 @@ public function test_catalog_item_update_rejects_duplicate_sku_within_same_tenan
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -851,6 +908,8 @@ public function test_catalog_item_update_allows_existing_sku_to_remain_unchanged
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -911,6 +970,8 @@ public function test_authenticated_user_can_delete_catalog_item_from_their_tenan
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user, 'Administrator');
+
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Product To Delete',
@@ -942,6 +1003,8 @@ public function test_user_cannot_delete_catalog_item_from_another_tenant(): void
     $user = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+
+    $this->assignRole($user, 'Administrator');
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenantB->id,
@@ -997,6 +1060,8 @@ public function test_authenticated_user_can_restore_deleted_catalog_item_from_th
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Restorable Product',
@@ -1032,6 +1097,8 @@ public function test_user_cannot_restore_catalog_item_from_another_tenant(): voi
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($user);
+
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenantB->id,
         'name' => 'Tenant B Deleted Product',
@@ -1061,6 +1128,8 @@ public function test_authenticated_user_can_search_catalog_items(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1106,6 +1175,8 @@ public function test_authenticated_user_can_filter_catalog_items_by_type(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Premium Rice',
@@ -1145,6 +1216,8 @@ public function test_authenticated_user_can_filter_catalog_items_by_active_statu
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1187,6 +1260,8 @@ public function test_authenticated_user_can_combine_catalog_filters(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1239,6 +1314,8 @@ public function test_catalog_type_filter_rejects_invalid_type(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->getJson('/api/catalog-items?type=invalid');
@@ -1256,6 +1333,8 @@ public function test_catalog_active_filter_rejects_invalid_value(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->getJson('/api/catalog-items?is_active=abc');
@@ -1272,6 +1351,8 @@ public function test_authenticated_user_can_paginate_catalog_items(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->count(3)->create([
         'tenant_id' => $tenant->id,
@@ -1306,6 +1387,8 @@ public function test_catalog_pagination_rejects_invalid_per_page(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->getJson('/api/catalog-items?per_page=0');
@@ -1321,6 +1404,8 @@ public function test_catalog_list_uses_default_pagination(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->count(20)->create([
         'tenant_id' => $tenant->id,
@@ -1351,6 +1436,8 @@ public function test_authenticated_user_can_navigate_catalog_pages(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->count(20)->create([
         'tenant_id' => $tenant->id,
     ]);
@@ -1379,6 +1466,8 @@ public function test_authenticated_user_can_paginate_search_results(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->count(20)->create([
         'tenant_id' => $tenant->id,
@@ -1419,6 +1508,8 @@ public function test_authenticated_user_can_paginate_type_results(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->count(20)->create([
         'tenant_id' => $tenant->id,
         'type' => 'product',
@@ -1458,6 +1549,8 @@ public function test_authenticated_user_can_paginate_active_catalog_items(): voi
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->count(20)->create([
         'tenant_id' => $tenant->id,
         'is_active' => true,
@@ -1496,6 +1589,8 @@ public function test_catalog_pagination_rejects_invalid_page(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->getJson('/api/catalog-items?page=0');
@@ -1512,6 +1607,8 @@ public function test_catalog_search_rejects_excessively_long_value(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $search = str_repeat('a', 256);
 
@@ -1531,6 +1628,8 @@ public function test_catalog_empty_search_returns_all_items(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->count(3)->create([
         'tenant_id' => $tenant->id,
@@ -1557,6 +1656,8 @@ public function test_catalog_search_is_case_insensitive(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1588,6 +1689,8 @@ public function test_authenticated_user_can_search_catalog_item_by_sku(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1630,6 +1733,8 @@ public function test_authenticated_user_can_search_catalog_item_by_description()
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Office Chair',
@@ -1664,5 +1769,46 @@ public function test_authenticated_user_can_search_catalog_item_by_description()
             'name' => 'Office Desk',
             'sku' => 'DESK-100',
         ]);
+}
+public function test_user_without_product_cost_permission_cannot_change_cost_price(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    
+
+    setPermissionsTeamId($tenant->id);
+
+    $role = \Spatie\Permission\Models\Role::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('name', 'Manager')
+        ->firstOrFail();
+
+    $user->assignRole($role);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Protected Cost Product',
+        'type' => 'product',
+        'cost_price' => 100.00,
+        'selling_price' => 150.00,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->putJson("/api/catalog-items/{$catalogItem->id}", [
+            'cost_price' => 50.00,
+        ]);
+
+    $response->assertStatus(403);
+
+    $this->assertDatabaseHas('catalog_items', [
+        'id' => $catalogItem->id,
+        'tenant_id' => $tenant->id,
+        'cost_price' => 100.00,
+    ]);
 }
 }

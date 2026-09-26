@@ -140,6 +140,19 @@ class CatalogItemController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        if (array_key_exists('cost_price', $validated) && (float) $validated['cost_price'] !== (float) $catalogItem->cost_price) 
+        {
+            $user = $request->user();
+
+            setPermissionsTeamId($user->tenant_id);
+
+            abort_unless(
+                $user->hasPermissionTo('products.change_cost'),
+                403,
+                'You do not have permission to change product cost.'
+            );
+        }
+
         $catalogItem->update($validated);
 
         return response()->json([

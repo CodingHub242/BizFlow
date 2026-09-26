@@ -79,4 +79,39 @@ class BizFlowRolePermissionSeederTest extends TestCase
                 ->count()
         );
     }
+
+    public function test_default_roles_receive_expected_permissions(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    app(BizFlowRolePermissionSeeder::class)
+        ->provisionTenantRoles($tenant->id);
+
+    setPermissionsTeamId($tenant->id);
+
+    $salesperson = Role::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('name', 'Salesperson')
+        ->firstOrFail();
+
+    $this->assertTrue(
+        $salesperson->hasPermissionTo('customers.create')
+    );
+
+    $this->assertTrue(
+        $salesperson->hasPermissionTo('sales.create')
+    );
+
+    $this->assertFalse(
+        $salesperson->hasPermissionTo('products.change_cost')
+    );
+
+    $this->assertFalse(
+        $salesperson->hasPermissionTo('reports.view_profit')
+    );
+
+    $this->assertFalse(
+        $salesperson->hasPermissionTo('roles.create')
+    );
+}
 }

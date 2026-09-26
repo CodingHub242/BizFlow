@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\ExpensePaymentMethod;
 use App\Models\Branch;
 use App\Models\Category;
+use Spatie\Permission\Models\Role;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,6 +15,21 @@ use Tests\TestCase;
 class ExpenseApiTest extends TestCase
 {
     use RefreshDatabase;
+    
+
+    private function assignRole(
+    User $user,
+    string $roleName = 'Accountant'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
 
 public function test_authenticated_user_can_create_an_expense(): void
 {
@@ -22,6 +38,8 @@ public function test_authenticated_user_can_create_an_expense(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -83,11 +101,13 @@ public function test_user_cannot_view_an_expense_from_another_tenant(): void
 
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
-    ]);
+    ]);$this->assignRole($userA);
 
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $branchA = Branch::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -117,9 +137,13 @@ public function test_expense_index_returns_only_current_tenant_expenses_with_pag
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $branchA = Branch::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -183,7 +207,7 @@ public function test_expense_index_supports_business_filters(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -251,7 +275,7 @@ public function test_authenticated_user_can_update_an_expense(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -319,7 +343,7 @@ public function test_authenticated_user_can_soft_delete_an_expense(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,

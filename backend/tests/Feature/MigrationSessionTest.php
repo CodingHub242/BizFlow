@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Expense;
 use App\Models\Customer;
+use Spatie\Permission\Models\Role;
 use App\Models\Category;
 use App\Models\Supplier;
 use Mockery;
@@ -48,12 +49,26 @@ class MigrationSessionTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function assignRole(
+    User $user,
+    string $roleName = 'Accountant'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
+
 public function test_migration_session_belongs_to_a_tenant(): void
 {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = \App\Models\MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -79,6 +94,7 @@ public function test_migration_session_is_tenant_scoped(): void
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+    $this->assignRole($userA);
 
     $session = \App\Models\MigrationSession::create([
         'tenant_id' => $tenantA->id,
@@ -106,7 +122,7 @@ public function test_migration_session_status_is_cast_to_enum(): void
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = \App\Models\MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -125,7 +141,7 @@ public function test_migration_session_source_is_cast_to_enum(): void
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = \App\Models\MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -144,7 +160,7 @@ public function test_migration_session_stores_uploaded_file_metadata(): void
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = \App\Models\MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -170,7 +186,7 @@ public function test_migration_session_service_creates_pending_quickbooks_sessio
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = app(MigrationSessionService::class)->create(
         $tenant->id,
@@ -193,7 +209,7 @@ public function test_migration_session_can_attach_quickbooks_export_file(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = app(MigrationSessionService::class)->create(
         $tenant->id,
@@ -239,7 +255,7 @@ public function test_migration_session_cannot_attach_another_file_after_upload()
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -277,7 +293,7 @@ public function test_migration_session_rejects_non_csv_files(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -311,7 +327,7 @@ public function test_migration_session_rejects_files_over_10_mb(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -341,7 +357,7 @@ public function test_uploaded_migration_session_can_begin_analysis(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -378,7 +394,7 @@ public function test_migration_session_cannot_begin_analysis_twice(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -410,7 +426,7 @@ public function test_migration_analysis_result_belongs_to_migration_session(): v
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = \App\Models\MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -441,7 +457,7 @@ public function test_migration_csv_analyzer_reads_headers_and_row_count(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -486,7 +502,7 @@ public function test_migration_session_analysis_is_persisted(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -544,7 +560,7 @@ public function test_migration_session_service_analyzes_and_persists_csv(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $service = app(MigrationSessionService::class);
 
@@ -597,7 +613,7 @@ public function test_migration_csv_analyzer_returns_up_to_five_sample_rows(): vo
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = app(MigrationSessionService::class)->create(
         $tenant->id,
@@ -648,7 +664,7 @@ public function test_it_detects_a_quickbooks_customer_csv_entity_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -679,7 +695,7 @@ public function test_it_persists_detected_entity_type_in_analysis_result(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -714,7 +730,7 @@ public function test_it_detects_a_quickbooks_supplier_csv_entity_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -745,7 +761,7 @@ public function test_it_detects_a_quickbooks_product_service_csv_entity_type(): 
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -776,7 +792,7 @@ public function test_it_detects_a_quickbooks_invoice_csv_entity_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -807,7 +823,7 @@ public function test_it_detects_a_quickbooks_expense_csv_entity_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -839,7 +855,7 @@ public function test_it_detects_a_quickbooks_customer_csv_without_email(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -870,7 +886,7 @@ public function test_it_detects_a_quickbooks_payment_csv_entity_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -901,7 +917,7 @@ public function test_it_returns_null_for_an_unrecognized_csv_entity_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -929,7 +945,7 @@ public function test_migration_mapping_belongs_to_migration_session_and_casts_fi
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -974,9 +990,13 @@ public function test_migration_mapping_is_tenant_scoped(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $sessionA = MigrationSession::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -1142,7 +1162,7 @@ public function test_migration_mapping_service_persists_generated_mapping(): voi
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1184,7 +1204,7 @@ public function test_migration_mapping_service_updates_existing_entity_mapping()
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2018,7 +2038,7 @@ public function test_migration_session_persists_validation_result(): void
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2080,7 +2100,7 @@ public function test_migration_validation_result_is_tenant_scoped(): void
 
     $userOne = User::factory()->create([
         'tenant_id' => $tenantOne->id,
-    ]);
+    ]);$this->assignRole($userOne);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenantOne->id,
@@ -2128,7 +2148,7 @@ public function test_migration_session_can_create_import_batch_after_validation(
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2182,7 +2202,7 @@ public function test_import_batch_requires_successful_validation(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2229,7 +2249,7 @@ public function test_import_batch_cannot_be_created_twice_for_same_session_and_e
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2274,7 +2294,7 @@ public function test_customer_importer_imports_validated_customers_and_completes
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2363,7 +2383,7 @@ public function test_customer_importer_rolls_back_all_customers_when_import_fail
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2444,7 +2464,7 @@ public function test_customer_importer_rolls_back_transaction_on_database_failur
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2542,7 +2562,7 @@ public function test_customer_importer_does_not_duplicate_existing_customer_by_e
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $existingCustomer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2624,7 +2644,7 @@ public function test_supplier_importer_imports_validated_suppliers_and_completes
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2711,7 +2731,7 @@ public function test_catalog_item_importer_imports_products_and_services_and_com
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -2842,7 +2862,7 @@ public function test_migration_invoice_creator_creates_invoice_and_prevents_dupl
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2929,7 +2949,7 @@ public function test_invoice_importer_resolves_customers_and_completes_batch(): 
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -3030,7 +3050,7 @@ public function test_migration_expense_creator_creates_expense(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -3067,7 +3087,7 @@ public function test_expense_importer_imports_validated_expenses_and_completes_b
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -3199,7 +3219,7 @@ public function test_migration_invoice_payment_creator_creates_payment(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -3251,7 +3271,7 @@ public function test_migration_invoice_resolver_resolves_invoice_within_tenant_o
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $otherUser = User::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -3316,7 +3336,7 @@ public function test_invoice_payment_importer_resolves_invoices_and_completes_ba
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -3409,7 +3429,7 @@ public function test_authenticated_user_can_create_migration_session(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -3443,7 +3463,7 @@ public function test_authenticated_user_can_upload_quickbooks_csv_to_migration_s
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3496,7 +3516,7 @@ public function test_authenticated_user_can_analyze_uploaded_quickbooks_file(): 
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3562,7 +3582,7 @@ public function test_authenticated_user_can_save_migration_mapping(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3614,7 +3634,7 @@ public function test_authenticated_user_can_validate_migration_data(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3681,7 +3701,7 @@ public function test_authenticated_user_can_create_migration_import_batch(): voi
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3754,7 +3774,7 @@ public function test_migration_import_service_routes_customer_batch_to_customer_
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -3801,7 +3821,7 @@ public function test_migration_import_service_requires_branch_for_invoice_import
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3860,7 +3880,7 @@ public function test_migration_import_service_routes_invoice_batch_with_branch()
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
-
+$this->assignRole($user);
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
@@ -3925,7 +3945,7 @@ public function test_migration_import_service_requires_branch_for_expense_import
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -3989,7 +4009,7 @@ public function test_migration_import_service_routes_standard_entity_batches(): 
 
         $user = User::factory()->create([
             'tenant_id' => $tenant->id,
-        ]);
+        ]);$this->assignRole($user);
 
         
         $session = MigrationSession::create([
@@ -4057,7 +4077,7 @@ public function test_authenticated_user_can_run_migration_import_batch(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $this->actingAs($user);
 
@@ -4139,7 +4159,7 @@ public function test_user_cannot_run_migration_import_for_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $otherUser = User::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -4185,6 +4205,7 @@ public function test_migration_import_exception_does_not_expose_internal_details
 $user = User::factory()->create([
     'tenant_id' => $tenant->id,
 ]);
+$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $user->tenant_id,
@@ -4230,7 +4251,7 @@ public function test_migration_import_service_rejects_completed_batch(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -4279,9 +4300,13 @@ public function test_migration_import_service_rejects_session_and_batch_from_dif
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenantA->id,
@@ -4325,7 +4350,7 @@ public function test_authenticated_user_can_review_validated_migration(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -4423,7 +4448,7 @@ public function test_migration_import_service_enforces_entity_dependencies(): vo
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -4475,7 +4500,7 @@ public function test_failed_migration_import_batch_can_be_retried(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -4558,7 +4583,7 @@ public function test_completed_migration_import_batch_cannot_be_retried(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::factory()->create([
         'tenant_id' => $tenant->id,
@@ -4598,7 +4623,7 @@ public function test_authenticated_user_can_retry_failed_migration_import(): voi
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -4676,7 +4701,7 @@ public function test_migration_session_report_summarizes_import_batches(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]);$this->assignRole($user);
 
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
@@ -4780,7 +4805,7 @@ public function test_authenticated_user_can_view_migration_report(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
-
+    $this->assignRole($user,'Administrator');
     $session = MigrationSession::create([
         'tenant_id' => $tenant->id,
         'created_by' => $user->id,
@@ -4862,6 +4887,8 @@ public function test_authenticated_user_can_view_migration_report(): void
         'tenant_id' => $otherTenant->id,
     ]);
 
+    $this->assignRole($otherUser);
+
     $this
         ->actingAs($otherUser)
         ->getJson(
@@ -4871,5 +4898,38 @@ public function test_authenticated_user_can_view_migration_report(): void
         ->assertJson([
             'message' => 'Migration session not found.',
         ]);
+}
+public function test_user_without_migration_import_permission_cannot_run_import(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $session = MigrationSession::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+    ]);
+
+       $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenant->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $user->id,
+        'entity_type' => 'customers',
+        'status' => 'completed',
+        'total_rows' => 100,
+        'successful_rows' => 100,
+        'failed_rows' => 0,
+        'errors' => [],
+    ]);
+
+    
+
+    $this->actingAs($user)
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/batches/{$batch->id}/import"
+        )
+        ->assertStatus(403);
 }
 }

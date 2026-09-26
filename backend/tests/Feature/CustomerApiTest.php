@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Customer;
 use App\Models\Tenant;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -19,6 +20,15 @@ public function test_authenticated_user_can_create_customer(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    setPermissionsTeamId($tenant->id);
+
+    $role = Role::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('name', 'Salesperson')
+        ->firstOrFail();
+
+    $user->assignRole($role);
 
     $response = $this
         ->actingAs($user)
@@ -49,6 +59,8 @@ public function test_created_customer_belongs_to_authenticated_users_tenant(): v
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -88,9 +100,13 @@ public function test_authenticated_user_can_list_customers_for_their_tenant(): v
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $userB = User::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
+
+    $this->assignRole($userB);
 
     Customer::factory()->count(2)->create([
         'tenant_id' => $tenantA->id,
@@ -120,6 +136,8 @@ public function test_customer_list_does_not_include_other_tenants_customers(): v
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+
+    $this->assignRole($userA);
 
     $customerA = Customer::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -158,6 +176,8 @@ public function test_authenticated_user_can_view_customer_from_their_tenant(): v
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Test Customer',
@@ -187,6 +207,8 @@ public function test_user_cannot_view_customer_from_another_tenant(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $customerB = Customer::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
@@ -214,6 +236,8 @@ public function test_authenticated_user_can_update_customer_from_their_tenant():
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -255,6 +279,8 @@ public function test_user_cannot_update_customer_from_another_tenant(): void
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+
+    $this->assignRole($userA);
 
     $customerB = Customer::factory()->create([
         'tenant_id' => $tenantB->id,
@@ -302,6 +328,8 @@ public function test_customer_update_validates_name(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Original Customer',
@@ -332,10 +360,12 @@ public function test_authenticated_user_can_delete_customer_from_their_tenant():
         'tenant_id' => $tenant->id,
     ]);
 
+   $this->assignRole($user, 'Administrator');
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
-
+    
     $response = $this
         ->actingAs($user)
         ->deleteJson("/api/customers/{$customer->id}");
@@ -359,6 +389,8 @@ public function test_user_cannot_delete_customer_from_another_tenant(): void
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+
+    $this->assignRole($userA, 'Administrator');
 
     $customerB = Customer::factory()->create([
         'tenant_id' => $tenantB->id,
@@ -404,6 +436,8 @@ public function test_authenticated_user_can_search_customers_by_name(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Kwame Mensah',
@@ -438,6 +472,8 @@ public function test_customer_search_does_not_include_other_tenants(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     Customer::factory()->create([
         'tenant_id' => $tenantA->id,
         'name' => 'Kwame Mensah',
@@ -471,6 +507,8 @@ public function test_authenticated_user_can_search_customers_by_email(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Ama Boateng',
@@ -502,6 +540,8 @@ public function test_authenticated_user_can_search_customers_by_phone(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -535,6 +575,8 @@ public function test_authenticated_user_can_paginate_customers(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->count(20)->create([
         'tenant_id' => $tenant->id,
     ]);
@@ -560,6 +602,8 @@ public function test_customer_pagination_does_not_include_other_tenants(): void
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
+
+    $this->assignRole($userA);
 
     Customer::factory()->count(10)->create([
         'tenant_id' => $tenantA->id,
@@ -592,6 +636,8 @@ public function test_customer_pagination_limits_maximum_per_page(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->count(105)->create([
         'tenant_id' => $tenant->id,
     ]);
@@ -619,6 +665,8 @@ public function test_customer_pagination_enforces_minimum_per_page(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->count(5)->create([
         'tenant_id' => $tenant->id,
     ]);
@@ -645,6 +693,8 @@ public function test_customer_search_works_with_pagination(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     Customer::factory()->count(5)->create([
         'tenant_id' => $tenant->id,
@@ -684,6 +734,8 @@ public function test_customer_search_returns_empty_data_when_no_customer_matches
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Kwame Mensah',
@@ -708,6 +760,8 @@ public function test_customer_view_returns_expected_resource_structure(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $customer = Customer::factory()->create([
     'tenant_id' => $tenant->id,
@@ -749,6 +803,8 @@ public function test_customer_create_returns_expected_resource_structure(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $response = $this
         ->actingAs($user)
         ->postJson('/api/customers', [
@@ -788,6 +844,8 @@ public function test_customer_update_returns_expected_resource_structure(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -830,6 +888,8 @@ public function test_customer_resource_does_not_expose_tenant_id(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Kwame Mensah',
@@ -853,6 +913,8 @@ public function test_customer_list_uses_customer_resource_structure(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -903,6 +965,8 @@ public function test_authenticated_user_can_update_customer_status(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Kwame Mensah',
@@ -935,6 +999,8 @@ public function test_customer_status_must_be_active_or_inactive(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'status' => 'active',
@@ -966,6 +1032,8 @@ public function test_authenticated_user_can_filter_customers_by_status(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1003,6 +1071,8 @@ public function test_customer_status_filter_does_not_include_other_tenants(): vo
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     Customer::factory()->create([
         'tenant_id' => $tenantA->id,
         'name' => 'Tenant A Active',
@@ -1038,6 +1108,8 @@ public function test_customer_status_filter_rejects_invalid_status(): void
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'status' => 'active',
@@ -1061,6 +1133,8 @@ public function test_customer_search_and_status_filters_work_together(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1106,6 +1180,8 @@ public function test_customer_search_status_and_pagination_work_together(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     Customer::factory()->count(5)->create([
         'tenant_id' => $tenant->id,
@@ -1157,6 +1233,8 @@ public function test_authenticated_user_can_restore_deleted_customer_from_their_
         'tenant_id' => $tenant->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
         'name' => 'Restorable Customer',
@@ -1191,6 +1269,8 @@ public function test_user_cannot_restore_deleted_customer_from_another_tenant():
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($user);
+
     $customer = Customer::factory()->create([
         'tenant_id' => $tenantB->id,
         'name' => 'Other Tenant Customer',
@@ -1217,6 +1297,8 @@ public function test_user_cannot_restore_customer_that_is_not_deleted(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $customer = Customer::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1261,5 +1343,41 @@ public function test_unauthenticated_user_cannot_restore_deleted_customer(): voi
         'id' => $customer->id,
         'tenant_id' => $tenant->id,
     ]);
+}
+
+public function test_user_without_customer_create_permission_cannot_create_customer(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson('/api/customers', [
+            'name' => 'Unauthorized Customer',
+            'email' => 'unauthorized@example.com',
+            'phone' => '0244333333',
+        ])
+        ->assertStatus(403);
+
+    $this->assertDatabaseMissing('customers', [
+        'tenant_id' => $tenant->id,
+        'email' => 'unauthorized@example.com',
+    ]);
+}
+
+private function assignRole(
+    User $user,
+    string $roleName = 'Salesperson'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
 }
 }

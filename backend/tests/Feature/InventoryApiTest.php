@@ -7,6 +7,7 @@ use App\Models\CatalogItem;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Tenant;
+use Spatie\Permission\Models\Role;
 use App\InventoryMovementType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,6 +19,20 @@ class InventoryApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function assignRole(
+    User $user,
+    string $roleName = 'Inventory Officer'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()
+        ->where('tenant_id', $user->tenant_id)
+        ->where('name', $roleName)
+        ->firstOrFail();
+
+    $user->assignRole($role);
+}
+
 public function test_authenticated_user_can_list_inventory_for_their_tenant(): void
 {
     $tenant = Tenant::factory()->create();
@@ -25,6 +40,8 @@ public function test_authenticated_user_can_list_inventory_for_their_tenant(): v
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -67,6 +84,8 @@ public function test_inventory_list_does_not_include_other_tenants(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+
+    $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -134,6 +153,7 @@ public function test_authenticated_user_can_view_inventory_from_their_tenant(): 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);
+     $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -177,7 +197,7 @@ public function test_user_cannot_view_inventory_from_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $otherBranch = Branch::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -208,7 +228,7 @@ public function test_inventory_resource_does_not_expose_tenant_id(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -243,7 +263,7 @@ public function test_authenticated_user_can_filter_inventory_by_branch(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -301,7 +321,7 @@ public function test_inventory_branch_filter_rejects_invalid_value(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -319,7 +339,7 @@ public function test_inventory_branch_filter_cannot_access_another_tenants_branc
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $otherBranch = Branch::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -352,7 +372,7 @@ public function test_authenticated_user_can_filter_inventory_by_catalog_item(): 
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -406,7 +426,7 @@ public function test_inventory_catalog_item_filter_cannot_access_another_tenants
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $otherBranch = Branch::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -439,7 +459,7 @@ public function test_inventory_catalog_item_filter_rejects_invalid_value(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -455,7 +475,7 @@ public function test_authenticated_user_can_filter_inventory_by_branch_and_catal
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -522,7 +542,7 @@ public function test_authenticated_user_can_paginate_inventory(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -563,7 +583,7 @@ public function test_inventory_pagination_rejects_invalid_per_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -580,7 +600,7 @@ public function test_inventory_pagination_remains_tenant_isolated(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -639,7 +659,7 @@ public function test_inventory_uses_default_pagination_size(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -680,7 +700,7 @@ public function test_inventory_pagination_rejects_invalid_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -696,7 +716,7 @@ public function test_authenticated_user_can_paginate_empty_inventory(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -716,7 +736,7 @@ public function test_authenticated_user_can_view_inventory_details(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -781,7 +801,7 @@ public function test_inventory_branch_filter_rejects_non_integer_value(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -797,7 +817,7 @@ public function test_inventory_catalog_item_filter_rejects_non_integer_value(): 
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -813,7 +833,7 @@ public function test_inventory_pagination_rejects_zero_per_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -829,7 +849,7 @@ public function test_inventory_returns_empty_data_for_page_beyond_last_page(): v
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -865,7 +885,7 @@ public function test_inventory_accepts_maximum_per_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -881,7 +901,7 @@ public function test_inventory_filters_work_with_pagination(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -925,7 +945,7 @@ public function test_inventory_combined_filters_work_with_pagination(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -995,7 +1015,7 @@ public function test_inventory_is_ordered_by_latest(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1042,7 +1062,7 @@ public function test_inventory_returns_all_records_with_maximum_per_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1082,7 +1102,7 @@ public function test_inventory_can_return_second_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1123,7 +1143,7 @@ public function test_inventory_pagination_rejects_non_integer_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -1139,7 +1159,7 @@ public function test_inventory_filters_reject_negative_ids(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -1158,7 +1178,7 @@ public function test_inventory_filters_reject_zero_ids(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $response = $this
         ->actingAs($user)
@@ -1177,7 +1197,7 @@ public function test_inventory_filters_accept_minimum_valid_ids(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'id' => 1,
@@ -1214,7 +1234,7 @@ public function test_inventory_accepts_minimum_per_page(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1255,7 +1275,7 @@ public function test_inventory_resource_exposes_only_public_fields(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1305,7 +1325,7 @@ public function test_inventory_combined_filters_and_pagination_remain_tenant_iso
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1370,7 +1390,7 @@ public function test_authenticated_user_can_receive_stock(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1444,6 +1464,8 @@ public function test_user_cannot_receive_stock_for_another_tenant(): void
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $branchB = Branch::factory()->create([
         'tenant_id' => $tenantB->id,
     ]);
@@ -1482,7 +1504,7 @@ public function test_cannot_receive_stock_for_non_inventory_service(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1527,7 +1549,7 @@ public function test_receive_stock_rejects_zero_quantity(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1567,7 +1589,7 @@ public function test_receive_stock_rejects_negative_quantity(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1607,7 +1629,7 @@ public function test_receive_stock_rejects_nonexistent_branch(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $catalogItem = CatalogItem::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1636,7 +1658,7 @@ public function test_receive_stock_rejects_nonexistent_catalog_item(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1668,7 +1690,7 @@ public function test_authenticated_user_can_receive_additional_stock(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1723,7 +1745,7 @@ public function test_receive_stock_records_reference_information(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1763,7 +1785,7 @@ public function test_receive_stock_rejects_invalid_reference_id(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1801,7 +1823,7 @@ public function test_receive_stock_rejects_reference_type_longer_than_255_charac
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1838,7 +1860,7 @@ public function test_receive_stock_records_notes(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1876,7 +1898,7 @@ public function test_receive_stock_works_without_optional_fields(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1918,7 +1940,7 @@ public function test_authenticated_user_can_receive_decimal_stock_quantity(): vo
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -1964,7 +1986,7 @@ public function test_authenticated_user_can_receive_large_stock_quantity(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2002,7 +2024,7 @@ public function test_receive_stock_preserves_existing_reorder_level(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2050,7 +2072,7 @@ public function test_receive_stock_creates_new_movement_without_removing_history
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2118,6 +2140,8 @@ public function test_user_cannot_receive_stock_for_another_tenants_catalog_item(
         'tenant_id' => $tenantA->id,
     ]);
 
+    $this->assignRole($userA);
+
     $branchA = Branch::factory()->create([
         'tenant_id' => $tenantA->id,
     ]);
@@ -2156,7 +2180,7 @@ public function test_receive_stock_rejects_non_string_reference_type(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2193,7 +2217,7 @@ public function test_receive_stock_rejects_non_integer_reference_id(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2231,7 +2255,7 @@ public function test_receive_stock_rejects_non_string_notes(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2268,7 +2292,7 @@ public function test_authenticated_user_can_increase_stock_with_adjustment(): vo
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2326,7 +2350,7 @@ public function test_stock_adjustment_cannot_create_negative_inventory(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2382,7 +2406,7 @@ public function test_authenticated_user_can_decrease_stock_with_adjustment(): vo
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2440,7 +2464,7 @@ public function test_user_cannot_adjust_inventory_for_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $otherBranch = Branch::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -2489,7 +2513,7 @@ public function test_authenticated_user_can_list_inventory_movements_for_their_t
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2548,7 +2572,7 @@ public function test_inventory_movements_do_not_include_other_tenants(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2608,7 +2632,7 @@ public function test_authenticated_user_can_filter_inventory_movements_by_catalo
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2662,7 +2686,7 @@ public function test_authenticated_user_can_filter_inventory_movements_by_branch
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branchOne = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2728,7 +2752,7 @@ public function test_authenticated_user_can_transfer_stock_between_branches(): v
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $sourceBranch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2805,7 +2829,7 @@ public function test_stock_transfer_rejects_insufficient_stock_without_changes()
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $sourceBranch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -2874,7 +2898,7 @@ public function test_user_cannot_transfer_stock_for_another_tenant(): void
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $sourceBranch = Branch::factory()->create([
         'tenant_id' => $otherTenant->id,
@@ -2934,7 +2958,7 @@ public function test_stock_transfer_rejects_same_source_and_destination_branch()
 
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
-    ]);
+    ]); $this->assignRole($user);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
