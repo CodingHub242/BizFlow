@@ -8,6 +8,8 @@ use App\Http\Controllers\CatalogItemController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MigrationSessionController;
+use App\Http\Controllers\EmployeeController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -56,4 +58,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
     //DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    // EMPLOYEES
+    Route::post('/employees', [EmployeeController::class, 'store']);
+
+
+    // MIGRATION CENTER
+    Route::post('/migration-sessions', [MigrationSessionController::class, 'store']);
+    Route::post('/migration-sessions/{session}/upload',[MigrationSessionController::class, 'upload']);
+    Route::post('/migration-sessions/{session}/analyze',[MigrationSessionController::class, 'analyze']);
+    Route::post('/migration-sessions/{session}/mapping',[MigrationSessionController::class, 'storeMapping']);
+    Route::post('/migration-sessions/{session}/validate',[MigrationSessionController::class, 'validateMigration']);
+    Route::get('/migration-sessions/{session}/review',[MigrationSessionController::class, 'review']);
+    Route::post('/migration-sessions/{session}/batches',[MigrationSessionController::class, 'createBatch']);
+    Route::post('/migration-sessions/{session}/batches/{batch}/import',[MigrationSessionController::class, 'import']);
+    Route::post('/migration-sessions/{session}/batches/{batch}/retry',[MigrationSessionController::class, 'retry']);
+    Route::get('/migration-sessions/{session}/report',[MigrationSessionController::class, 'report']);
+
+    
 });
