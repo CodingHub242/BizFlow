@@ -1,5 +1,5 @@
 import { Component, OnInit,inject } from '@angular/core';
-import { DecimalPipe,DatePipe } from '@angular/common';
+import { DecimalPipe,DatePipe,TitleCasePipe } from '@angular/common';
 import { IonIcon } from '@ionic/angular';
 
 import { addIcons } from 'ionicons';
@@ -9,6 +9,8 @@ import {
   cartOutline,
   documentTextOutline,
   peopleOutline,
+  cardOutline,
+  receiptOutline,
   walletOutline,
   alertCircleOutline,
   arrowForwardOutline,
@@ -30,7 +32,7 @@ interface SalesChartPoint {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   standalone: true,
-  imports: [IonIcon,DecimalPipe,DatePipe],
+  imports: [IonIcon,DecimalPipe,DatePipe,TitleCasePipe],
 })
 export class DashboardComponent {
  private readonly dashboardApi = inject(DashboardApiService);
@@ -51,12 +53,24 @@ salesChartPoints: SalesChartPoint[] = [];
     payments_by_method: [],
     low_stock_items: [],
     outstanding_invoices: [],
+    recent_activity: [],
+    sales_previous_period: 0,
+    sales_change_percentage: 0,
+    outstanding_invoice_previous_period: 0,
+    outstanding_invoice_change_percentage: 0,
+    customer_current_period: 0,
+    customer_previous_period: 0,
+    customer_change_percentage: 0,
+    sales_count_previous_period: 0,
+    sales_count_change_percentage: 0,
   };
   constructor() { 
      addIcons({
       arrowDownOutline,
       arrowUpOutline,
       cartOutline,
+      cardOutline,
+      receiptOutline,
       documentTextOutline,
       peopleOutline,
       walletOutline,
@@ -130,5 +144,30 @@ getSalesChartLabels(): string[] {
       day: 'numeric',
     });
   });
+}
+
+getBranchSalesPercentage(sales: number): number {
+  const maxSales = Math.max(
+    ...this.dashboardData.sales_by_branch.map((branch) => branch.sales),
+  );
+
+  if (maxSales <= 0) {
+    return 0;
+  }
+
+  return (sales / maxSales) * 100;
+}
+
+getPaymentMethodPercentage(total: number): number {
+  const totalPayments = this.dashboardData.payments_by_method.reduce(
+    (sum, payment) => sum + payment.total,
+    0,
+  );
+
+  if (totalPayments <= 0) {
+    return 0;
+  }
+
+  return (total / totalPayments) * 100;
 }
 }

@@ -36,6 +36,13 @@ export interface DashboardPaymentByMethod {
   total: number;
 }
 
+export interface DashboardRecentActivity {
+  type: 'invoice' | 'payment' | 'expense';
+  description: string;
+  amount: number;
+  timestamp: string;
+}
+
 export interface DashboardData {
   sales_total: number;
   product_sales: number;
@@ -47,17 +54,29 @@ export interface DashboardData {
   customer_count: number;
   sales_count: number;
   low_stock_count: number;
+  recent_activity: DashboardRecentActivity[];
   sales_trend: DashboardTrendItem[];
   sales_by_branch: DashboardSalesByBranch[];
   payments_by_method: DashboardPaymentByMethod[];
   low_stock_items: DashboardLowStockItem[];
   outstanding_invoices: DashboardOutstandingInvoice[];
+  sales_previous_period: number;
+  sales_change_percentage: number;
+  outstanding_invoice_previous_period: number;
+  outstanding_invoice_change_percentage: number;
+  customer_current_period: number;
+  customer_previous_period: number;
+  customer_change_percentage: number;
+  sales_count_previous_period: number;
+  sales_count_change_percentage: number;
 }
 
 export interface DashboardResponse {
   success: boolean;
   data: DashboardData;
 }
+
+
 
 @Injectable({
   providedIn: 'root',

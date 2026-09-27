@@ -8,6 +8,7 @@ use App\Models\InvoicePayment;
 use App\Models\Expense;
 use App\Models\Inventory;
 use App\Models\InvoiceItem;
+use App\Models\InventoryMovement;
 
 class DashboardService
 {
@@ -91,6 +92,52 @@ class DashboardService
                 'COALESCE(SUM(invoices.total - COALESCE(payments.paid_total, 0)), 0) as outstanding'
             )
             ->value('outstanding');
+
+        $outstandingInvoicePreviousPeriod = 0;
+
+    if ($dateFrom && $dateTo) {
+        $currentFrom = \Carbon\Carbon::parse($dateFrom)->startOfDay();
+        $currentTo = \Carbon\Carbon::parse($dateTo)->endOfDay();
+
+        $periodDays = $currentFrom->diffInDays($currentTo) + 1;
+
+        $previousFrom = $currentFrom->copy()->subDays($periodDays);
+        $previousTo = $currentTo->copy()->subDays($periodDays);
+
+        $outstandingInvoicePreviousPeriod = (float) Invoice::query()
+            ->where('invoices.tenant_id', $tenantId)
+            ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+            ->whereIn('invoices.payment_status', ['unpaid', 'partially_paid'])
+            ->whereBetween('invoices.issued_at', [$previousFrom, $previousTo])
+            ->leftJoinSub(
+                InvoicePayment::query()
+                    ->select('invoice_id')
+                    ->selectRaw('SUM(amount) as paid')
+                    ->where('tenant_id', $tenantId)
+                    ->groupBy('invoice_id'),
+                'previous_payments',
+                'previous_payments.invoice_id',
+                '=',
+                'invoices.id'
+            )
+            ->whereRaw(
+                '(invoices.total - COALESCE(previous_payments.paid, 0)) > 0'
+            )
+            ->selectRaw(
+                'COALESCE(SUM(invoices.total - COALESCE(previous_payments.paid, 0)), 0) as outstanding'
+            )
+            ->value('outstanding');
+            }
+
+        $outstandingInvoiceChangePercentage = 0;
+
+        if ($outstandingInvoicePreviousPeriod > 0) {
+            $outstandingInvoiceChangePercentage =
+                (
+                    ($outstandingInvoiceTotal - $outstandingInvoicePreviousPeriod)
+                    / $outstandingInvoicePreviousPeriod
+                ) * 100;
+        }
 
         $outstandingInvoices = Invoice::query()
             ->where('invoices.tenant_id', $tenantId)
@@ -219,40 +266,99 @@ class DashboardService
             ->values()
             ->all();
 
-        $salesByBranch = Invoice::query()
-            ->where('tenant_id', $tenantId)
-            ->whereNotIn('status', ['draft', 'cancelled'])
-            ->when($dateFrom, function ($query) use ($dateFrom) {
-                $query->whereDate('issued_at', '>=', $dateFrom);
-            })
-            ->when($dateTo, function ($query) use ($dateTo) {
-                $query->whereDate('issued_at', '<=', $dateTo);
-            })
-            ->selectRaw('branch_id, SUM(total) as sales_total')
-            ->groupBy('branch_id')
-            ->orderBy('branch_id')
-            ->pluck('sales_total', 'branch_id')
-            ->map(fn ($total) => (float) $total)
+       $salesByBranch = Invoice::query()
+            ->where('invoices.tenant_id', $tenantId)
+            ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+            ->when(
+                $dateFrom,
+                fn($query) => $query->whereDate('invoices.issued_at', '>=', $dateFrom)
+            )
+            ->when(
+                $dateTo,
+                fn($query) => $query->whereDate('invoices.issued_at', '<=', $dateTo)
+            )
+            ->join('branches', 'branches.id', '=', 'invoices.branch_id')
+            ->selectRaw('
+                invoices.branch_id,
+                branches.name as branch_name,
+                SUM(invoices.total) as sales
+            ')
+            ->groupBy('invoices.branch_id', 'branches.name')
+            ->orderBy('invoices.branch_id')
+            ->get()
+            ->map(fn($branch) => [
+                'branch_id' => (int) $branch->branch_id,
+                'branch_name' => $branch->branch_name,
+                'sales' => (float) $branch->sales,
+            ])
+            ->values()
             ->toArray();
 
-        $paymentsByMethod = InvoicePayment::query()
+       $paymentsByMethod = InvoicePayment::query()
             ->where('tenant_id', $tenantId)
-            ->when($dateFrom, function ($query) use ($dateFrom) {
-                $query->whereDate('paid_at', '>=', $dateFrom);
-            })
-            ->when($dateTo, function ($query) use ($dateTo) {
-                $query->whereDate('paid_at', '<=', $dateTo);
-            })
-            ->selectRaw('method, SUM(amount) as payment_total')
+            ->when(
+                $dateFrom,
+                fn($query) => $query->whereDate('paid_at', '>=', $dateFrom)
+            )
+            ->when(
+                $dateTo,
+                fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
+            )
+            ->selectRaw('method as payment_method, SUM(amount) as total')
             ->groupBy('method')
-            ->orderBy('method')
-            ->pluck('payment_total', 'method')
-            ->map(fn ($total) => (float) $total)
+            ->orderByRaw("
+                CASE method
+                    WHEN 'cash' THEN 1
+                    WHEN 'mobile_money' THEN 2
+                    WHEN 'bank_transfer' THEN 3
+                    WHEN 'card' THEN 4
+                    ELSE 5
+                END
+            ")
+            ->get()
+            ->map(fn($payment) => [
+                'payment_method' => $payment->payment_method,
+                'total' => (float) $payment->total,
+            ])
+            ->values()
             ->toArray();
 
         $customerCount = Customer::query()
         ->where('tenant_id', $tenantId)
         ->count();
+
+        $customerPreviousPeriod = 0;
+        $customerCurrentPeriod = $customerCount;
+
+        if ($dateFrom && $dateTo) {
+            $currentFrom = \Carbon\Carbon::parse($dateFrom)->startOfDay();
+            $currentTo = \Carbon\Carbon::parse($dateTo)->endOfDay();
+
+            $periodDays = $currentFrom->diffInDays($currentTo) + 1;
+
+            $previousFrom = $currentFrom->copy()->subDays($periodDays);
+            $previousTo = $currentTo->copy()->subDays($periodDays);
+
+            $customerCurrentPeriod = Customer::query()
+                ->where('tenant_id', $tenantId)
+                ->whereBetween('created_at', [$currentFrom, $currentTo])
+                ->count();
+
+        $customerPreviousPeriod = Customer::query()
+                ->where('tenant_id', $tenantId)
+                ->whereBetween('created_at', [$previousFrom, $previousTo])
+                ->count();
+        }
+
+    $customerChangePercentage = 0;
+
+    if ($customerPreviousPeriod > 0) {
+        $customerChangePercentage =
+            (
+                ($customerCurrentPeriod - $customerPreviousPeriod)
+                / $customerPreviousPeriod
+            ) * 100;
+    }
 
         $salesCount = Invoice::query()
             ->where('tenant_id', $tenantId)
@@ -264,6 +370,34 @@ class DashboardService
                 $query->whereDate('issued_at', '<=', $dateTo);
             })
             ->count();
+
+        $salesCountPreviousPeriod = 0;
+
+        if ($dateFrom && $dateTo) {
+            $currentFrom = \Carbon\Carbon::parse($dateFrom)->startOfDay();
+            $currentTo = \Carbon\Carbon::parse($dateTo)->endOfDay();
+
+            $periodDays = $currentFrom->diffInDays($currentTo) + 1;
+
+            $previousFrom = $currentFrom->copy()->subDays($periodDays);
+            $previousTo = $currentTo->copy()->subDays($periodDays);
+
+            $salesCountPreviousPeriod = Invoice::query()
+                ->where('tenant_id', $tenantId)
+                ->whereNotIn('status', ['draft', 'cancelled'])
+                ->whereBetween('issued_at', [$previousFrom, $previousTo])
+                ->count();
+        }
+
+        $salesCountChangePercentage = 0;
+
+        if ($salesCountPreviousPeriod > 0) {
+            $salesCountChangePercentage =
+                (
+                    ($salesCount - $salesCountPreviousPeriod)
+                    / $salesCountPreviousPeriod
+                ) * 100;
+        }
 
         $salesTrend = Invoice::query()
             ->where('tenant_id', $tenantId)
@@ -285,6 +419,79 @@ class DashboardService
             ->values()
             ->all();
 
+        $salesPreviousPeriod = 0;
+
+    if ($dateFrom && $dateTo) {
+            $currentFrom = \Carbon\Carbon::parse($dateFrom)->startOfDay();
+            $currentTo = \Carbon\Carbon::parse($dateTo)->endOfDay();
+
+            $periodDays = $currentFrom->diffInDays($currentTo) + 1;
+
+            $previousFrom = $currentFrom->copy()->subDays($periodDays);
+            $previousTo = $currentTo->copy()->subDays($periodDays);
+
+            $salesPreviousPeriod = Invoice::query()
+                ->where('tenant_id', $tenantId)
+                ->whereNotIn('status', ['draft', 'cancelled'])
+                ->whereBetween('issued_at', [$previousFrom, $previousTo])
+                ->sum('total');
+        }
+
+        $salesChangePercentage = 0;
+
+        if ($salesPreviousPeriod > 0) {
+            $salesChangePercentage = (($salesTotal - $salesPreviousPeriod) / $salesPreviousPeriod) * 100;
+        }
+
+        $recentActivity = collect();
+
+        $recentInvoices = Invoice::query()
+            ->where('tenant_id', $tenantId)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->with('customer')
+            ->latest('issued_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($invoice) => [
+                'type' => 'invoice',
+                'description' => 'Invoice ' . $invoice->invoice_number . ' created',
+                'amount' => (float) $invoice->total,
+                'timestamp' => $invoice->issued_at,
+            ]);
+
+        $recentPayments = InvoicePayment::query()
+            ->where('tenant_id', $tenantId)
+            ->with('invoice')
+            ->latest('paid_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($payment) => [
+                'type' => 'payment',
+                'description' => 'Payment received for ' . ($payment->invoice?->invoice_number ?? 'invoice'),
+                'amount' => (float) $payment->amount,
+                'timestamp' => $payment->paid_at,
+            ]);
+
+        $recentExpenses = Expense::query()
+            ->where('tenant_id', $tenantId)
+            ->latest('expense_date')
+            ->limit(5)
+            ->get()
+            ->map(fn ($expense) => [
+                'type' => 'expense',
+                'description' => 'Expense recorded',
+                'amount' => (float) $expense->amount,
+                'timestamp' => $expense->expense_date,
+            ]);
+
+        $recentActivity = $recentInvoices
+            ->concat($recentPayments)
+            ->concat($recentExpenses)
+            ->sortByDesc('timestamp')
+            ->take(5)
+            ->values()
+            ->all();
+
         return [
             'sales_total' => (float) $salesTotal,
             'outstanding_invoice_total' => (float) $outstandingInvoiceTotal,
@@ -294,13 +501,23 @@ class DashboardService
             'low_stock_count' => $lowStockCount,
             'product_sales' => (float) $productSales,
             'sales_count' => $salesCount,
+            'sales_count_previous_period' => $salesCountPreviousPeriod,
+            'sales_count_change_percentage' => round($salesCountChangePercentage,2),
             'customer_count' => $customerCount,
+            'customer_current_period' => $customerCurrentPeriod,
+            'customer_previous_period' => $customerPreviousPeriod,
+            'customer_change_percentage' => round($customerChangePercentage,2),
             'sales_trend' => $salesTrend,
             'services_rendered' => (float) $servicesRendered,
             'sales_by_branch' => $salesByBranch,
             'payments_by_method' => $paymentsByMethod,
             'low_stock_items' => $lowStockItems,
             'outstanding_invoices' => $outstandingInvoices,
+            'outstanding_invoice_previous_period' => (float) $outstandingInvoicePreviousPeriod,
+            'outstanding_invoice_change_percentage' => round($outstandingInvoiceChangePercentage,2),
+            'recent_activity' => $recentActivity,
+            'sales_previous_period' => (float) $salesPreviousPeriod,
+            'sales_change_percentage' => round($salesChangePercentage, 2),
         ];
     }
 }

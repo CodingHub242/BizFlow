@@ -29,8 +29,13 @@ class InvoiceController extends Controller
         ], 201);
     }
 
-    public function recordPayment(StoreInvoicePaymentRequest $request,Invoice $invoice,InvoiceService $invoiceService): JsonResponse 
+    public function recordPayment(StoreInvoicePaymentRequest $request,Invoice $invoice,InvoiceService $invoiceService,\Illuminate\Http\Request $request): JsonResponse 
     {
+        abort_unless(
+            $invoice->tenant_id === $request->user()->tenant_id,
+            404
+        );
+
         $data = $request->validated();
 
         $data['paid_at'] = $data['paid_at'] ?? now();

@@ -8,6 +8,7 @@ use App\Models\CatalogItem;
 use App\Models\Inventory;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\InvoiceStatus;
 use App\Models\InvoicePayment;
 use App\Models\Tenant;
 use Spatie\Permission\Models\Role;
@@ -450,5 +451,349 @@ public function test_dashboard_returns_outstanding_invoices(): void
     'data.outstanding_invoices.0.due_at',
     '2026-09-30T00:00:00.000000Z'
 );
+}
+public function test_dashboard_returns_recent_activity(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $customer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Recent Activity Customer',
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'customer_id' => $customer->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-ACTIVITY-001',
+        'status' => 'issued',
+        'total' => 1500,
+        'issued_at' => '2026-09-27 10:00:00',
+    ]);
+
+    InvoicePayment::factory()->create([
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 500,
+        'paid_at' => '2026-09-27 12:00:00',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson('/api/dashboard');
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.recent_activity.0.type', 'payment')
+        ->assertJsonPath(
+            'data.recent_activity.0.description',
+            'Payment received for INV-ACTIVITY-001'
+        )
+        ->assertJsonPath('data.recent_activity.0.amount', 500);
+}
+public function test_dashboard_returns_sales_period_comparison(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    // Previous period: 2,000
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'total' => 2000,
+        'issued_at' => '2026-08-10 10:00:00',
+    ]);
+
+    // Current period: 3,000
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'total' => 3000,
+        'issued_at' => '2026-09-10 10:00:00',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-01&date_to=2026-09-30'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.sales_total', 3000)
+        ->assertJsonPath('data.sales_previous_period', 2000)
+        ->assertJsonPath('data.sales_change_percentage', 50);
+}
+public function test_dashboard_returns_outstanding_invoice_period_comparison(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $previousCustomer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $currentCustomer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    // Previous period outstanding: 2,000
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'customer_id' => $previousCustomer->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'payment_status' => 'unpaid',
+        'total' => 2000,
+        'issued_at' => '2026-08-10 10:00:00',
+    ]);
+
+    // Current period outstanding: 3,000
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'customer_id' => $currentCustomer->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'payment_status' => 'unpaid',
+        'total' => 3000,
+        'issued_at' => '2026-09-10 10:00:00',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-01&date_to=2026-09-30'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.outstanding_invoice_total', 3000)
+        ->assertJsonPath('data.outstanding_invoice_previous_period', 2000)
+        ->assertJsonPath('data.outstanding_invoice_change_percentage', 50);
+}
+public function test_dashboard_returns_customer_period_comparison(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    // Previous period: 2 customers
+    Customer::factory()
+        ->count(2)
+        ->for($tenant)
+        ->create([
+            'created_at' => '2026-08-15 10:00:00',
+        ]);
+
+    // Current period: 3 customers
+    Customer::factory()
+        ->count(3)
+        ->for($tenant)
+        ->create([
+            'created_at' => '2026-09-15 10:00:00',
+        ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-01&date_to=2026-09-30'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.customer_count', 5)
+        ->assertJsonPath('data.customer_current_period', 3)
+        ->assertJsonPath('data.customer_previous_period', 2)
+        ->assertJsonPath('data.customer_change_percentage', 50);
+}
+public function test_dashboard_returns_sales_count_period_comparison(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    // Previous period: 2 sales
+    Invoice::factory()->count(2)->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'issued_at' => '2026-08-15 10:00:00',
+    ]);
+
+    // Current period: 3 sales
+    Invoice::factory()->count(3)->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'issued_at' => '2026-09-15 10:00:00',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-01&date_to=2026-09-30'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.sales_count', 3)
+        ->assertJsonPath('data.sales_count_previous_period', 2)
+        ->assertJsonPath('data.sales_count_change_percentage', 50);
+}
+public function test_returns_sales_grouped_by_branch_with_branch(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branchOne = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Main Branch',
+    ]);
+
+    $branchTwo = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Airport Branch',
+    ]);
+
+    $customer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branchOne->id,
+        'customer_id' => $customer->id,
+        'status' => InvoiceStatus::ISSUED,
+        'total' => 18500,
+    ]);
+
+    Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branchTwo->id,
+        'customer_id' => $customer->id,
+        'status' => InvoiceStatus::ISSUED,
+        'total' => 13000,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson('/api/dashboard');
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.sales_by_branch.0.branch_id', $branchOne->id)
+        ->assertJsonPath('data.sales_by_branch.0.branch_name', 'Main Branch')
+        ->assertJsonPath('data.sales_by_branch.0.sales', 18500)
+        ->assertJsonPath('data.sales_by_branch.1.branch_id', $branchTwo->id)
+        ->assertJsonPath('data.sales_by_branch.1.branch_name', 'Airport Branch')
+        ->assertJsonPath('data.sales_by_branch.1.sales', 13000);
+}
+public function test_returns_payments_grouped_by_method(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'issued',
+        'total' => 31500,
+    ]);
+
+    InvoicePayment::factory()->create([
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 8500,
+        'method' => 'cash',
+    ]);
+
+    InvoicePayment::factory()->create([
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 12000,
+        'method' => 'mobile_money',
+    ]);
+
+    InvoicePayment::factory()->create([
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 11000,
+        'method' => 'bank_transfer',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson('/api/dashboard');
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.payments_by_method.0.payment_method', 'cash')
+        ->assertJsonPath('data.payments_by_method.0.total', 8500)
+        ->assertJsonPath('data.payments_by_method.1.payment_method', 'mobile_money')
+        ->assertJsonPath('data.payments_by_method.1.total', 12000)
+        ->assertJsonPath('data.payments_by_method.2.payment_method', 'bank_transfer')
+        ->assertJsonPath('data.payments_by_method.2.total', 11000);
 }
 }

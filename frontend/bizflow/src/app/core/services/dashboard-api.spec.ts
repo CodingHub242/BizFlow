@@ -65,6 +65,7 @@ describe('DashboardApiService', () => {
         payments_by_method: [],
         low_stock_items: [],
         outstanding_invoices: [],
+        recent_activity: [],
       },
     });
   });

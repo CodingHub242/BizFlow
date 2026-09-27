@@ -43,8 +43,32 @@ describe('DashboardComponent', () => {
           sales: 31500,
         },
       ],
-      sales_by_branch: [],
-      payments_by_method: [],
+      sales_by_branch: [
+  {
+    branch_id: 1,
+    branch_name: 'Main Branch',
+    sales: 18500,
+  },
+  {
+    branch_id: 2,
+    branch_name: 'Airport Branch',
+    sales: 13000,
+  },
+],
+     payments_by_method: [
+        {
+          payment_method: 'cash',
+          total: 8500,
+        },
+        {
+          payment_method: 'mobile_money',
+          total: 12000,
+        },
+        {
+          payment_method: 'bank_transfer',
+          total: 11000,
+        },
+      ],
       low_stock_items: [
         {
           id: 99,
@@ -54,7 +78,7 @@ describe('DashboardComponent', () => {
           reorder_level: 10,
         },
       ],
-      outstanding_invoices: [
+    outstanding_invoices: [
       {
         id: 501,
         invoice_number: 'INV-LIVE-001',
@@ -65,6 +89,29 @@ describe('DashboardComponent', () => {
         due_at: '2026-10-05T00:00:00.000000Z',
       },
     ],
+    recent_activity: [
+      {
+        type: 'payment',
+        description: 'Payment received for INV-ACTIVITY-001',
+        amount: 500,
+        timestamp: '2026-09-27T12:00:00.000000Z',
+      },
+      {
+        type: 'invoice',
+        description: 'Invoice INV-ACTIVITY-001 created',
+        amount: 1500,
+        timestamp: '2026-09-27T10:00:00.000000Z',
+      },
+    ],
+    sales_previous_period: 27000,
+    sales_change_percentage: 16.67,
+    outstanding_invoice_previous_period: 10000,
+    outstanding_invoice_change_percentage: 23.5,
+    customer_current_period: 3,
+    customer_previous_period: 2,
+    customer_change_percentage: 50,
+    sales_count_previous_period: 2,
+    sales_count_change_percentage: 50,
     },
   };
 
@@ -164,5 +211,94 @@ it('should render the sales trend chart points', () => {
   );
 
   expect(circles.length).toBe(5);
+});
+it('should display live recent activity', () => {
+  const compiled = fixture.nativeElement as HTMLElement;
+
+  expect(compiled.textContent).toContain(
+    'Payment received for INV-ACTIVITY-001'
+  );
+
+  expect(compiled.textContent).toContain('GH₵ 500.00');
+});
+it('should expose the real sales period comparison', () => {
+  expect(component.dashboardData.sales_previous_period).toBe(27000);
+  expect(component.dashboardData.sales_change_percentage).toBe(16.67);
+});
+it('should display the real sales change percentage', () => {
+  const compiled = fixture.nativeElement as HTMLElement;
+
+  expect(compiled.textContent).toContain('+16.67%');
+});
+it('should expose the real outstanding invoice change percentage', () => {
+  expect(
+    component.dashboardData.outstanding_invoice_previous_period
+  ).toBe(10000);
+
+  expect(
+    component.dashboardData.outstanding_invoice_change_percentage
+  ).toBe(23.5);
+});
+it('should display the real outstanding invoice change percentage', () => {
+  const compiled = fixture.nativeElement as HTMLElement;
+
+  expect(compiled.textContent).toContain('+23.50%');
+});
+it('should expose the real customer change percentage', () => {
+  expect(component.dashboardData.customer_current_period).toBe(3);
+  expect(component.dashboardData.customer_previous_period).toBe(2);
+  expect(component.dashboardData.customer_change_percentage).toBe(50);
+});
+it('should display the real customer change percentage', () => {
+  const compiled = fixture.nativeElement as HTMLElement;
+
+  expect(compiled.textContent).toContain('+50.00%');
+});
+it('should expose the real sales count change percentage', () => {
+  expect(component.dashboardData.sales_count_previous_period).toBe(2);
+  expect(component.dashboardData.sales_count_change_percentage).toBe(50);
+});
+it('should display the real sales count change percentage', () => {
+  const compiled = fixture.nativeElement as HTMLElement;
+
+  expect(compiled.textContent).toContain('+50.00%');
+});
+it('should expose sales by branch data', () => {
+  expect(component.dashboardData.sales_by_branch).toEqual([
+    {
+      branch_id: 1,
+      branch_name: 'Main Branch',
+      sales: 18500,
+    },
+    {
+      branch_id: 2,
+      branch_name: 'Airport Branch',
+      sales: 13000,
+    },
+  ]);
+});
+it('should calculate sales by branch bar widths', () => {
+  expect(component.getBranchSalesPercentage(18500)).toBe(100);
+  expect(component.getBranchSalesPercentage(13000)).toBeCloseTo(70.27, 2);
+});
+it('should expose payment methods data', () => {
+  expect(component.dashboardData.payments_by_method).toEqual([
+    {
+      payment_method: 'cash',
+      total: 8500,
+    },
+    {
+      payment_method: 'mobile_money',
+      total: 12000,
+    },
+    {
+      payment_method: 'bank_transfer',
+      total: 11000,
+    },
+  ]);
+});
+it('should calculate payment method percentages', () => {
+  expect(component.getPaymentMethodPercentage(12000)).toBeCloseTo(38.1, 1);
+  expect(component.getPaymentMethodPercentage(8500)).toBeCloseTo(27.0, 1);
 });
 });
