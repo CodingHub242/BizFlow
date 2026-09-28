@@ -38,12 +38,12 @@ describe('DashboardApiService', () => {
       expect(response.data.sales_count).toBe(186);
     });
 
-    const request = httpMock.expectOne(
-      (req) =>
-        req.url === '/api/dashboard' &&
-        req.params.get('date_from') === '2026-09-01' &&
-        req.params.get('date_to') === '2026-09-30',
-    );
+   const request = httpMock.expectOne(
+  (req) =>
+    req.url === 'http://127.0.0.1:8000/api/dashboard' &&
+    req.params.get('date_from') === '2026-09-01' &&
+    req.params.get('date_to') === '2026-09-30',
+);
 
     expect(request.request.method).toBe('GET');
 

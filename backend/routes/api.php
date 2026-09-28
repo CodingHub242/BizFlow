@@ -11,6 +11,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\AuthController;
+
+
+//Login
+Route::post('/login', [AuthController::class, 'login']);
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -107,7 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/employees', [EmployeeController::class, 'store'])
     ->middleware('permission:employees.create');
 
-    // MIGRATION CENTER
+    // QUICK BOOKS MIGRATION CENTER
     Route::post('/migration-sessions', [MigrationSessionController::class, 'store'])
         ->middleware('permission:migration.create');
 

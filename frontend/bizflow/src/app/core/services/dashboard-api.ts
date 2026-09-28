@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_URL } from '../config/api.config';
 
 export interface DashboardTrendItem {
   date: string;
@@ -96,8 +97,6 @@ export class DashboardApiService {
       params = params.set('date_to', dateTo);
     }
 
-    return this.http.get<DashboardResponse>('/api/dashboard', {
-      params,
-    });
+   return this.http.get<DashboardResponse>(`${API_URL}/dashboard`, { params });
   }
 }
