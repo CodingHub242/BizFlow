@@ -40,3 +40,34 @@ MigrationSessionService::attachFile (app/Services/MigrationSessionService.php:48
 The prior file is never deleted when a session is re-uploaded, so old tenant data accumulates in storage/app/private indefinitely.
 array_combine($headers, $row) (MigrationCsvAnalyzer.php:37, and every importer) is called on attacker-controlled CSV. A row with more fields than the header — trivially produced by an unquoted comma — makes array_combine emit a warning/ValueError. It is caught, so it is not a crash, but it means a single malformed row fails the entire batch with an opaque error surfaced to the user.
 CSV cell contents are stored verbatim. If any admin later exports these to CSV/Excel from the Angular UI, cells beginning with =, +, -, @ become formula injection (CSV injection / DDE). Sanitise on export, not on ingest.
+
+
+
+
+php artisan tinker
+$tenant = \App\Models\Tenant::create([
+    'name' => 'BizFlow Demo Business',
+    'slug' => 'bizflow-demo',
+    'email' => 'demo@bizflow.test',
+    'phone' => '0240000000',
+    'business_type' => 'Retail',
+    'status' => 'active',
+]);
+
+$tenant->id;
+
+\Spatie\Permission\Models\Role::where('tenant_id', $tenant->id)->pluck('name'); 
+> \Spatie\Permission\Models\Permission::count();                                                        
+$user = \App\Models\User::create([
+    'name' => 'BizFlow Owner',
+    'email' => 'owner@bizflow.test',
+    'password' => \Illuminate\Support\Facades\Hash::make('password'),
+    'tenant_id' => 1,
+]);
+setPermissionsTeamId(1);
+
+$user->assignRole('Owner');
+
+
+$user->hasRole('Owner');
+$user->getRoleNames();

@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.permission' => SetTenantPermissionContext::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
+        $middleware->redirectGuestsTo(function ($request) {
+            return $request->expectsJson()
+                ? null
+                : route('login');
+        });
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
