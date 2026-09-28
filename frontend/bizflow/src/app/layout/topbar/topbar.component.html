@@ -20,15 +20,45 @@
       <span class="notification-dot"></span>
     </button>
 
-    <button class="profile-button" type="button">
-      <span class="avatar">SG</span>
+   <div class="profile-menu">
+      <button
+          class="profile-button"
+          type="button"
+          aria-label="Open profile menu"
+          [attr.aria-expanded]="isProfileMenuOpen"
+          (click)="toggleProfileMenu()"
+        >
+        <span class="avatar">SG</span>
 
-      <span class="profile-details">
-        <strong>Business Owner</strong>
-        <small>Administrator</small>
-      </span>
+        <span class="profile-details">
+          <strong>Business Owner</strong>
+          <small>Administrator</small>
+        </span>
 
-      <ion-icon name="chevron-down-outline"></ion-icon>
-    </button>
+        <ion-icon name="chevron-down-outline"></ion-icon>
+      </button>
+
+        <div class="profile-dropdown" [class.open]="isProfileMenuOpen">
+          <div class="profile-dropdown-header">
+            <span class="avatar">SG</span>
+
+            <div>
+              <strong>Business Owner</strong>
+              <small>Administrator</small>
+            </div>
+          </div>
+
+          <div class="profile-dropdown-divider"></div>
+
+          <button
+            class="dropdown-item logout-item"
+            type="button"
+            (click)="logout()"
+          >
+            <ion-icon name="log-out-outline"></ion-icon>
+            <span>Logout</span>
+          </button>
+        </div>
+    </div>
   </div>
 </header>

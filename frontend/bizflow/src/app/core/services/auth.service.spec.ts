@@ -53,4 +53,11 @@ describe('AuthService', () => {
 
     request.flush(response);
   });
+  it('logs out and removes the stored token', () => {
+  localStorage.setItem('bizflow_token', 'test-token');
+
+  service.logout();
+
+  expect(localStorage.getItem('bizflow_token')).toBeNull();
+});
 });

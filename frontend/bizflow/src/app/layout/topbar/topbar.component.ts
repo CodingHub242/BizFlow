@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit,inject } from '@angular/core';
 import { IonIcon } from '@ionic/angular';
-
+import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth.service';
 import { addIcons } from 'ionicons';
 import {
   notificationsOutline,
@@ -17,6 +18,9 @@ import {
   imports: [IonIcon],
 })
 export class TopbarComponent   {
+private readonly authService = inject(AuthService);
+private readonly router = inject(Router);
+isProfileMenuOpen = false;
 
    constructor() {
     addIcons({
@@ -25,5 +29,15 @@ export class TopbarComponent   {
       chevronDownOutline,
     });
   }
+
+  logout(): void {
+    this.isProfileMenuOpen = false;
+    this.authService.logout();
+    this.router.navigate(['/login']);
+  }
+
+  toggleProfileMenu(): void {
+  this.isProfileMenuOpen = !this.isProfileMenuOpen;
+}
 
 }

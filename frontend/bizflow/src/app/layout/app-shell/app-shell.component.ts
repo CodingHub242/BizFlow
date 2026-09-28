@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit,inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { InactivityService } from '../../core/services/inactivity.service';
 
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
@@ -16,9 +17,15 @@ import { TopbarComponent } from '../topbar/topbar.component';
   ],
 })
 export class AppShellComponent  implements OnInit {
-
+private readonly inactivityService = inject(InactivityService);
   constructor() { }
 
-  ngOnInit() {}
+  ngOnInit(): void {
+    this.inactivityService.start();
+  }
+
+  ngOnDestroy(): void {
+    this.inactivityService.stop();
+  }
 
 }
