@@ -111,15 +111,27 @@ form {
 .form-field input::placeholder {
   color: #94a3b8;
 }
-
 .error-message {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   padding: 11px 12px;
+  margin: 0;
   border: 1px solid #fecaca;
   border-radius: 7px;
   background: #fef2f2;
   color: #b91c1c;
   font-size: 13px;
+  line-height: 1.4;
 }
+// .error-message {
+//   padding: 11px 12px;
+//   border: 1px solid #fecaca;
+//   border-radius: 7px;
+//   background: #fef2f2;
+//   color: #b91c1c;
+//   font-size: 13px;
+// }
 
 button {
   width: 100%;
