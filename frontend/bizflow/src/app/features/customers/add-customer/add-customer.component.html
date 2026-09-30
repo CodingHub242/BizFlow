@@ -1,0 +1,121 @@
+<div class="add-customer-page">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb">Customers / Add Customer</div>
+      <h1>Add Customer</h1>
+      <p>Create a customer record and keep their business information organized.</p>
+    </div>
+  </div>
+
+  <form class="customer-form-card" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="form-section">
+      <div class="section-heading">
+        <h2>Customer Information</h2>
+        <p>Enter the customer's contact and business details.</p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="name">Name <span>*</span></label>
+          <input
+            id="name"
+            type="text"
+            formControlName="name"
+            placeholder="e.g. John Doe"
+            autocomplete="name"
+          />
+
+          @if (form.controls.name.touched && form.controls.name.hasError('required')) {
+            <div class="field-error">Customer name is required.</div>
+          }
+        </div>
+
+        <div class="form-field">
+          <label for="phone">Phone</label>
+          <input
+            id="phone"
+            type="tel"
+            formControlName="phone"
+            placeholder="e.g. 0244000000"
+            autocomplete="tel"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            formControlName="email"
+            placeholder="e.g. john@example.com"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="company_name">Company Name</label>
+          <input
+            id="company_name"
+            type="text"
+            formControlName="company_name"
+            placeholder="e.g. John Trading"
+            autocomplete="organization"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="address">Address</label>
+          <input
+            id="address"
+            type="text"
+            formControlName="address"
+            placeholder="e.g. 12 Oxford Street"
+            autocomplete="street-address"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="city">City</label>
+          <input
+            id="city"
+            type="text"
+            formControlName="city"
+            placeholder="e.g. Accra"
+            autocomplete="address-level2"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="country">Country</label>
+          <input
+            id="country"
+            type="text"
+            formControlName="country"
+            placeholder="e.g. Ghana"
+            autocomplete="country-name"
+          />
+        </div>
+
+        <div class="form-field form-field-full">
+          <label for="notes">Notes</label>
+          <textarea
+            id="notes"
+            formControlName="notes"
+            rows="4"
+            placeholder="Add any useful notes about this customer..."
+          ></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="secondary-button">
+        Cancel
+      </button>
+
+      <button type="submit" class="primary-button">
+        Create Customer
+      </button>
+    </div>
+  </form>
+</div>

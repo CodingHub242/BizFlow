@@ -1,0 +1,123 @@
+<div class="customers-page">
+  <div class="page-header">
+    <div>
+      <h1>Customers</h1>
+      <p>Manage your customers and their business history.</p>
+    </div>
+
+    <button type="button" class="primary-button" (click)="addCustomer()">
+      + Add Customer
+    </button>
+  </div>
+
+  <div class="customer-toolbar">
+    <div class="search-box">
+      <span aria-hidden="true">⌕</span>
+      <input
+        type="search"
+        placeholder="Search customers..."
+        aria-label="Search customers"
+        [(ngModel)]="search"
+        (input)="searchCustomers()"
+      />
+    </div>
+  </div>
+
+  @if (customers.length === 0) {
+  <div class="customer-empty-state">
+    <div class="empty-state-icon" aria-hidden="true">♙</div>
+
+    <h2>No customers yet</h2>
+
+    <p>Add your first customer to get started.</p>
+
+    <button type="button" class="primary-button">
+      + Add Customer
+    </button>
+  </div>
+} @else {
+  <div class="customer-table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        @for (customer of customers; track customer.id) {
+          <tr>
+            <td>
+              <div class="customer-name">
+                {{ customer.name }}
+              </div>
+            </td>
+
+            <td>
+              {{ customer.phone || '—' }}
+            </td>
+
+            <td>
+              {{ customer.email || '—' }}
+            </td>
+
+            <td>
+              <span
+                class="status"
+                [class.active]="customer.is_active"
+                [class.inactive]="!customer.is_active"
+              >
+                {{ customer.is_active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <div class="pagination-summary">
+      Showing
+      {{ pagination.total === 0 ? 0 : (pagination.current_page - 1) * pagination.per_page + 1 }}
+      -
+      {{ Math.min(pagination.current_page * pagination.per_page, pagination.total) }}
+      of {{ pagination.total }}
+    </div>
+
+    <div class="pagination-controls">
+      <button
+        type="button"
+        aria-label="Previous page"
+        [disabled]="pagination.current_page === 1"
+        (click)="loadPage(pagination.current_page - 1)"
+      >
+        Previous
+      </button>
+
+      @for (page of [].constructor(pagination.last_page); track $index) {
+        <button
+          type="button"
+          [attr.aria-label]="'Page ' + ($index + 1)"
+          [class.current]="pagination.current_page === $index + 1"
+          (click)="loadPage($index + 1)"
+        >
+          {{ $index + 1 }}
+        </button>
+      }
+
+      <button
+        type="button"
+        aria-label="Next page"
+        [disabled]="pagination.current_page === pagination.last_page"
+        (click)="loadPage(pagination.current_page + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+  }
+</div>

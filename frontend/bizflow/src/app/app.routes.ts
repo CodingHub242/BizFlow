@@ -27,6 +27,20 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
+      {
+        path: 'customers',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/customers/customers.component')
+            .then(m => m.CustomersComponent),
+      },
+      {
+        path: 'customers/add',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/customers/add-customer/add-customer.component')
+            .then(m => m.AddCustomerComponent),
+      },
       
     ],
   },
