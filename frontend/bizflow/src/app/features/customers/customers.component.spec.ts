@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-
+import { Router } from '@angular/router';
 import { CustomersComponent } from './customers.component';
 import { CustomerApi } from '../../core/services/customer-api';
 
@@ -12,6 +12,8 @@ describe('CustomersComponent', () => {
     list: ReturnType<typeof vi.fn>;
   };
 
+  let router: { navigate: ReturnType<typeof vi.fn> };
+
   beforeEach(async () => {
     customerApi = {
       list: vi.fn(),
@@ -21,6 +23,10 @@ describe('CustomersComponent', () => {
       subscribe: vi.fn(),
     });
 
+    router = {
+  navigate: vi.fn(),
+};
+
     await TestBed.configureTestingModule({
       imports: [CustomersComponent],
       providers: [
@@ -28,6 +34,7 @@ describe('CustomersComponent', () => {
           provide: CustomerApi,
           useValue: customerApi,
         },
+        { provide: Router, useValue: router },
       ],
     }).compileComponents();
 
@@ -290,7 +297,6 @@ it('should load the next page when the next button is clicked', () => {
   component.customers = [
     {
       id: 1,
-      tenant_id: 1,
       name: 'John Doe',
       email: 'john@example.com',
       phone: '0240000000',
@@ -320,5 +326,19 @@ it('should load the next page when the next button is clicked', () => {
     search: '',
     perPage: 15,
   });
+});
+it('should navigate to the selected customer details page', () => {
+  component.customers = [
+    {
+      id: 1,
+      name: 'Abena Osei',
+      email: 'abena@example.com',
+      phone: '0244000000',
+    },
+  ];
+
+  component.viewCustomer(1);
+
+  expect(router.navigate).toHaveBeenCalledWith(['/customers', 1]);
 });
 });

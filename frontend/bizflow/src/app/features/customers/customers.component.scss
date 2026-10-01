@@ -91,6 +91,9 @@ table {
   border-collapse: collapse;
   min-width: 700px;
 }
+tr{
+    cursor: pointer;
+}
 
 th,
 td {

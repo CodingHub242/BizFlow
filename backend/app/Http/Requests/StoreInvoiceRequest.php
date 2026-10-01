@@ -23,9 +23,28 @@ class StoreInvoiceRequest extends FormRequest
     {
         return [
             //'tenant_id' => ['required', 'integer', 'exists:tenants,id'],
-            'branch_id' => ['required', 'integer', 'exists:branches,id'],
-            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
-            'order_id' => ['nullable', 'integer', 'exists:orders,id'],
+            'branch_id' => ['required', 'integer',  Rule::exists('branches', 'id')
+            ->where(fn ($query) =>
+                $query->where(
+                    'tenant_id',
+                    $this->user()->tenant_id
+                )
+            ),],
+            'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')
+            ->where(fn ($query) =>
+                $query->where(
+                    'tenant_id',
+                    $this->user()->tenant_id
+                )
+            ),],
+            
+            'order_id' => ['nullable', 'integer',  Rule::exists('orders', 'id')
+            ->where(fn ($query) =>
+                $query->where(
+                    'tenant_id',
+                    $this->user()->tenant_id
+                )
+            ),],
 
             'invoice_number' => [
                 'required',
@@ -41,7 +60,13 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.catalog_item_id' => [
                 'required',
                 'integer',
-                'exists:catalog_items,id',
+                Rule::exists('catalog_items', 'id')
+                ->where(fn ($query) =>
+                    $query->where(
+                        'tenant_id',
+                        $this->user()->tenant_id
+                    )
+                ),
             ],
 
             'items.*.quantity' => [

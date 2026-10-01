@@ -41,6 +41,13 @@ export const routes: Routes = [
           import('./features/customers/add-customer/add-customer.component')
             .then(m => m.AddCustomerComponent),
       },
+      {
+        path: 'customers/:id',
+        canActivate: [authGuard],
+        loadComponent: () =>
+          import('./features/customers/customer-details/customer-details.component')
+            .then(m => m.CustomerDetailsComponent),
+      },
       
     ],
   },

@@ -69,4 +69,36 @@ class AuthApiTest extends TestCase
             'message' => 'Invalid credentials.',
         ]);
 }
+public function test_user_can_logout_and_revoke_current_token(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+        'email' => 'owner@example.com',
+        'password' => 'password',
+    ]);
+
+    $token = $user->createToken('BizFlow Web')->plainTextToken;
+
+    $response = $this
+        ->withToken($token)
+        ->postJson('/api/logout');
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'message' => 'Logout successful.',
+        ]);
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+    'tokenable_id' => $user->id,
+]);
+
+    $this
+    ->withToken($token)
+    ->postJson('/api/logout')
+    ->assertUnauthorized();
+}
 }

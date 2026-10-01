@@ -1,0 +1,240 @@
+<div class="customer-details-page">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb">Customers / Customer Details</div>
+
+      @if (customer) {
+        <h1>{{ customer.name }}</h1>
+        <p>View and manage this customer's business information.</p>
+      } @else {
+        <h1>Customer Details</h1>
+        <p>Loading customer information...</p>
+      }
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="backToCustomers()"
+      >
+        Back to Customers
+      </button>
+
+      @if (!isEditing && customer) {
+        <button
+          type="button"
+          class="primary-button"
+          (click)="startEditing()"
+        >
+          Edit Customer
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (customer) {
+    <div class="customer-content">
+
+      @if (isEditing) {
+        <section class="customer-card">
+          <div class="card-heading">
+            <div>
+              <h2>Edit Customer</h2>
+              <p>Update this customer's contact and business information.</p>
+            </div>
+          </div>
+
+          <form
+            class="customer-form"
+            [formGroup]="form"
+            (ngSubmit)="updateCustomer()"
+          >
+            <div class="customer-grid">
+
+              <div class="customer-field">
+                <label for="edit-name">Name</label>
+                <input
+                  id="edit-name"
+                  type="text"
+                  formControlName="name"
+                />
+
+                @if (
+                  form.controls.name.touched &&
+                  form.controls.name.hasError('required')
+                ) {
+                  <span class="field-error">
+                    Customer name is required.
+                  </span>
+                }
+              </div>
+
+              <div class="customer-field">
+                <label for="edit-phone">Phone</label>
+                <input
+                  id="edit-phone"
+                  type="tel"
+                  formControlName="phone"
+                />
+              </div>
+
+              <div class="customer-field">
+                <label for="edit-email">Email</label>
+                <input
+                  id="edit-email"
+                  type="email"
+                  formControlName="email"
+                />
+              </div>
+
+              <div class="customer-field">
+                <label for="edit-company">Company</label>
+                <input
+                  id="edit-company"
+                  type="text"
+                  formControlName="company_name"
+                />
+              </div>
+
+              <div class="customer-field">
+                <label for="edit-address">Address</label>
+                <input
+                  id="edit-address"
+                  type="text"
+                  formControlName="address"
+                />
+              </div>
+
+              <div class="customer-field">
+                <label for="edit-city">City</label>
+                <input
+                  id="edit-city"
+                  type="text"
+                  formControlName="city"
+                />
+              </div>
+
+              <div class="customer-field">
+                <label for="edit-country">Country</label>
+                <input
+                  id="edit-country"
+                  type="text"
+                  formControlName="country"
+                />
+              </div>
+
+            </div>
+
+            <div class="notes-field">
+              <label for="edit-notes">Notes</label>
+
+              <textarea
+                id="edit-notes"
+                formControlName="notes"
+                rows="5"
+                placeholder="Add notes about this customer..."
+              ></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="cancelEditing()"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                class="primary-button"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </section>
+
+      } @else {
+
+        <section class="customer-card">
+          <div class="card-heading">
+            <div>
+              <h2>Customer Information</h2>
+              <p>Contact and business details.</p>
+            </div>
+          </div>
+
+          <div class="customer-grid">
+
+            <div class="customer-field">
+              <span class="field-label">Name</span>
+              <span class="field-value">
+                {{ customer.name }}
+              </span>
+            </div>
+
+            <div class="customer-field">
+              <span class="field-label">Phone</span>
+              <span class="field-value">
+                {{ customer.phone || 'Not provided' }}
+              </span>
+            </div>
+
+            <div class="customer-field">
+              <span class="field-label">Email</span>
+              <span class="field-value">
+                {{ customer.email || 'Not provided' }}
+              </span>
+            </div>
+
+            <div class="customer-field">
+              <span class="field-label">Company</span>
+              <span class="field-value">
+                {{ customer.company_name || 'Not provided' }}
+              </span>
+            </div>
+
+            <div class="customer-field">
+              <span class="field-label">Address</span>
+              <span class="field-value">
+                {{ customer.address || 'Not provided' }}
+              </span>
+            </div>
+
+            <div class="customer-field">
+              <span class="field-label">City</span>
+              <span class="field-value">
+                {{ customer.city || 'Not provided' }}
+              </span>
+            </div>
+
+            <div class="customer-field">
+              <span class="field-label">Country</span>
+              <span class="field-value">
+                {{ customer.country || 'Not provided' }}
+              </span>
+            </div>
+
+          </div>
+        </section>
+
+        <section class="customer-card">
+          <div class="card-heading">
+            <div>
+              <h2>Notes</h2>
+              <p>Internal notes about this customer.</p>
+            </div>
+          </div>
+
+          <p class="customer-notes">
+            {{ customer.notes || 'No notes have been added.' }}
+          </p>
+        </section>
+
+      }
+
+    </div>
+  }
+</div>

@@ -49,7 +49,7 @@
 
       <tbody>
         @for (customer of customers; track customer.id) {
-          <tr>
+          <tr (click)="viewCustomer(customer?.id)">
             <td>
               <div class="customer-name">
                 {{ customer.name }}

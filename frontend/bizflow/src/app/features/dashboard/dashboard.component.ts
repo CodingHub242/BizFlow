@@ -1,4 +1,4 @@
-import { Component, OnInit,inject } from '@angular/core';
+import { Component, OnInit,inject,ChangeDetectorRef } from '@angular/core';
 import { DecimalPipe,DatePipe,TitleCasePipe } from '@angular/common';
 import { IonIcon } from '@ionic/angular';
 
@@ -36,6 +36,7 @@ interface SalesChartPoint {
 })
 export class DashboardComponent {
  private readonly dashboardApi = inject(DashboardApiService);
+ private readonly changeDetector = inject(ChangeDetectorRef);
 salesChartPoints: SalesChartPoint[] = [];
  dashboardData: DashboardData = {
     sales_total: 0,
@@ -90,6 +91,7 @@ salesChartPoints: SalesChartPoint[] = [];
         this.dashboardData = response.data;
          this.salesChartPoints = this.buildSalesChartPoints(
         response.data.sales_trend,);
+        this.changeDetector.detectChanges();
       },
     });
   }

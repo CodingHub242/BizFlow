@@ -3,6 +3,7 @@ import { CustomerApi, Customer,CustomerPagination } from '../../core/services/cu
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
@@ -49,7 +50,7 @@ search = '';
     this.customerApi.list({page,search,perPage: 15,}).subscribe({
         next: response => {
         this.customers = response.data;
-        console.log(this.customers);
+        //console.log(this.customers);
         this.pagination = response.meta;
         this.changeDetector.detectChanges();
       },
@@ -66,6 +67,10 @@ search = '';
 
   addCustomer(): void {
     this.router.navigate(['/customers/add']);
+  }
+
+  viewCustomer(id: any): void {
+    this.router.navigate(['/customers', id]);
   }
 
   ngOnDestroy(): void {

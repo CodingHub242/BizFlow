@@ -16,7 +16,8 @@ use App\Http\Controllers\AuthController;
 
 //Login
 Route::post('/login', [AuthController::class, 'login']);
-
+Route::post('/logout', [AuthController::class, 'logout'])
+    ->middleware('auth:sanctum');
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -118,7 +119,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('permission:migration.create');
 
     Route::post('/migration-sessions/{session}/upload', [MigrationSessionController::class, 'upload'])
-        ->middleware('permission:migration.create');
+        ->middleware('permission:migration.create','throttle:migration-upload',);
 
     Route::post('/migration-sessions/{session}/analyze', [MigrationSessionController::class, 'analyze'])
         ->middleware('permission:migration.create');

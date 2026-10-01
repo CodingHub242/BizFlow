@@ -47,10 +47,11 @@ class CustomerController extends Controller
             $search = $request->string('search')->toString();
 
             $query->where(function ($query) use ($search) {
-                $query
-                    ->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
+                $term = '%' . strtolower($search) . '%';
+
+                $query->whereRaw('LOWER(name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(phone) LIKE ?', [$term]);
             });
         }
 

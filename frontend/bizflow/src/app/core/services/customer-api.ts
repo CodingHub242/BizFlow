@@ -6,7 +6,6 @@ import { API_URL } from '../config/api.config';
 
 export interface Customer {
   id: number;
-  tenant_id: number;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -15,6 +14,8 @@ export interface Customer {
   country?: string | null;
   notes?: string | null;
   is_active?: boolean;
+
+  company_name?: string | null;
 }
 
 export interface CustomerPagination {
@@ -53,6 +54,22 @@ export interface CustomerResponse {
   data: Customer;
 }
 
+export interface UpdateCustomerRequest {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  company_name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  notes?: string | null;
+}
+
+export interface CustomerDetailResponse {
+  success: boolean;
+  data: Customer;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -84,9 +101,22 @@ export class CustomerApi {
     }
 
     create(data: CreateCustomerRequest): Observable<CustomerResponse> {
-    return this.http.post<CustomerResponse>(
-        `${this.apiUrl}/customers`,
-        data,
-    );
+        return this.http.post<CustomerResponse>(
+            `${this.apiUrl}/customers`,
+            data,
+        );
+    }
+
+    get(id: number): Observable<CustomerDetailResponse> {
+        return this.http.get<CustomerDetailResponse>(
+            `${this.apiUrl}/customers/${id}`,
+        );
+    }
+
+    update(id: number,data: UpdateCustomerRequest,): Observable<CustomerResponse> {
+        return this.http.put<CustomerResponse>(
+            `${this.apiUrl}/customers/${id}`,
+            data,
+        );
     }
 }
