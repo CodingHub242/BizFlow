@@ -30,6 +30,7 @@ use App\Services\MigrationInvoicePaymentCreator;
 use App\Models\MigrationSession;
 use App\Models\MigrationMapping;
 use App\Models\MigrationImportBatch;
+use Laravel\Sanctum\Sanctum;
 use App\Services\MigrationCustomerImporter;
 use App\Services\MigrationSupplierImporter;
 use App\Models\MigrationValidationResult;
@@ -3478,12 +3479,14 @@ public function test_authenticated_user_can_upload_quickbooks_csv_to_migration_s
         . "Acme Ltd,acme@example.com,0244000000\n"
     );
 
-    $response = $this
-        ->actingAs($user)
-        ->post(
-            "/api/migration-sessions/{$session->id}/upload",
-            ['file' => $file]
-        );
+   Sanctum::actingAs($user);
+
+$response = $this
+    ->withHeader('Accept', 'application/json')
+    ->post(
+        "/api/migration-sessions/{$session->id}/upload",
+        ['file' => $file]
+    );
 
     $response
         ->assertOk()
@@ -4932,4 +4935,139 @@ public function test_user_without_migration_import_permission_cannot_run_import(
         )
         ->assertStatus(403);
 }
+public function test_migration_upload_is_rate_limited_after_ten_requests(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    for ($i = 1; $i <= 11; $i++) {
+        $session = MigrationSession::create([
+            'tenant_id' => $tenant->id,
+            'created_by' => $user->id,
+            'source' => MigrationSource::QUICKBOOKS,
+            'status' => MigrationSessionStatus::PENDING,
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent(
+            "customers-{$i}.csv",
+            "Customer,Email,Phone\n"
+            . "Customer {$i},customer{$i}@example.com,0244000000\n"
+        );
+
+      Sanctum::actingAs($user);
+
+$response = $this
+    ->withHeader('Accept', 'application/json')
+    ->post(
+        "/api/migration-sessions/{$session->id}/upload",
+        ['file' => $file]
+    );
+
+        if ($i <= 10) {
+            $response->assertOk();
+        } else {
+            $response->assertStatus(429);
+        }
+    }
+}
+public function test_migration_upload_is_rate_limited(): void
+{
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    Sanctum::actingAs($user);
+
+    for ($i = 1; $i <= 11; $i++) {
+        $session = MigrationSession::create([
+            'tenant_id' => $tenant->id,
+            'created_by' => $user->id,
+            'source' => MigrationSource::QUICKBOOKS,
+            'status' => MigrationSessionStatus::PENDING,
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent(
+            "customers-{$i}.csv",
+            "Customer,Email,Phone\n"
+            . "Customer {$i},customer{$i}@example.com,0244000000\n"
+        );
+
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->post(
+                "/api/migration-sessions/{$session->id}/upload",
+                ['file' => $file]
+            );
+
+        if ($i <= 10) {
+            $response->assertOk();
+        } else {
+            $response->assertStatus(429);
+        }
+    }
+}
+public function test_migration_import_api_rejects_cross_tenant_branch(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $userA = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $this->assignRole($userA);
+
+    $branchB = Branch::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $session = MigrationSession::create([
+        'tenant_id' => $tenantA->id,
+        'created_by' => $userA->id,
+        'source' => MigrationSource::QUICKBOOKS,
+        'status' => MigrationSessionStatus::UPLOADED,
+    ]);
+
+    $batch = MigrationImportBatch::create([
+        'tenant_id' => $tenantA->id,
+        'migration_session_id' => $session->id,
+        'created_by' => $userA->id,
+        'entity_type' => 'customers',
+        'status' => 'pending',
+    ]);
+
+    Sanctum::actingAs($userA);
+
+    $response = $this
+        ->withHeader('Accept', 'application/json')
+        ->postJson(
+            "/api/migration-sessions/{$session->id}/batches/{$batch->id}/import",
+            [
+                'branch_id' => $branchB->id,
+                'mapping' => [
+                    'Customer' => 'name',
+                ],
+            ]
+        );
+
+    $response
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'branch_id',
+        ]);
+}
+
 }

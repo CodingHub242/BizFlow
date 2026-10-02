@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\Sanctum;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -92,13 +94,37 @@ public function test_user_can_logout_and_revoke_current_token(): void
             'message' => 'Logout successful.',
         ]);
 
-        $this->assertDatabaseMissing('personal_access_tokens', [
-    'tokenable_id' => $user->id,
-]);
+    $this->assertDatabaseMissing('personal_access_tokens', [
+        'tokenable_id' => $user->id,
+    ]);
+
+    Auth::forgetGuards();
 
     $this
-    ->withToken($token)
-    ->postJson('/api/logout')
-    ->assertUnauthorized();
+        ->withToken($token)
+        ->getJson('/api/user')
+        ->assertUnauthorized();
+}
+public function test_api_requests_are_rate_limited(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    for ($i = 1; $i <= 61; $i++) {
+        $response = $this
+            ->withHeader('Accept', 'application/json')
+            ->getJson('/api/user');
+
+        if ($i <= 60) {
+            $response->assertOk();
+        } else {
+            $response->assertStatus(429);
+        }
+    }
 }
 }

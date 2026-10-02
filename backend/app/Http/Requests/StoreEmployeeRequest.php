@@ -16,16 +16,28 @@ class StoreEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_id' => [
-                'required',
-                'integer',
-                'exists:users,id',
-            ],
+           'user_id' => [
+            'required',
+            'integer',
+            Rule::exists('users', 'id')
+                ->where(fn ($query) =>
+                    $query->where(
+                        'tenant_id',
+                        $this->user()->tenant_id
+                    )
+                ),
+        ],
 
             'branch_id' => [
                 'nullable',
                 'integer',
-                'exists:branches,id',
+                Rule::exists('branches', 'id')
+                    ->where(fn ($query) =>
+                        $query->where(
+                            'tenant_id',
+                            $this->user()->tenant_id
+                        )
+                    ),
             ],
 
             'employee_number' => [

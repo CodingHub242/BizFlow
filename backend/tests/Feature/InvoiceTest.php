@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\CatalogItem;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -446,4 +447,77 @@ class InvoiceTest extends TestCase
         $this->assertNotEquals($orderB->id, $invoice->order_id);
         $this->assertNotEquals($userB->id, $invoice->created_by);
     }
+
+    public function test_invoice_api_rejects_cross_tenant_foreign_keys(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $userA = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    setPermissionsTeamId($tenantA->id);
+
+    $role = \Spatie\Permission\Models\Role::query()
+        ->where('tenant_id', $tenantA->id)
+        ->where('name', 'Accountant')
+        ->firstOrFail();
+
+    $userA->assignRole($role);
+
+    $branchB = Branch::factory()
+        ->for($tenantB)
+        ->create();
+
+    $customerB = Customer::factory()
+        ->for($tenantB)
+        ->create();
+
+    $catalogItemB = CatalogItem::factory()
+    ->for($tenantB)
+    ->create();
+
+    $orderB = Order::factory()
+        ->for($tenantB)
+        ->create([
+            'branch_id' => $branchB->id,
+            'created_by' => User::factory()
+                ->for($tenantB)
+                ->create()
+                ->id,
+        ]);
+
+    $response = $this
+        ->actingAs($userA, 'sanctum')
+        ->postJson('/api/invoices', [
+            'branch_id' => $branchB->id,
+            'customer_id' => $customerB->id,
+            'order_id' => $orderB->id,
+            'invoice_number' => 'INV-CROSS-TENANT-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $catalogItemB->id,
+                    'quantity' => 1,
+                    'unit_price' => 100,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+    $response
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'branch_id',
+            'customer_id',
+            'order_id',
+            'items.0.catalog_item_id',
+        ]);
+
+    $this->assertDatabaseMissing('invoices', [
+        'tenant_id' => $tenantA->id,
+        'invoice_number' => 'INV-CROSS-TENANT-001',
+    ]);
+}
 }

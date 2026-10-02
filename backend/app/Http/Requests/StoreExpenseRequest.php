@@ -19,13 +19,25 @@ class StoreExpenseRequest extends FormRequest
             'branch_id' => [
                 'required',
                 'integer',
-                'exists:branches,id',
+                Rule::exists('branches', 'id')
+                    ->where(fn ($query) =>
+                        $query->where(
+                            'tenant_id',
+                            $this->user()->tenant_id
+                        )
+                    ),
             ],
 
             'category_id' => [
                 'nullable',
                 'integer',
-                'exists:categories,id',
+                Rule::exists('categories', 'id')
+                    ->where(fn ($query) =>
+                        $query->where(
+                            'tenant_id',
+                            $this->user()->tenant_id
+                        )
+                    ),
             ],
 
             'amount' => [

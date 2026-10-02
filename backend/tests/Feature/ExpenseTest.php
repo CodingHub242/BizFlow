@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Models\Tenant;
+use Spatie\Permission\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -194,5 +195,58 @@ public function test_expense_can_be_soft_deleted_and_remains_in_database(): void
     $this->assertNotNull(
         Expense::withTrashed()->find($expense->id)
     );
+}
+public function test_expense_api_rejects_cross_tenant_branch_and_category(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $userA = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    setPermissionsTeamId($tenantA->id);
+
+$role = Role::query()
+    ->where('tenant_id', $tenantA->id)
+    ->where('name', 'Accountant')
+    ->firstOrFail();
+
+$userA->assignRole($role);
+
+    $branchB = Branch::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $categoryB = Category::create([
+        'tenant_id' => $tenantB->id,
+        'name' => 'Office Expenses',
+        'description' => 'General office expenses',
+        'is_active' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($userA, 'sanctum')
+        ->postJson('/api/expenses', [
+            'branch_id' => $branchB->id,
+            'category_id' => $categoryB->id,
+            'amount' => 500,
+            'payment_method' => ExpensePaymentMethod::CASH->value,
+            'expense_date' => '2026-09-23',
+            'description' => 'Cross-tenant expense',
+        ]);
+
+    $response
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'branch_id',
+            'category_id',
+        ]);
+
+    $this->assertDatabaseMissing('expenses', [
+        'tenant_id' => $tenantA->id,
+        'branch_id' => $branchB->id,
+        'category_id' => $categoryB->id,
+    ]);
 }
 }

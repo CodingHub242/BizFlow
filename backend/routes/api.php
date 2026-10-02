@@ -119,7 +119,10 @@ Route::middleware('auth:sanctum')->group(function () {
         ->middleware('permission:migration.create');
 
     Route::post('/migration-sessions/{session}/upload', [MigrationSessionController::class, 'upload'])
-        ->middleware('permission:migration.create','throttle:migration-upload',);
+        ->middleware([
+        'permission:migration.create',
+        'throttle:migration-upload',
+    ]);
 
     Route::post('/migration-sessions/{session}/analyze', [MigrationSessionController::class, 'analyze'])
         ->middleware('permission:migration.create');

@@ -6,6 +6,7 @@ use App\EmploymentStatus;
 use App\Models\Branch;
 use App\Models\Employee;
 use App\Models\Tenant;
+use Spatie\Permission\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\QueryException;
@@ -125,4 +126,55 @@ class EmployeeTest extends TestCase
             $this->assertTrue(true);
         }
     }
+
+    public function test_employee_api_rejects_cross_tenant_user_and_branch(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $userA = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $userB = User::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $branchB = Branch::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    setPermissionsTeamId($tenantA->id);
+
+    $role = Role::query()
+        ->where('tenant_id', $tenantA->id)
+        ->where('name', 'Administrator')
+        ->firstOrFail();
+
+    $userA->assignRole($role);
+
+    $response = $this
+        ->actingAs($userA, 'sanctum')
+        ->postJson('/api/employees', [
+            'user_id' => $userB->id,
+            'branch_id' => $branchB->id,
+            'employee_number' => 'EMP-CROSS-TENANT-001',
+            'phone' => '+233201234567',
+            'job_title' => 'Salesperson',
+            'employment_status' => EmploymentStatus::ACTIVE->value,
+            'hired_at' => '2026-09-25',
+        ]);
+
+    $response
+        ->assertStatus(422)
+        ->assertJsonValidationErrors([
+            'user_id',
+            'branch_id',
+        ]);
+
+    $this->assertDatabaseMissing('employees', [
+        'tenant_id' => $tenantA->id,
+        'employee_number' => 'EMP-CROSS-TENANT-001',
+    ]);
+}
 }
