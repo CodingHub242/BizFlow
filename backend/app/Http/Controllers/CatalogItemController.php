@@ -197,4 +197,54 @@ class CatalogItemController extends Controller
             'data' => new CatalogItemResource($catalogItem->fresh()),
         ]);
     }
+
+    public function archived(Request $request): JsonResponse
+    {
+        $request->validate([
+            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'type' => ['sometimes', 'string', 'in:product,service'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+
+        $query = CatalogItem::onlyTrashed()
+            ->where('tenant_id', $request->user()->tenant_id);
+
+        if ($request->filled('search')) {
+            $search = $request->string('search')->toString();
+
+            $query->where(function ($query) use ($search) {
+                $query
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('type')) {
+            $query->where(
+                'type',
+                $request->string('type')->toString()
+            );
+        }
+
+        $perPage = $request->integer('per_page', 15);
+
+        $catalogItems = $query
+            ->latest('deleted_at')
+            ->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => CatalogItemResource::collection(
+                $catalogItems->items()
+            ),
+            'meta' => [
+                'current_page' => $catalogItems->currentPage(),
+                'last_page' => $catalogItems->lastPage(),
+                'per_page' => $catalogItems->perPage(),
+                'total' => $catalogItems->total(),
+            ],
+        ]);
+    }
 }

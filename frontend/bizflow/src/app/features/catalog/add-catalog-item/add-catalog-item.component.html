@@ -1,0 +1,253 @@
+<div class="catalog-form-page">
+
+  <div class="page-header">
+    <div>
+      <h1>Add Product / Service</h1>
+
+      <p>
+        Add something your business sells.
+      </p>
+    </div>
+  </div>
+
+  @if (errorMessage) {
+
+    <div
+      class="error-message"
+      role="alert"
+    >
+      {{ errorMessage }}
+    </div>
+
+  }
+
+  <form
+    class="catalog-form"
+    (ngSubmit)="save()"
+  >
+
+    <div class="form-group">
+
+      <label for="name">
+        Name *
+      </label>
+
+      <input
+        id="name"
+        type="text"
+        name="name"
+        [(ngModel)]="name"
+        required
+        maxlength="255"
+        placeholder="e.g. Laptop"
+      />
+
+    </div>
+
+
+    <div class="form-group">
+
+      <label for="type">
+        Type *
+      </label>
+
+      <select
+        id="type"
+        name="type"
+        [(ngModel)]="type"
+        (change)="onTypeChange()"
+      >
+
+        <option value="product">
+          Product
+        </option>
+
+        <option value="service">
+          Service
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div class="form-group">
+
+      <label for="sku">
+        SKU
+      </label>
+
+      <input
+        id="sku"
+        type="text"
+        name="sku"
+        [(ngModel)]="sku"
+        maxlength="255"
+        placeholder="e.g. LAP-001"
+      />
+
+    </div>
+
+
+    <div class="form-group">
+
+      <label for="description">
+        Description
+      </label>
+
+      <textarea
+        id="description"
+        name="description"
+        [(ngModel)]="description"
+        rows="4"
+        placeholder="Describe this product or service..."
+      ></textarea>
+
+    </div>
+
+
+    <div class="form-group">
+
+      <label for="unit">
+        Unit
+      </label>
+
+      <input
+        id="unit"
+        type="text"
+        name="unit"
+        [(ngModel)]="unit"
+        maxlength="100"
+        placeholder="e.g. piece, project, hour"
+      />
+
+    </div>
+
+
+    <div class="form-row">
+
+      <div class="form-group">
+
+        <label for="cost_price">
+          Cost Price *
+        </label>
+
+        <input
+          id="cost_price"
+          type="number"
+          name="cost_price"
+          [(ngModel)]="cost_price"
+          min="0"
+          step="0.01"
+          required
+          placeholder="0.00"
+        />
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label for="selling_price">
+          Selling Price *
+        </label>
+
+        <input
+          id="selling_price"
+          type="number"
+          name="selling_price"
+          [(ngModel)]="selling_price"
+          min="0"
+          step="0.01"
+          required
+          placeholder="0.00"
+        />
+
+      </div>
+
+    </div>
+
+
+    <div class="form-group">
+
+      <label for="tax_rate">
+        Tax Rate
+      </label>
+
+      <input
+        id="tax_rate"
+        type="number"
+        name="tax_rate"
+        [(ngModel)]="tax_rate"
+        min="0"
+        step="0.01"
+        placeholder="0"
+      />
+
+    </div>
+
+
+    @if (type === 'product') {
+
+      <label class="checkbox-row">
+
+        <input
+          type="checkbox"
+          name="track_inventory"
+          [(ngModel)]="track_inventory"
+        />
+
+        <span>
+          Track inventory
+        </span>
+
+      </label>
+
+    }
+
+
+    <label class="checkbox-row">
+
+      <input
+        type="checkbox"
+        name="is_active"
+        [(ngModel)]="is_active"
+      />
+
+      <span>
+        Active
+      </span>
+
+    </label>
+
+
+    <div class="form-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="cancel()"
+        [disabled]="submitting"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        class="primary-button"
+        [disabled]="submitting"
+      >
+
+        @if (submitting) {
+          Saving...
+        } @else {
+          Save Product / Service
+        }
+
+      </button>
+
+    </div>
+
+  </form>
+
+</div>

@@ -48,6 +48,30 @@ export const routes: Routes = [
           import('./features/customers/customer-details/customer-details.component')
             .then(m => m.CustomerDetailsComponent),
       },
+
+      {
+      path: 'catalog',
+      canActivate: [authGuard],
+      loadComponent: () =>
+        import('./features/catalog/catalog.component')
+          .then(m => m.CatalogComponent),
+    },
+
+    {
+      path: 'catalog/add',
+      canActivate: [authGuard],
+      loadComponent: () =>
+        import('./features/catalog/add-catalog-item/add-catalog-item.component')
+          .then(m => m.AddCatalogItemComponent),
+    },
+
+    {
+      path: 'catalog/:id',
+      canActivate: [authGuard],
+      loadComponent: () =>
+        import('./features/catalog/catalog-details/catalog-details.component')
+          .then(m => m.CatalogDetailsComponent),
+    },
       
     ],
   },

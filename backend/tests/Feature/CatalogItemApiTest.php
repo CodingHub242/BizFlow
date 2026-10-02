@@ -1811,4 +1811,192 @@ public function test_user_without_product_cost_permission_cannot_change_cost_pri
         'cost_price' => 100.00,
     ]);
 }
+public function test_authenticated_user_can_list_archived_catalog_items(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $activeItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Active Product',
+        'type' => 'product',
+    ]);
+
+    $deletedItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Archived Product',
+        'type' => 'product',
+    ]);
+
+    $deletedItem->delete();
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/catalog-items/archived');
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonCount(1, 'data')
+        ->assertJsonFragment([
+            'name' => 'Archived Product',
+        ])
+        ->assertJsonMissing([
+            'name' => 'Active Product',
+        ]);
+}
+public function test_archived_catalog_list_does_not_include_other_tenants(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $tenantAItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'name' => 'Tenant A Archived Product',
+        'type' => 'product',
+    ]);
+
+    $tenantAItem->delete();
+
+    $tenantBItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'name' => 'Tenant B Archived Product',
+        'type' => 'product',
+    ]);
+
+    $tenantBItem->delete();
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/catalog-items/archived');
+
+    $response
+        ->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonFragment([
+            'name' => 'Tenant A Archived Product',
+        ])
+        ->assertJsonMissing([
+            'name' => 'Tenant B Archived Product',
+        ]);
+}
+public function test_unauthenticated_user_cannot_list_archived_catalog_items(): void
+{
+    $response = $this->getJson('/api/catalog-items/archived');
+
+    $response->assertStatus(401);
+}
+public function test_authenticated_user_can_view_archived_catalog_item(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Archived Product',
+        'type' => 'product',
+        'sku' => 'ARCHIVED-001',
+    ]);
+
+    $catalogItem->delete();
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson("/api/catalog-items/{$catalogItem->id}");
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonFragment([
+            'id' => $catalogItem->id,
+            'name' => 'Archived Product',
+        ]);
+}
+public function test_user_cannot_view_archived_catalog_item_from_another_tenant(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'name' => 'Tenant B Archived Product',
+        'type' => 'product',
+    ]);
+
+    $catalogItem->delete();
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson("/api/catalog-items/{$catalogItem->id}");
+
+    $response->assertStatus(404);
+}
+public function test_authenticated_user_can_search_archived_catalog_items(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $matchingItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Archived Rice',
+        'type' => 'product',
+        'sku' => 'ARCHIVE-RICE',
+    ]);
+
+    $matchingItem->delete();
+
+    $otherItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Archived Chair',
+        'type' => 'product',
+        'sku' => 'ARCHIVE-CHAIR',
+    ]);
+
+    $otherItem->delete();
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/catalog-items/archived?search=Rice');
+
+    $response
+        ->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonFragment([
+            'name' => 'Archived Rice',
+        ])
+        ->assertJsonMissing([
+            'name' => 'Archived Chair',
+        ]);
+}
 }

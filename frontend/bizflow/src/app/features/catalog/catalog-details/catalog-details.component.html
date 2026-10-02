@@ -1,0 +1,573 @@
+<div class="catalog-details-page">
+
+  <div class="page-header">
+
+    <div>
+
+      <div class="breadcrumb">
+        Products & Services / Details
+      </div>
+
+      @if (catalogItem) {
+
+        <h1>{{ catalogItem.name }}</h1>
+
+        <p>
+          View and manage this product or service.
+        </p>
+
+      } @else {
+
+        <h1>Product / Service Details</h1>
+
+        <p>
+          Loading product or service information...
+        </p>
+
+      }
+
+    </div>
+
+    <div class="header-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="backToCatalog()"
+      >
+        Back to Products & Services
+      </button>
+
+      @if (!isEditing && catalogItem) {
+        @if (!catalogItem?.deleted_at) {
+            <button
+              type="button"
+              class="delete-button"
+              (click)="confirmDelete()"
+            >
+              Delete
+            </button>
+          }
+
+        @if (!catalogItem?.deleted_at) {
+        <button
+          type="button"
+          class="primary-button"
+          (click)="startEditing()"
+        >
+          Edit
+        </button>
+      }
+
+      }
+
+      @if (catalogItem?.deleted_at) {
+        <button
+          type="button"
+          class="restore-button"
+          [disabled]="isRestoring"
+          (click)="restoreCatalogItem()"
+        >
+          {{ isRestoring ? 'Restoring...' : 'Restore' }}
+        </button>
+      }
+
+    </div>
+
+  </div>
+
+  @if (errorMessage) {
+
+    <div class="error-banner">
+      {{ errorMessage }}
+    </div>
+
+  }
+
+  @if (showDeleteConfirmation) {
+
+  <div class="delete-confirmation">
+
+    <div>
+      <strong>
+        Delete {{ catalogItem?.name }}?
+      </strong>
+
+      <p>
+        This will remove this product or service from the catalog.
+        You can restore it later.
+      </p>
+    </div>
+
+    <div class="confirmation-actions">
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="cancelDelete()"
+        [disabled]="isDeleting"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        class="danger-button"
+        (click)="deleteCatalogItem()"
+        [disabled]="isDeleting"
+      >
+        @if (isDeleting) {
+          Deleting...
+        } @else {
+          Delete
+        }
+      </button>
+
+    </div>
+
+  </div>
+
+}
+
+  @if (catalogItem) {
+
+    <div class="catalog-content">
+
+      @if (isEditing) {
+
+        <section class="catalog-card">
+
+          <div class="card-heading">
+
+            <div>
+
+              <h2>Edit {{ catalogItem.type === 'product' ? 'Product' : 'Service' }}</h2>
+
+              <p>
+                Update this product or service information.
+              </p>
+
+            </div>
+
+          </div>
+
+          <form
+            class="catalog-form"
+            [formGroup]="form"
+            (ngSubmit)="updateCatalogItem()"
+          >
+
+            <div class="catalog-grid">
+
+              <div class="catalog-field">
+
+                <label for="edit-name">
+                  Name
+                </label>
+
+                <input
+                  id="edit-name"
+                  type="text"
+                  formControlName="name"
+                />
+
+                @if (
+                  form.controls.name.touched &&
+                  form.controls.name.hasError('required')
+                ) {
+
+                  <span class="field-error">
+                    Name is required.
+                  </span>
+
+                }
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-type">
+                  Type
+                </label>
+
+                <select
+                  id="edit-type"
+                  formControlName="type"
+                  (change)="onTypeChange()"
+                >
+
+                  <option value="product">
+                    Product
+                  </option>
+
+                  <option value="service">
+                    Service
+                  </option>
+
+                </select>
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-sku">
+                  SKU
+                </label>
+
+                <input
+                  id="edit-sku"
+                  type="text"
+                  formControlName="sku"
+                />
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-unit">
+                  Unit
+                </label>
+
+                <input
+                  id="edit-unit"
+                  type="text"
+                  formControlName="unit"
+                  placeholder="e.g. piece, hour, kg"
+                />
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-cost-price">
+                  Cost Price
+                </label>
+
+                <input
+                  id="edit-cost-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="cost_price"
+                />
+
+                @if (
+                  form.controls.cost_price.touched &&
+                  form.controls.cost_price.hasError('required')
+                ) {
+
+                  <span class="field-error">
+                    Cost price is required.
+                  </span>
+
+                }
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-selling-price">
+                  Selling Price
+                </label>
+
+                <input
+                  id="edit-selling-price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="selling_price"
+                />
+
+                @if (
+                  form.controls.selling_price.touched &&
+                  form.controls.selling_price.hasError('required')
+                ) {
+
+                  <span class="field-error">
+                    Selling price is required.
+                  </span>
+
+                }
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-tax-rate">
+                  Tax Rate (%)
+                </label>
+
+                <input
+                  id="edit-tax-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="tax_rate"
+                />
+
+              </div>
+
+              <div class="catalog-field">
+
+                <label for="edit-status">
+                  Status
+                </label>
+
+                <select
+                  id="edit-status"
+                  formControlName="is_active"
+                >
+
+                  <option [ngValue]="true">
+                    Active
+                  </option>
+
+                  <option [ngValue]="false">
+                    Inactive
+                  </option>
+
+                </select>
+
+              </div>
+
+            </div>
+
+            <div class="description-field">
+
+              <label for="edit-description">
+                Description
+              </label>
+
+              <textarea
+                id="edit-description"
+                formControlName="description"
+                rows="5"
+                placeholder="Describe this product or service..."
+              ></textarea>
+
+            </div>
+
+            @if (form.controls.type.value === 'product') {
+
+              <div class="inventory-field">
+
+                <label class="checkbox-label">
+
+                  <input
+                    type="checkbox"
+                    formControlName="track_inventory"
+                  />
+
+                  <span>
+                    Track inventory for this product
+                  </span>
+
+                </label>
+
+              </div>
+
+            }
+
+            <div class="form-actions">
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="cancelEditing()"
+                [disabled]="isSaving"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                class="primary-button"
+                [disabled]="isSaving"
+              >
+
+                @if (isSaving) {
+                  Saving...
+                } @else {
+                  Save Changes
+                }
+
+              </button>
+
+            </div>
+
+          </form>
+
+        </section>
+
+      } @else {
+
+        <section class="catalog-card">
+
+          <div class="card-heading">
+
+            <div>
+
+              <h2>
+                {{ catalogItem.type === 'product'
+                  ? 'Product Information'
+                  : 'Service Information'
+                }}
+              </h2>
+
+              <p>
+                Product and pricing details.
+              </p>
+
+            </div>
+
+          </div>
+
+          <div class="catalog-grid">
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Name
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.name }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Type
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.type === 'product' ? 'Product' : 'Service' }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                SKU
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.sku || 'Not provided' }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Unit
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.unit || 'Not provided' }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Cost Price
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.cost_price }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Selling Price
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.selling_price }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Tax Rate
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.tax_rate ?? 0 }}%
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Status
+              </span>
+
+              <span class="field-value">
+                {{ catalogItem.is_active ? 'Active' : 'Inactive' }}
+              </span>
+
+            </div>
+
+            <div class="catalog-field">
+
+              <span class="field-label">
+                Inventory
+              </span>
+
+              <span class="field-value">
+                @if (catalogItem.type === 'service') {
+                  Not tracked
+                } @else {
+                  {{ catalogItem.track_inventory ? 'Tracked' : 'Not tracked' }}
+                }
+              </span>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <section class="catalog-card">
+
+          <div class="card-heading">
+
+            <div>
+
+              <h2>
+                Description
+              </h2>
+
+              <p>
+                Details about this product or service.
+              </p>
+
+            </div>
+
+          </div>
+
+          <p class="catalog-description">
+            {{ catalogItem.description || 'No description has been added.' }}
+          </p>
+
+        </section>
+
+      }
+
+    </div>
+
+  }
+
+</div>

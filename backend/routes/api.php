@@ -58,8 +58,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/catalog-items', [CatalogItemController::class, 'index'])
         ->middleware('permission:products.view');
 
+    Route::get('/catalog-items/archived', [CatalogItemController::class, 'archived'])
+    ->middleware('permission:products.view');
+
     Route::get('/catalog-items/{catalogItem}', [CatalogItemController::class, 'show'])
-        ->middleware('permission:products.view');
+        ->middleware('permission:products.view')
+        ->withTrashed();
 
     Route::put('/catalog-items/{catalogItem}', [CatalogItemController::class, 'update'])
         ->middleware('permission:products.update');

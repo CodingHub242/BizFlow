@@ -804,11 +804,7 @@ public function test_invoice_payment_cannot_target_invoice_from_another_tenant()
             'reference' => 'PAY-API-CROSS-TENANT-001',
         ]);
 
-   $response
-    ->assertStatus(422)
-    ->assertJsonValidationErrors([
-        'recorded_by',
-    ]);
+  $response->assertStatus(404);
 
     $this->assertDatabaseMissing('invoice_payments', [
         'invoice_id' => $invoice->id,

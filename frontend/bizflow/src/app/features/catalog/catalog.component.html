@@ -1,0 +1,273 @@
+<div class="catalog-page">
+
+  <div class="page-header">
+    <div>
+      <h1>
+        {{ viewMode === 'archived' ? 'Archived Products & Services' : 'Products & Services' }}
+      </h1>
+      <p>
+        Manage the products and services your business sells.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="primary-button"
+      (click)="addCatalogItem()"
+    >
+      + Add Product / Service
+    </button>
+  </div>
+
+  <div class="catalog-toolbar">
+
+    <div class="search-box">
+      <span aria-hidden="true">⌕</span>
+
+      <input
+        type="search"
+        placeholder="Search products and services..."
+        aria-label="Search products and services"
+        [(ngModel)]="search"
+        (input)="searchCatalogItems()"
+      />
+    </div>
+    @if (viewMode === 'active') {
+    <select
+      aria-label="Filter by type"
+      [(ngModel)]="type"
+      (change)="filterCatalog()"
+    >
+      <option value="">All types</option>
+      <option value="product">Products</option>
+      <option value="service">Services</option>
+    </select>
+
+    <select
+      aria-label="Filter by status"
+      [(ngModel)]="isActive"
+      (change)="filterCatalog()"
+    >
+      <option value="">All statuses</option>
+      <option [ngValue]="true">Active</option>
+      <option [ngValue]="false">Inactive</option>
+    </select>
+  }
+
+    <div class="catalog-view-switch">
+      <button
+        type="button"
+        [class.active]="viewMode === 'active'"
+        (click)="setViewMode('active')"
+      >
+        Active
+      </button>
+
+      <button
+        type="button"
+        [class.active]="viewMode === 'archived'"
+        (click)="setViewMode('archived')"
+      >
+        Archived
+      </button>
+    </div>
+
+  </div>
+
+ @if (catalogItems.length === 0) {
+  <div class="empty-state">
+    @if (viewMode === 'archived') {
+      <p>No archived products or services found.</p>
+    } @else {
+      <p>No products or services yet</p>
+      <p>Add your first product or service to get started.</p>
+    }
+  </div>
+} @else {
+
+    <div class="catalog-table-card">
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>SKU</th>
+            <th>Selling Price</th>
+            <th>Inventory</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          @for (
+            item of catalogItems;
+            track item.id
+          ) {
+
+            <tr
+              (click)="viewCatalogItem(item.id)"
+            >
+
+              <td>
+                <div class="catalog-name">
+                  {{ item.name }}
+                </div>
+              </td>
+
+              <td>
+                <span
+                  class="type"
+                  [class.product]="item.type === 'product'"
+                  [class.service]="item.type === 'service'"
+                >
+                  {{
+                    item.type === 'product'
+                      ? 'Product'
+                      : 'Service'
+                  }}
+                </span>
+              </td>
+
+              <td>
+                {{ item.sku || '—' }}
+              </td>
+
+              <td>
+                GHS {{ item.selling_price }}
+              </td>
+
+              <td>
+
+                @if (item.type === 'service') {
+
+                  <span>Not tracked</span>
+
+                } @else {
+
+                  <span>
+                    {{
+                      item.track_inventory
+                        ? 'Tracked'
+                        : 'Not tracked'
+                    }}
+                  </span>
+
+                }
+
+              </td>
+
+              <td>
+
+                <span
+                  class="status"
+                  [class.active]="item.is_active"
+                  [class.inactive]="!item.is_active"
+                >
+                  {{
+                    item.is_active
+                      ? 'Active'
+                      : 'Inactive'
+                  }}
+                </span>
+
+              </td>
+
+            </tr>
+
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <div class="pagination">
+
+      <div class="pagination-summary">
+
+        Showing
+
+        {{
+          pagination.total === 0
+            ? 0
+            : (
+                (pagination.current_page - 1)
+                * pagination.per_page
+              ) + 1
+        }}
+
+        -
+
+        {{
+          Math.min(
+            pagination.current_page
+              * pagination.per_page,
+            pagination.total
+          )
+        }}
+
+        of {{ pagination.total }}
+
+      </div>
+
+      <div class="pagination-controls">
+
+        <button
+          type="button"
+          aria-label="Previous page"
+          [disabled]="pagination.current_page === 1"
+          (click)="loadPage(
+            pagination.current_page - 1
+          )"
+        >
+          Previous
+        </button>
+
+        @for (
+          page of [].constructor(
+            pagination.last_page
+          );
+          track $index
+        ) {
+
+          <button
+            type="button"
+            [attr.aria-label]="
+              'Page ' + ($index + 1)
+            "
+            [class.current]="
+              pagination.current_page === $index + 1
+            "
+            (click)="loadPage($index + 1)"
+          >
+            {{ $index + 1 }}
+          </button>
+
+        }
+
+        <button
+          type="button"
+          aria-label="Next page"
+          [disabled]="
+            pagination.current_page ===
+            pagination.last_page
+          "
+          (click)="loadPage(
+            pagination.current_page + 1
+          )"
+        >
+          Next
+        </button>
+
+      </div>
+
+    </div>
+
+  }
+
+</div>
+
