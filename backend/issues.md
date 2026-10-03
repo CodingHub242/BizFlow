@@ -51,11 +51,11 @@ Fix: split DashboardService::summary into a public/profit view keyed off hasPerm
 
 php artisan tinker
 $tenant = \App\Models\Tenant::create([
-    'name' => 'BizFlow Demo Business',
-    'slug' => 'bizflow-demo',
-    'email' => 'demo@bizflow.test',
-    'phone' => '0240000000',
-    'business_type' => 'Retail',
+    'name' => 'Siobhan Group',
+    'slug' => 'siobhan-demo',
+    'email' => 'siobhan@bizflow.test',
+    'phone' => '0277977000',
+    'business_type' => 'Interior & Construction',
     'status' => 'active',
 ]);
 
@@ -64,12 +64,12 @@ $tenant->id;
 \Spatie\Permission\Models\Role::where('tenant_id', $tenant->id)->pluck('name'); 
 > \Spatie\Permission\Models\Permission::count();                                                        
 $user = \App\Models\User::create([
-    'name' => 'BizFlow Owner',
-    'email' => 'owner@bizflow.test',
+    'name' => 'Siobhan CEO',
+    'email' => 'maame@bizflow.test',
     'password' => \Illuminate\Support\Facades\Hash::make('password'),
-    'tenant_id' => 1,
+    'tenant_id' => 2,
 ]);
-setPermissionsTeamId(1);
+setPermissionsTeamId(2);
 
 $user->assignRole('Owner');
 
