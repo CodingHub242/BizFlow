@@ -12,6 +12,7 @@ use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BranchController;
 
 
 //Login
@@ -151,6 +152,26 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/migration-sessions/{session}/report', [MigrationSessionController::class, 'report'])
         ->middleware('permission:migration.view');
+
+    // BRANCHES
+    Route::get('/branches', [BranchController::class, 'index'])
+        ->middleware('permission:branches.view');
+
+    Route::post('/branches', [BranchController::class, 'store'])
+        ->middleware('permission:branches.create');
+
+    Route::get('/branches/{branch}', [BranchController::class, 'show'])
+        ->middleware('permission:branches.view');
+
+    Route::put('/branches/{branch}', [BranchController::class, 'update'])
+        ->middleware('permission:branches.update');
+
+    Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])
+        ->middleware('permission:branches.delete');
+
+    Route::post('/branches/{branch}/restore', [BranchController::class, 'restore'])
+        ->middleware('permission:branches.update')
+        ->withTrashed();
 
     // ROLES
     Route::post('/roles', [RoleController::class, 'store']);

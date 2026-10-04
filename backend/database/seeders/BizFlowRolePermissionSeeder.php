@@ -44,6 +44,12 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.adjust',
         'inventory.transfer',
 
+        // Branches
+        'branches.view',
+        'branches.create',
+        'branches.update',
+        'branches.delete',
+
         // Expenses
         'expenses.view',
         'expenses.create',
@@ -102,6 +108,11 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.adjust',
         'inventory.transfer',
 
+        'branches.view',
+        'branches.create',
+        'branches.update',
+        'branches.delete',
+
         'expenses.view',
         'expenses.create',
         'expenses.update',
@@ -153,6 +164,11 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.adjust',
         'inventory.transfer',
 
+        'branches.view',
+        'branches.create',
+        'branches.update',
+        'branches.delete',
+
         'expenses.view',
         'expenses.create',
         'expenses.update',
@@ -199,6 +215,10 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+
+        'branches.view',
+        'branches.create',
+        'branches.update',
 
         'expenses.view',
         'expenses.create',
@@ -263,6 +283,8 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+
+        'branches.view',
 
         'sales.view',
 
