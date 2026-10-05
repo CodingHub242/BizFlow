@@ -19,11 +19,15 @@ class InventoryController extends Controller
         $request->validate([
             'branch_id' => ['sometimes', 'integer','min:1'],
             'catalog_item_id' => ['sometimes', 'integer','min:1'],
+            'search' => ['sometimes', 'string', 'max:255'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ]);
 
-        $query = Inventory::query()
+        $query = Inventory::query()->with([
+            'branch',
+            'catalogItem',
+        ])
         ->where('tenant_id', $request->user()->tenant_id);
 
         if ($request->filled('branch_id')) {
@@ -35,6 +39,16 @@ class InventoryController extends Controller
                 'catalog_item_id',
                 $request->integer('catalog_item_id')
             );
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->string('search')->toString());
+
+            $query->whereHas('catalogItem', function ($catalogQuery) use ($search) {
+                $catalogQuery
+                    ->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('sku', 'LIKE', "%{$search}%");
+            });
         }
 
         $perPage = $request->integer('per_page', 15);
@@ -65,6 +79,27 @@ class InventoryController extends Controller
         return response()->json([
             'success' => true,
             'data' => new InventoryResource($inventory),
+        ]);
+    }
+
+    public function availability(Request $request,InventoryService $inventoryService): JsonResponse 
+    {
+        $validated = $request->validate([
+            'branch_id' => ['required', 'integer', 'min:1'],
+            'catalog_item_id' => ['required', 'integer', 'min:1'],
+            'quantity' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $result = $inventoryService->checkAvailability(
+            $request->user()->tenant_id,
+            $validated['branch_id'],
+            $validated['catalog_item_id'],
+            (float) $validated['quantity'],
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $result,
         ]);
     }
 

@@ -1,0 +1,263 @@
+<div class="inventory-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1>Inventory</h1>
+      <p>Manage stock levels across your branches.</p>
+    </div>
+
+    <button class="primary-button" type="button">
+      <span>+</span>
+      Receive Stock
+    </button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+
+      <input
+        type="text"
+        placeholder="Search inventory..."
+        [value]="search"
+        (input)="searchInventoryItems($any($event.target).value)"
+      />
+    </div>
+
+    <div class="filter-group">
+
+      <select
+        [(ngModel)]="selectedBranchId"
+        (change)="filterBranch()"
+      >
+        <option [ngValue]="null">All branches</option>
+
+        @for (branch of branches; track branch.id) {
+          <option [ngValue]="branch.id">
+            {{ branch.name }}
+          </option>
+        }
+      </select>
+
+      <select
+        [(ngModel)]="selectedStockStatus"
+        (change)="filterInventory()"
+      >
+        <option value="">All stock status</option>
+        <option value="in-stock">In Stock</option>
+        <option value="low-stock">Low Stock</option>
+        <option value="out-of-stock">Out of Stock</option>
+      </select>
+
+    </div>
+
+  </div>
+
+  <!-- Loading -->
+  @if (loading) {
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading inventory...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (!loading && error) {
+    <div class="state-card error-state">
+      <div class="state-icon">!</div>
+      <h3>Unable to load inventory</h3>
+      <p>{{ error }}</p>
+
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="loadInventory(currentPage)"
+      >
+        Try Again
+      </button>
+    </div>
+  }
+
+  <!-- Empty -->
+  @if (!loading && !error && inventory.length === 0) {
+    <div class="state-card empty-state">
+      <div class="empty-icon">▦</div>
+      <h3>No inventory found</h3>
+      <p>
+        There are no inventory records matching your current filters.
+      </p>
+    </div>
+  }
+
+  <!-- Inventory Table -->
+  @if (!loading && !error && inventory.length > 0) {
+
+    <div class="table-card">
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>SKU</th>
+              <th>Branch</th>
+              <th>Stock</th>
+              <th>Reorder Level</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            @for (item of filteredInventory; track item.id) {
+
+              <tr>
+
+                <!-- Product -->
+                <td>
+                  <div class="product-cell">
+                    <div class="product-icon">
+                      {{ item.catalog_item?.name?.charAt(0) || '?' }}
+                    </div>
+
+                    <div class="product-info">
+                      <span class="product-name">
+                        {{ item.catalog_item?.name || 'Unknown product' }}
+                      </span>
+
+                      <span class="product-type">
+                        {{ item.catalog_item?.type || 'product' }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- SKU -->
+                <td>
+                  <span class="sku">
+                    {{ item.catalog_item?.sku || '—' }}
+                  </span>
+                </td>
+
+                <!-- Branch -->
+                <td>
+                  <div class="branch-cell">
+                    <span class="branch-name">
+                      {{ item.branch?.name || 'Unknown branch' }}
+                    </span>
+
+                    @if (item.branch?.code) {
+                      <span class="branch-code">
+                        {{ item.branch.code }}
+                      </span>
+                    }
+                  </div>
+                </td>
+
+                <!-- Stock -->
+                <td>
+                  <span class="quantity">
+                    {{ formatQuantity(item.quantity) }}
+                  </span>
+                </td>
+
+                <!-- Reorder -->
+                <td>
+                  <span class="reorder-level">
+                    {{ formatQuantity(item.reorder_level) }}
+                  </span>
+                </td>
+
+                <!-- Price -->
+                <td>
+                  <span class="price">
+                    {{ formatPrice(item.catalog_item?.selling_price || 0) }}
+                  </span>
+                </td>
+
+                <!-- Status -->
+                <td>
+                  <span
+                    class="status-badge"
+                    [class]="getStockStatusClass(item)"
+                  >
+                    {{ getStockStatusLabel(item) }}
+                  </span>
+                </td>
+
+                <!-- Actions -->
+                <td>
+                  <button
+                    class="view-button"
+                    type="button"
+                    (click)="viewInventory(item.id)"
+                  >
+                    View
+                  </button>
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+
+        <div class="pagination-info">
+          Showing
+          <strong>
+            {{ inventory.length }}
+          </strong>
+          of
+          <strong>
+            {{ totalItems }}
+          </strong>
+          inventory records
+        </div>
+
+        <div class="pagination-controls">
+
+          <button
+            type="button"
+            class="pagination-button"
+            [disabled]="currentPage <= 1"
+            (click)="loadPage(currentPage - 1)"
+          >
+            Previous
+          </button>
+
+          <span class="page-number">
+            Page {{ currentPage }} of {{ lastPage }}
+          </span>
+
+          <button
+            type="button"
+            class="pagination-button"
+            [disabled]="currentPage >= lastPage"
+            (click)="loadPage(currentPage + 1)"
+          >
+            Next
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
+</div>

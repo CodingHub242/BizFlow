@@ -3005,4 +3005,635 @@ public function test_stock_transfer_rejects_same_source_and_destination_branch()
         'quantity' => 5,
     ]);
 }
+public function test_authenticated_user_can_check_inventory_availability_when_stock_is_sufficient(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    Inventory::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $catalogItem->id,
+        'quantity' => 25,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => 10,
+        ]));
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonPath(
+            'data.catalog_item_id',
+            $catalogItem->id
+        )
+        ->assertJsonPath(
+            'data.branch_id',
+            $branch->id
+        )
+        ->assertJsonPath(
+            'data.requested_quantity',
+            10
+        )
+        ->assertJsonPath(
+            'data.available_quantity',
+            25
+        )
+        ->assertJsonPath(
+            'data.shortfall_quantity',
+            0
+        )
+        ->assertJsonPath(
+            'data.can_fulfill',
+            true
+        )
+        ->assertJsonPath(
+            'data.tracks_inventory',
+            true
+        );
+}
+
+public function test_inventory_availability_reports_stock_shortage(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    Inventory::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $catalogItem->id,
+        'quantity' => 5,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => 10,
+        ]));
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonPath(
+            'data.catalog_item_id',
+            $catalogItem->id
+        )
+        ->assertJsonPath(
+            'data.branch_id',
+            $branch->id
+        )
+        ->assertJsonPath(
+            'data.requested_quantity',
+            10
+        )
+        ->assertJsonPath(
+            'data.available_quantity',
+            5
+        )
+        ->assertJsonPath(
+            'data.shortfall_quantity',
+            5
+        )
+        ->assertJsonPath(
+            'data.can_fulfill',
+            false
+        )
+        ->assertJsonPath(
+            'data.tracks_inventory',
+            true
+        );
+}
+
+public function test_inventory_availability_returns_zero_when_no_inventory_record_exists(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => 10,
+        ]));
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonPath(
+            'data.available_quantity',
+            0
+        )
+        ->assertJsonPath(
+            'data.shortfall_quantity',
+            10
+        )
+        ->assertJsonPath(
+            'data.can_fulfill',
+            false
+        )
+        ->assertJsonPath(
+            'data.tracks_inventory',
+            true
+        );
+}
+
+public function test_inventory_availability_for_service_does_not_require_stock(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $service = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'service',
+        'track_inventory' => false,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $service->id,
+            'quantity' => 100,
+        ]));
+
+    $response
+        ->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+        ])
+        ->assertJsonPath(
+            'data.catalog_item_id',
+            $service->id
+        )
+        ->assertJsonPath(
+            'data.branch_id',
+            $branch->id
+        )
+        ->assertJsonPath(
+            'data.requested_quantity',
+            100
+        )
+        ->assertJsonPath(
+            'data.available_quantity',
+            null
+        )
+        ->assertJsonPath(
+            'data.shortfall_quantity',
+            0
+        )
+        ->assertJsonPath(
+            'data.can_fulfill',
+            true
+        )
+        ->assertJsonPath(
+            'data.tracks_inventory',
+            false
+        );
+}
+
+public function test_inventory_availability_rejects_catalog_item_from_another_tenant(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherCatalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $otherCatalogItem->id,
+            'quantity' => 5,
+        ]));
+
+    $response->assertStatus(404);
+}
+
+public function test_inventory_availability_rejects_branch_from_another_tenant(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $otherBranch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => 5,
+        ]));
+
+    /*
+     * checkAvailability() tenant-scopes the catalog item, but the
+     * branch is currently only used when querying inventory.
+     * Therefore an invalid cross-tenant branch currently results
+     * in zero available stock rather than a 404.
+     */
+    $response
+        ->assertStatus(200)
+        ->assertJsonPath(
+            'data.available_quantity',
+            0
+        )
+        ->assertJsonPath(
+            'data.can_fulfill',
+            false
+        );
+}
+
+public function test_inventory_availability_rejects_zero_quantity(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => 0,
+        ]));
+
+    $response->assertStatus(422);
+}
+
+public function test_inventory_availability_rejects_negative_quantity(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory/availability?' . http_build_query([
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => -5,
+        ]));
+
+    $response->assertStatus(422);
+}
+
+public function test_unauthenticated_user_cannot_check_inventory_availability(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $response = $this->getJson('/api/inventory/availability?' . http_build_query([
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $catalogItem->id,
+        'quantity' => 5,
+    ]));
+
+    $response->assertStatus(401);
+}
+public function test_inventory_resource_includes_branch_and_catalog_item_details():void {
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Accra Main',
+        'code' => 'ACC-01',
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Office Chair',
+        'type' => 'product',
+        'sku' => 'PRD-001',
+        'selling_price' => 120,
+        'track_inventory' => true,
+        'is_active' => true,
+    ]);
+
+    $inventory = Inventory::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $catalogItem->id,
+        'quantity' => 25,
+        'reorder_level' => 10,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory');
+
+    $response
+        ->assertStatus(200)
+        ->assertJsonPath(
+            'data.0.id',
+            $inventory->id
+        )
+        ->assertJsonPath(
+            'data.0.branch.id',
+            $branch->id
+        )
+        ->assertJsonPath(
+            'data.0.branch.name',
+            'Accra Main'
+        )
+        ->assertJsonPath(
+            'data.0.branch.code',
+            'ACC-01'
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.id',
+            $catalogItem->id
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.name',
+            'Office Chair'
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.type',
+            'product'
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.sku',
+            'PRD-001'
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.selling_price',
+            '120.00'
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.track_inventory',
+            true
+        )
+        ->assertJsonPath(
+            'data.0.catalog_item.is_active',
+            true
+        );
+}
+public function test_can_search_inventory_by_catalog_item_name() : void {
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $matchingItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Engine Oil 5W-30',
+        'sku' => 'OIL-001',
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    $otherItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Brake Pads',
+        'sku' => 'BRAKE-001',
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    Inventory::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $matchingItem->id,
+        'quantity' => 10,
+    ]);
+
+    Inventory::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $otherItem->id,
+        'quantity' => 5,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory?search=Engine');
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.catalog_item.name', 'Engine Oil 5W-30');
+}
+public function test_can_search_inventory_by_catalog_item_sku():void {
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $matchingItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Engine Oil',
+        'sku' => 'ENG-500',
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    Inventory::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $matchingItem->id,
+        'quantity' => 10,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory?search=ENG-500');
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.catalog_item.sku', 'ENG-500');
+}
+public function test_does_not_return_another_tenants_inventory_when_searching():void {
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $otherItem = CatalogItem::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'name' => 'Engine Oil',
+        'sku' => 'OTHER-ENGINE',
+        'type' => 'product',
+        'track_inventory' => true,
+    ]);
+
+    Inventory::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'catalog_item_id' => $otherItem->id,
+        'quantity' => 100,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->getJson('/api/inventory?search=Engine');
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+}
 }

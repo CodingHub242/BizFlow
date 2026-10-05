@@ -35,6 +35,7 @@ describe('AuthService', () => {
         name: 'BizFlow Owner',
         email: 'owner@bizflow.test',
         tenant_id: 1,
+        role: 'Owner'
       },
     };
 

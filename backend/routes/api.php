@@ -80,6 +80,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/inventory', [InventoryController::class, 'index'])
         ->middleware('permission:inventory.view');
 
+    Route::get('/inventory/availability', [InventoryController::class, 'availability'])
+    ->middleware('permission:inventory.view');
+
     Route::get('/inventory/movements', [InventoryController::class, 'movements'])
         ->middleware('permission:inventory.view');
 

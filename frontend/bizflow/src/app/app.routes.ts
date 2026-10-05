@@ -72,6 +72,14 @@ export const routes: Routes = [
         import('./features/catalog/catalog-details/catalog-details.component')
           .then(m => m.CatalogDetailsComponent),
     },
+
+    {
+      path: 'inventory',
+      canActivate: [authGuard],
+      loadComponent: () =>
+        import('./features/inventory/inventory.component')
+          .then(m => m.InventoryComponent),
+    },
       
     ],
   },
