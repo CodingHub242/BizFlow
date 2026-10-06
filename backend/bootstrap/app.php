@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.permission' => SetTenantPermissionContext::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'tenant.approved' => \App\Http\Middleware\EnsureTenantIsApproved::class,
+            'platform.auth' => \App\Http\Middleware\AuthenticatePlatformAdmin::class,
         ]);
         
         $middleware->redirectGuestsTo(function ($request) {

@@ -20,6 +20,14 @@ class Tenant extends Model
         'business_type',
         'logo_path',
         'status',
+        'approved_at',
+        'approved_by',
+        'rejected_at',
+        'rejected_by',
+        'rejection_reason',
+        'suspended_at',
+        'suspended_by',
+        'suspension_reason',
     ];
 
     // protected static function booted(): void
@@ -32,6 +40,9 @@ class Tenant extends Model
 
     protected $casts = [
         'status' => TenantStatus::class,
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'suspended_at' => 'datetime',
     ];
 
     /**

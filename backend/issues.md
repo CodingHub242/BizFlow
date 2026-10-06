@@ -50,13 +50,10 @@ Fix: split DashboardService::summary into a public/profit view keyed off hasPerm
 
 
 php artisan tinker
-$tenant = \App\Models\Tenant::create([
-    'name' => 'Siobhan Group',
-    'slug' => 'siobhan-demo',
-    'email' => 'siobhan@bizflow.test',
-    'phone' => '0277977000',
-    'business_type' => 'Interior & Construction',
-    'status' => 'active',
+$tenant = \App\Models\PlatformAdmin::create([
+    'name' => 'Jonathan Attram',
+    'email' => 'jonathan@bizflow.app',
+   'password' => 'nhyiraba12'
 ]);
 
 $tenant->id;

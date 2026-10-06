@@ -35,6 +35,8 @@ Route::post('/onboarding/register',[BusinessOnboardingController::class, 'regist
 //         ]);
 //     });
 
+
+
 Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     ///INVOICES
     Route::post('/invoices', [InvoiceController::class, 'store'])
