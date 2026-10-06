@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant.permission' => SetTenantPermissionContext::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
+            'tenant.approved' => \App\Http\Middleware\EnsureTenantIsApproved::class,
         ]);
         
         $middleware->redirectGuestsTo(function ($request) {

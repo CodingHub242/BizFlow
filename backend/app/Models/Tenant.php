@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Database\Seeders\BizFlowRolePermissionSeeder;
+use App\TenantStatus;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tenant extends Model
@@ -22,13 +22,17 @@ class Tenant extends Model
         'status',
     ];
 
-    protected static function booted(): void
-    {
-        static::created(function (Tenant $tenant) {
-            app(BizFlowRolePermissionSeeder::class)
-                ->provisionTenantRoles($tenant->id);
-        });
-    }
+    // protected static function booted(): void
+    // {
+    //     static::created(function (Tenant $tenant) {
+    //         app(BizFlowRolePermissionSeeder::class)
+    //             ->provisionTenantRoles($tenant->id);
+    //     });
+    // }
+
+    protected $casts = [
+        'status' => TenantStatus::class,
+    ];
 
     /**
      * Get all users belonging to this tenant.

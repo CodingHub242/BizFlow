@@ -139,6 +139,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
     }
   }
 
+  receiveStock(): void {
+    this.router.navigate(['/inventory/receive-stock/']);
+  }
+
   loadPage(page: number): void {
     if (
       page < 1 ||

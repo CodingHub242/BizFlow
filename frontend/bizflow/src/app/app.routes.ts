@@ -80,6 +80,13 @@ export const routes: Routes = [
         import('./features/inventory/inventory.component')
           .then(m => m.InventoryComponent),
     },
+    {
+      path: 'inventory/receive-stock',
+      canActivate: [authGuard],
+      loadComponent: () =>
+        import('./features/inventory/receive-stock/receive-stock.component')
+          .then(m => m.ReceiveStockComponent),
+    },
       
     ],
   },

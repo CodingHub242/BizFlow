@@ -5,7 +5,7 @@ import {
 } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 
-import { InventoryApi } from './inventory-api.service';
+import { InventoryApi, ReceiveStockRequest } from './inventory-api.service';
 import { API_URL } from '../config/api.config';
 
 describe('InventoryApi', () => {
@@ -307,6 +307,37 @@ describe('InventoryApi', () => {
       last_page: 1,
       per_page: 15,
       total: 0,
+    },
+  });
+});
+it('should receive stock with reference and notes', () => {
+  const payload: ReceiveStockRequest = {
+    branch_id: 1,
+    catalog_item_id: 5,
+    quantity: 10,
+    reference_type: 'purchase',
+    reference_id: 123,
+    notes: 'Received from supplier',
+  };
+
+  service.receive(payload).subscribe();
+
+  const req = httpMock.expectOne(
+    `${API_URL}/inventory/receive`,
+  );
+
+  expect(req.request.method).toBe('POST');
+  expect(req.request.body).toEqual(payload);
+
+  req.flush({
+    success: true,
+    message: 'Stock received successfully.',
+    data: {
+      id: 1,
+      branch_id: 1,
+      catalog_item_id: 5,
+      quantity: 10,
+      reorder_level: 5,
     },
   });
 });

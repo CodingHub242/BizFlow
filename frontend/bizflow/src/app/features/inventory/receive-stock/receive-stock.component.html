@@ -1,0 +1,172 @@
+<div class="receive-stock-page">
+  <div class="page-header">
+    <div>
+      <h1>Receive Stock</h1>
+      <p>Add incoming stock to a branch inventory.</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="cancel()"
+    >
+      Cancel
+    </button>
+  </div>
+
+  <div class="form-card">
+    @if (success) {
+      <div class="alert alert-success">
+        {{ success }}
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-error">
+        {{ error }}
+      </div>
+    }
+
+    <form (ngSubmit)="submit()">
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label for="branch">
+            Branch <span>*</span>
+          </label>
+
+          <select
+            id="branch"
+            name="branch"
+            [(ngModel)]="branchId"
+            [disabled]="loading || loadingBranches"
+          >
+            <option [ngValue]="null">
+              Select branch
+            </option>
+
+            @for (branch of branches; track branch.id) {
+              <option [ngValue]="branch.id">
+                {{ branch.name }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="product">
+            Product <span>*</span>
+          </label>
+
+          <select
+            id="product"
+            name="product"
+            [(ngModel)]="catalogItemId"
+            [disabled]="loading || loadingCatalogItems"
+          >
+            <option [ngValue]="null">
+              Select product
+            </option>
+
+            @for (item of catalogItems; track item.id) {
+              <option [ngValue]="item.id">
+                {{ item.name }}
+                @if (item.sku) {
+                  — {{ item.sku }}
+                }
+              </option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="quantity">
+            Quantity <span>*</span>
+          </label>
+
+          <input
+            id="quantity"
+            name="quantity"
+            type="number"
+            min="0.001"
+            step="0.001"
+            [(ngModel)]="quantity"
+            [disabled]="loading"
+            placeholder="Enter quantity"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="referenceType">
+            Reference Type
+          </label>
+
+          <input
+            id="referenceType"
+            name="referenceType"
+            type="text"
+            [(ngModel)]="referenceType"
+            [disabled]="loading"
+            placeholder="e.g. purchase"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="referenceId">
+            Reference ID
+          </label>
+
+          <input
+            id="referenceId"
+            name="referenceId"
+            type="number"
+            min="1"
+            step="1"
+            [(ngModel)]="referenceId"
+            [disabled]="loading"
+            placeholder="Optional"
+          />
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="notes">
+            Notes
+          </label>
+
+          <textarea
+            id="notes"
+            name="notes"
+            rows="4"
+            [(ngModel)]="notes"
+            [disabled]="loading"
+            placeholder="Add any notes about this stock receipt..."
+          ></textarea>
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="cancel()"
+          [disabled]="loading"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="loading"
+        >
+          @if (loading) {
+            Receiving...
+          } @else {
+            Receive Stock
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

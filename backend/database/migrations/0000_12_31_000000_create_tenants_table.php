@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('business_type')->nullable();
             $table->string('logo_path')->nullable();
-            $table->string('status')->default('active');
+            $table->string('status')->default('pending');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchController;
@@ -24,7 +25,17 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::middleware('auth:sanctum')->group(function () {
+//ONBOARDING BUSINESS/COMPANY
+Route::post('/onboarding/register',[BusinessOnboardingController::class, 'register']);
+
+// Route::middleware('auth:sanctum','tenant.approved')
+//     ->get('/core-access-test', function (Request $request) {
+//         return response()->json([
+//             'message' => 'Core access granted.',
+//         ]);
+//     });
+
+Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     ///INVOICES
     Route::post('/invoices', [InvoiceController::class, 'store'])
         ->middleware('permission:invoices.create');
