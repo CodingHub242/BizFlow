@@ -56,6 +56,17 @@ class CatalogItemController extends Controller
         $query = CatalogItem::query()
         ->where('tenant_id', $request->user()->tenant_id);
 
+         
+
+        if(is_string($request->is_active))
+        {
+            $request->merge([
+                'is_active' => $request->boolean('is_active'),
+            ]);
+        }
+       
+        
+
         $request->validate([
            'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'type' => ['sometimes', 'string', 'in:product,service'],
@@ -74,6 +85,7 @@ class CatalogItemController extends Controller
                     ->orWhere('description', 'like', "%{$search}%");
             });
         }
+
 
         if ($request->filled('type')) {
             $query->where('type', $request->string('type')->toString());

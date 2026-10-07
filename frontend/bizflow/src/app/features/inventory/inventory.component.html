@@ -29,7 +29,7 @@
 
     <div class="filter-group">
 
-      <select
+      <select style="height:40px;"
         [(ngModel)]="selectedBranchId"
         (change)="filterBranch()"
       >
@@ -42,7 +42,7 @@
         }
       </select>
 
-      <select
+      <select style="height:40px;"
         [(ngModel)]="selectedStockStatus"
         (change)="filterInventory()"
       >

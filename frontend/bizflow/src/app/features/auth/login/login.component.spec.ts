@@ -2,45 +2,44 @@ import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LoginComponent } from './login.component';
-import { Router } from '@angular/router';
+import { Router,RouterLink } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { AuthService, LoginResponse } from '../../../core/services/auth.service';
 
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;  
   let authService: {
-    login: ReturnType<typeof vi.fn>;
+  login: ReturnType<typeof vi.fn>;
+};
+
+let router: Router;
+
+beforeEach(async () => {
+  authService = {
+    login: vi.fn(),
   };
-  let router: {
-    navigate: ReturnType<typeof vi.fn>;
-  };
 
-  beforeEach(async () => {
-    authService = {
-      login: vi.fn(),
-    };
-    router = {
-        navigate: vi.fn(),
-      };
+  await TestBed.configureTestingModule({
+    imports: [LoginComponent],
+    providers: [
+      provideRouter([]),
+      {
+        provide: AuthService,
+        useValue: authService,
+      },
+    ],
+  }).compileComponents();
 
-    await TestBed.configureTestingModule({
-      imports: [LoginComponent],
-      providers: [
-        {
-          provide: AuthService,
-          useValue: authService,
-        },
-        {
-          provide: Router,
-          useValue: router,
-        },
-      ],
-    }).compileComponents();
+  router = TestBed.inject(Router);
 
-    fixture = TestBed.createComponent(LoginComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+  vi.spyOn(router, 'navigate');
+
+  fixture = TestBed.createComponent(LoginComponent);
+  component = fixture.componentInstance;
+
+  fixture.detectChanges();
+});
 
   it('logs in with the entered email and password', () => {
     const response: LoginResponse = {
@@ -147,4 +146,73 @@ it('navigates to the dashboard after successful login', () => {
 
   expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
 });
+it('shows pending approval message when business is pending', () => {
+  authService.login.mockReturnValue(
+    throwError(() => ({
+      status: 403,
+      error: {
+        code: 'TENANT_PENDING',
+        message: 'Your business is awaiting platform approval.',
+      },
+    })),
+  );
+
+  component.email = 'pending@example.com';
+  component.password = 'password';
+
+  component.login();
+
+  expect(component.errorMessage).toBe(
+    'Your business is awaiting platform approval. You will be able to access Bizflow once your business has been approved.',
+  );
+
+  expect(router.navigate).not.toHaveBeenCalled();
+});
+
+it('shows rejected message when business is rejected', () => {
+  authService.login.mockReturnValue(
+    throwError(() => ({
+      status: 403,
+      error: {
+        code: 'TENANT_REJECTED',
+        message: 'Your business registration was rejected.',
+      },
+    })),
+  );
+
+  component.email = 'rejected@example.com';
+  component.password = 'password';
+
+  component.login();
+
+  expect(component.errorMessage).toBe(
+    'Your business registration was rejected. Please contact Bizflow support for more information.',
+  );
+
+  expect(router.navigate).not.toHaveBeenCalled();
+});
+
+it('shows suspended message when business is suspended', () => {
+  authService.login.mockReturnValue(
+    throwError(() => ({
+      status: 403,
+      error: {
+        code: 'TENANT_SUSPENDED',
+        message: 'Your business account has been suspended.',
+      },
+    })),
+  );
+
+  component.email = 'suspended@example.com';
+  component.password = 'password';
+
+  component.login();
+
+  expect(component.errorMessage).toBe(
+    'Your business account has been suspended. Please contact Bizflow support.',
+  );
+
+  expect(router.navigate).not.toHaveBeenCalled();
+});
+
 });

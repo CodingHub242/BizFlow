@@ -26,10 +26,12 @@ Route::prefix('platform')->group(function () {
         Route::get('/audit-logs', [PlatformAuditLogController::class, 'index'])
         ->name('platform.audit-logs.index');
 
-        Route::get('/businesses/pending', [
-            PlatformBusinessApprovalController::class,
-            'pending',
+        Route::get('/businesses', [PlatformBusinessApprovalController::class, 'businesses'])
+        ->name('platform.businesses.index');
+
+        Route::get('/businesses/pending', [PlatformBusinessApprovalController::class,'pending',
         ])->name('platform.businesses.pending');
+        
 
         Route::get('/businesses/{tenant}', [PlatformBusinessApprovalController::class, 'show'])
         ->name('platform.businesses.show');

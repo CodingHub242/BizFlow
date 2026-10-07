@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { IonIcon } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import {walletOutline,gridOutline,peopleOutline,cubeOutline,barChartOutline,settingsOutline,layersOutline,cartOutline,documentTextOutline, logOutOutline} from 'ionicons/icons';
+import {walletOutline,gridOutline,peopleOutline,cubeOutline,colorFilterOutline,barChartOutline,settingsOutline,layersOutline,cartOutline,documentTextOutline, logOutOutline} from 'ionicons/icons';
 
 @Component({
   selector: 'app-sidebar',
@@ -17,6 +17,7 @@ export class SidebarComponent  {
     addIcons({
       'wallet-outline' : walletOutline,
       'grid-outline' : gridOutline,
+      'color-filter-outline' : colorFilterOutline,
       'people-outline' : peopleOutline,
       'cube-outline' : cubeOutline,
       'bar-chart-outline' : barChartOutline,

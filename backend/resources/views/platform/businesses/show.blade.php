@@ -1,27 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@extends('platform.layouts.app')
 
-    <title>{{ $business->name }} | Bizflow Platform</title>
+@section('title', 'View Business')
+
+@section('nav_businesses', 'active')
+
+@section('content')
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f4f7fb;
-            color: #172033;
-        }
+       
 
         .page {
             max-width: 1100px;
             margin: 0 auto;
-            padding: 40px 24px;
+            padding: 10px 24px;
         }
 
         .back-link {
@@ -219,17 +210,15 @@
             }
         }
     </style>
-</head>
 
-<body>
 
 <div class="page">
 
     <a
-        href="{{ route('platform.businesses.pending') }}"
+        href="{{ route('platform.businesses.index') }}"
         class="back-link"
     >
-        ← Back to Pending Businesses
+        ← Back to Businesses
     </a>
 
     <header class="header">
@@ -396,5 +385,4 @@
 
 </div>
 
-</body>
-</html>
+@endsection

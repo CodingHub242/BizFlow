@@ -1,0 +1,338 @@
+<div class="inventory-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1>Branches</h1>
+      <p>Manage stock branches of your business.</p>
+    </div>
+
+    <button class="primary-button" type="button" (click)="openCreateBranch()"
+      [disabled]="loading || creatingBranch">
+      <span>+</span>
+      Add Branch
+    </button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+
+      <input
+        type="text"
+        placeholder="Search branch..."
+        [value]="search"
+        (input)="searchBranch($any($event.target).value)"
+      />
+    </div>
+
+   
+
+  </div>
+
+  <!-- Loading -->
+  @if (loading) {
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading branches...</p>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (!loading && error) {
+    <div class="state-card error-state">
+      <div class="state-icon">!</div>
+      <h3>Unable to load branches</h3>
+      <p>{{ error }}</p>
+
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="loadBranches(currentPage)"
+      >
+        Try Again
+      </button>
+    </div>
+  }
+
+  <!-- Empty -->
+  @if (!loading && !error && branches.length === 0) {
+    <div class="state-card empty-state">
+      <div class="empty-icon">▦</div>
+      <h3>No branch found</h3>
+      <p>
+        There are no branch records matching your current filters.
+      </p>
+    </div>
+  }
+
+  <!-- Inventory Table -->
+  @if (!loading && !error && branches.length > 0) {
+
+    <div class="table-card">
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>SKU</th>
+              <th>Branch</th>
+              
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            @for (item of filteredBranch; track item.id) {
+
+              <tr>
+
+                <!-- Product -->
+                <td>
+                  <div class="product-cell">
+                    <div class="product-icon">
+                      {{ item?.name?.charAt(0) || '?' }}
+                    </div>
+
+                    <div class="product-info">
+                      <span class="product-name">
+                        {{ item.name || 'Unknown product' }}
+                      </span>
+
+                      <span class="product-type">
+                        {{ item.name || 'product' }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- SKU -->
+                <td>
+                  <span class="sku">
+                    {{ item.name || '—' }}
+                  </span>
+                </td>
+
+               
+
+               
+
+               
+
+                
+
+                
+
+                <!-- Actions -->
+                <td>
+                  <button
+                    class="view-button"
+                    type="button"
+                    (click)="viewInventory(item.id)"
+                  >
+                    View
+                  </button>
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination">
+
+        <div class="pagination-info">
+          Showing
+          <strong>
+            {{ inventory.length }}
+          </strong>
+          of
+          <strong>
+            {{ totalItems }}
+          </strong>
+          inventory records
+        </div>
+
+        <div class="pagination-controls">
+
+          <button
+            type="button"
+            class="pagination-button"
+            [disabled]="currentPage <= 1"
+            (click)="loadPage(currentPage - 1)"
+          >
+            Previous
+          </button>
+
+          <span class="page-number">
+            Page {{ currentPage }} of {{ lastPage }}
+          </span>
+
+          <button
+            type="button"
+            class="pagination-button"
+            [disabled]="currentPage >= lastPage"
+            (click)="loadPage(currentPage + 1)"
+          >
+            Next
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
+   @if (showCreateBranch) {
+      <div
+        class="modal-backdrop"
+        (click)="closeCreateBranch()"
+      >
+        <div
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="createBranchTitle"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="modal-header">
+            <div>
+              <h2 id="createBranchTitle">Add New Branch</h2>
+              <p>Create a branch and use it for this stock receipt.</p>
+            </div>
+
+            <button
+              type="button"
+              class="modal-close"
+              (click)="closeCreateBranch()"
+              [disabled]="creatingBranch"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+
+          @if (branchCreateError) {
+            <div class="alert alert-error">
+              {{ branchCreateError }}
+            </div>
+          }
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="newBranchName">
+                Branch Name <span>*</span>
+              </label>
+
+              <input
+                id="newBranchName"
+                name="newBranchName"
+                type="text"
+                [(ngModel)]="newBranch.name"
+                [disabled]="creatingBranch"
+                placeholder="e.g. Accra North"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchCode">
+                Branch Code <span>*</span>
+              </label>
+
+              <input
+                id="newBranchCode"
+                name="newBranchCode"
+                type="text"
+                [(ngModel)]="newBranch.code"
+                [disabled]="creatingBranch"
+                placeholder="e.g. ACC-N01"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchAddress">
+                Address
+              </label>
+
+              <input
+                id="newBranchAddress"
+                name="newBranchAddress"
+                type="text"
+                [(ngModel)]="newBranch.address"
+                [disabled]="creatingBranch"
+                placeholder="Branch address"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchPhone">
+                Phone
+              </label>
+
+              <input
+                id="newBranchPhone"
+                name="newBranchPhone"
+                type="tel"
+                [(ngModel)]="newBranch.phone"
+                [disabled]="creatingBranch"
+                placeholder="Branch phone"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchEmail">
+                Email
+              </label>
+
+              <input
+                id="newBranchEmail"
+                name="newBranchEmail"
+                type="email"
+                [(ngModel)]="newBranch.email"
+                [disabled]="creatingBranch"
+                placeholder="Branch email"
+              />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="closeCreateBranch()"
+              [disabled]="creatingBranch"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="createBranch()"
+              [disabled]="creatingBranch"
+            >
+              @if (creatingBranch) {
+                Creating...
+              } @else {
+                Create Branch
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+</div>

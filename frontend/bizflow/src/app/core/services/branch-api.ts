@@ -42,6 +42,14 @@ export interface BranchResponse {
   data: Branch;
 }
 
+export interface CreateBranchRequest {
+  name: string;
+  code: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -50,7 +58,7 @@ export class BranchApi {
   private readonly apiUrl = API_URL;
 
   list(params?: BranchListParams): Observable<BranchListResponse> {
-    const queryParams: Record<string, string> = {};
+    const queryParams: Record<string, string | boolean> = {};
 
     if (params?.page !== undefined) {
       queryParams['page'] = String(params.page);
@@ -61,7 +69,7 @@ export class BranchApi {
     }
 
     if (params?.isActive !== undefined) {
-      queryParams['is_active'] = String(params.isActive);
+      queryParams['is_active'] = params.isActive;
     }
 
     if (params?.perPage !== undefined) {
@@ -79,4 +87,11 @@ export class BranchApi {
       `${this.apiUrl}/branches/${id}`,
     );
   }
+
+  create(payload: CreateBranchRequest): Observable<BranchResponse> {
+  return this.http.post<BranchResponse>(
+    `${this.apiUrl}/branches`,
+    payload,
+  );
+}
 }

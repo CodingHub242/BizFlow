@@ -1,37 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@extends('platform.layouts.app')
 
-    <title>Platform Dashboard | Bizflow</title>
+@section('title', 'Dashboard')
+
+@section('nav_dashboard', 'active')
+
+@section('content')
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f4f7fb;
-            color: #172033;
-        }
 
         .layout {
             display: flex;
             min-height: 100vh;
         }
 
-        /* Sidebar */
-
-        .sidebar {
-            width: 245px;
-            background: #111827;
-            color: #ffffff;
-            padding: 26px 18px;
-            flex-shrink: 0;
-        }
+       
 
         .brand {
             padding: 0 12px 30px;
@@ -79,15 +61,7 @@
             color: #ffffff;
         }
 
-        .sidebar-footer {
-            margin-top: 40px;
-            padding: 16px 12px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .sidebar-footer form {
-            margin: 0;
-        }
+       
 
         .logout-button {
             width: 100%;
@@ -135,7 +109,7 @@
         .content {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 34px;
+            padding: 15px;
         }
 
         .page-header {
@@ -376,71 +350,13 @@
             }
         }
     </style>
-</head>
 
-<body>
 
 <div class="layout">
 
-    <aside class="sidebar">
-
-        <div class="brand">
-            <h1>Bizflow</h1>
-            <span>Platform Control Plane</span>
-        </div>
-
-        <div class="nav-title">
-            Platform
-        </div>
-
-        <nav class="nav">
-
-            <a
-                href="{{ route('platform.dashboard') }}"
-                class="active"
-            >
-                Dashboard
-            </a>
-
-            <a href="{{ route('platform.businesses.pending') }}">
-                Pending Businesses
-            </a>
-
-        </nav>
-
-        <div class="sidebar-footer">
-
-            <form
-                method="POST"
-                action="{{ route('platform.logout') }}"
-            >
-                @csrf
-
-                <button
-                    type="submit"
-                    class="logout-button"
-                >
-                    Sign out
-                </button>
-            </form>
-
-        </div>
-
-    </aside>
 
     <main class="main">
 
-        <header class="topbar">
-
-            <span class="topbar-title">
-                Platform Administration
-            </span>
-
-            <span class="admin">
-                {{ auth('platform')->user()->name }}
-            </span>
-
-        </header>
 
         <div class="content">
 
@@ -605,5 +521,4 @@
 
 </div>
 
-</body>
-</html>
+@endsection

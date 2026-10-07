@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { tenantApprovedGuard } from './core/guards/tenant-approved.guard';
 
 export const routes: Routes = [
   {
@@ -10,6 +11,7 @@ export const routes: Routes = [
   },
   {
     path: '',
+     canActivate: [authGuard, tenantApprovedGuard],
      loadComponent: () =>
       import('./layout/app-shell/app-shell.component').then(
         (m) => m.AppShellComponent,
@@ -23,27 +25,27 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
-        canActivate: [authGuard],
+       // canActivate: [authGuard],
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
         path: 'customers',
-        canActivate: [authGuard],
+       // canActivate: [authGuard],
         loadComponent: () =>
           import('./features/customers/customers.component')
             .then(m => m.CustomersComponent),
       },
       {
         path: 'customers/add',
-        canActivate: [authGuard],
+       // canActivate: [authGuard],
         loadComponent: () =>
           import('./features/customers/add-customer/add-customer.component')
             .then(m => m.AddCustomerComponent),
       },
       {
         path: 'customers/:id',
-        canActivate: [authGuard],
+      //  canActivate: [authGuard],
         loadComponent: () =>
           import('./features/customers/customer-details/customer-details.component')
             .then(m => m.CustomerDetailsComponent),
@@ -51,7 +53,7 @@ export const routes: Routes = [
 
       {
       path: 'catalog',
-      canActivate: [authGuard],
+     // canActivate: [authGuard],
       loadComponent: () =>
         import('./features/catalog/catalog.component')
           .then(m => m.CatalogComponent),
@@ -59,7 +61,7 @@ export const routes: Routes = [
 
     {
       path: 'catalog/add',
-      canActivate: [authGuard],
+     // canActivate: [authGuard],
       loadComponent: () =>
         import('./features/catalog/add-catalog-item/add-catalog-item.component')
           .then(m => m.AddCatalogItemComponent),
@@ -67,7 +69,7 @@ export const routes: Routes = [
 
     {
       path: 'catalog/:id',
-      canActivate: [authGuard],
+    //  canActivate: [authGuard],
       loadComponent: () =>
         import('./features/catalog/catalog-details/catalog-details.component')
           .then(m => m.CatalogDetailsComponent),
@@ -75,19 +77,32 @@ export const routes: Routes = [
 
     {
       path: 'inventory',
-      canActivate: [authGuard],
+    //  canActivate: [authGuard],
       loadComponent: () =>
         import('./features/inventory/inventory.component')
           .then(m => m.InventoryComponent),
     },
     {
       path: 'inventory/receive-stock',
-      canActivate: [authGuard],
+    //  canActivate: [authGuard],
       loadComponent: () =>
         import('./features/inventory/receive-stock/receive-stock.component')
           .then(m => m.ReceiveStockComponent),
     },
+    {
+      path: 'branches',
+    //  canActivate: [authGuard],
+      loadComponent: () =>
+        import('./features/branches/branches.component')
+          .then(m => m.BranchesComponent),
+    },
       
     ],
+  },
+  {
+    path: 'register',
+    loadComponent: () =>
+      import('./features/auth/register/register.component')
+        .then(m => m.RegisterComponent),
   },
 ];

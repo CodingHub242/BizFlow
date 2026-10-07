@@ -1,23 +1,10 @@
-import {
-  ChangeDetectorRef,
-  Component,
-  OnDestroy,
-  OnInit,
-  inject,
-} from '@angular/core';
+import {ChangeDetectorRef,Component,OnDestroy,OnInit,inject} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
-
-import {
-  InventoryApi,
-  ReceiveStockRequest,
-} from '../../../core/services/inventory-api.service';
+import {InventoryApi,ReceiveStockRequest,} from '../../../core/services/inventory-api.service';
 import { Branch, BranchApi } from '../../../core/services/branch-api';
-import {
-  CatalogApi,
-  CatalogItem,
-} from '../../../core/services/catalog-api';
+import {CatalogApi,CatalogItem,} from '../../../core/services/catalog-api';
 
 @Component({
   selector: 'app-receive-stock',
@@ -52,6 +39,23 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
 
   error = '';
   success = '';
+
+
+  branchSearch = '';
+  productSearch = '';
+
+  showCreateBranch = false;
+
+  newBranch = {
+    name: '',
+    code: '',
+    address: '',
+    phone: '',
+    email: '',
+  };
+
+  creatingBranch = false;
+  branchCreateError = '';
 
   ngOnInit(): void {
     this.loadBranches();
@@ -164,6 +168,8 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
             response.message ||
             'Stock received successfully.';
           this.cdr.markForCheck();
+
+          this.cdr.detectChanges();
         },
         error: () => {
           this.loading = false;
@@ -177,6 +183,116 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
   cancel(): void {
     this.router.navigate(['/inventory']);
   }
+
+  get filteredBranches(): Branch[] {
+  const search = this.branchSearch.trim().toLowerCase();
+
+  if (!search) {
+    return this.branches;
+  }
+
+  return this.branches.filter((branch) =>
+    branch.name.toLowerCase().includes(search) ||
+    branch.code.toLowerCase().includes(search),
+  );
+}
+
+get filteredCatalogItems(): CatalogItem[] {
+  const search = this.productSearch.trim().toLowerCase();
+
+  if (!search) {
+    return this.catalogItems;
+  }
+
+  return this.catalogItems.filter((item) =>
+    item.name.toLowerCase().includes(search) ||
+    (item.sku ?? '').toLowerCase().includes(search),
+  );
+}
+
+openCreateBranch(): void {
+    this.branchCreateError = '';
+
+    this.newBranch = {
+      name: '',
+      code: '',
+      address: '',
+      phone: '',
+      email: '',
+    };
+
+    this.showCreateBranch = true;
+  }
+
+closeCreateBranch(): void {
+    if (this.creatingBranch) {
+      return;
+    }
+
+    this.showCreateBranch = false;
+  }
+
+  createBranch(): void {
+  this.branchCreateError = '';
+
+  const name = this.newBranch.name.trim();
+  const code = this.newBranch.code.trim();
+
+  if (!name) {
+    this.branchCreateError = 'Branch name is required.';
+    return;
+  }
+
+  if (!code) {
+    this.branchCreateError = 'Branch code is required.';
+    return;
+  }
+
+  this.creatingBranch = true;
+
+  this.branchApi
+    .create({
+      name,
+      code,
+      address: this.newBranch.address.trim() || undefined,
+      phone: this.newBranch.phone.trim() || undefined,
+      email: this.newBranch.email.trim() || undefined,
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (response) => {
+        const branch = response.data;
+
+        this.branches = [
+          branch,
+          ...this.branches.filter(
+            (existing) => existing.id !== branch.id,
+          ),
+        ];
+
+        this.branchId = branch.id;
+
+        this.branchSearch = '';
+
+        this.creatingBranch = false;
+        this.showCreateBranch = false;
+
+        this.cdr.markForCheck();
+
+        this.cdr.detectChanges();
+      },
+
+      error: (error) => {
+        this.creatingBranch = false;
+
+        this.branchCreateError =
+          error?.error?.message ||
+          'Unable to create branch. Please try again.';
+
+        this.cdr.markForCheck();
+      },
+    });
+}
 
   ngOnDestroy(): void {
     this.destroy$.next();

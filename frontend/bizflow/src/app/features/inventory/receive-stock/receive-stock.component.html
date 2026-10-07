@@ -5,6 +5,16 @@
       <p>Add incoming stock to a branch inventory.</p>
     </div>
 
+    <div class="rightbtns">
+      <button
+      type="button"
+      class="btn btn-add-branch"
+      (click)="openCreateBranch()"
+      [disabled]="loading || creatingBranch"
+    >
+      + Add New Branch
+    </button>
+
     <button
       type="button"
       class="btn btn-secondary"
@@ -12,6 +22,8 @@
     >
       Cancel
     </button>
+    </div>
+    
   </div>
 
   <div class="form-card">
@@ -31,9 +43,28 @@
       <div class="form-grid">
 
         <div class="form-group">
-          <label for="branch">
+          <label>
             Branch <span>*</span>
           </label>
+
+          <!-- <button
+            type="button"
+            class="btn btn-add-branch"
+            (click)="openCreateBranch()"
+            [disabled]="loading || creatingBranch"
+          >
+            + Add New Branch
+          </button> -->
+
+          <input
+            id="branchSearch"
+            name="branchSearch"
+            type="search"
+            [(ngModel)]="branchSearch"
+            [disabled]="loading || loadingBranches"
+            placeholder="Search branches..."
+            class="search-input"
+          />
 
           <select
             id="branch"
@@ -42,41 +73,75 @@
             [disabled]="loading || loadingBranches"
           >
             <option [ngValue]="null">
-              Select branch
+              {{ loadingBranches ? 'Loading branches...' : 'Select branch' }}
             </option>
 
-            @for (branch of branches; track branch.id) {
+            @for (branch of filteredBranches; track branch.id) {
               <option [ngValue]="branch.id">
-                {{ branch.name }}
+                {{ branch.name }} — {{ branch.code }}
               </option>
             }
           </select>
+
+          @if (
+            !loadingBranches &&
+            branchSearch &&
+            filteredBranches.length === 0
+          ) {
+            <small class="field-hint">
+              No branches match "{{ branchSearch }}".
+            </small>
+          }
         </div>
 
         <div class="form-group">
-          <label for="product">
-            Product <span>*</span>
-          </label>
+        <label for="product">
+          Product <span>*</span>
+        </label>
 
-          <select
-            id="product"
-            name="product"
-            [(ngModel)]="catalogItemId"
-            [disabled]="loading || loadingCatalogItems"
-          >
-            <option [ngValue]="null">
-              Select product
+        <input
+          id="productSearch"
+          name="productSearch"
+          type="search"
+          [(ngModel)]="productSearch"
+          [disabled]="loading || loadingCatalogItems"
+          placeholder="Search products..."
+          class="search-input"
+        />
+
+        <select
+          id="product"
+          name="product"
+          [(ngModel)]="catalogItemId"
+          [disabled]="loading || loadingCatalogItems"
+        >
+          <option [ngValue]="null">
+            {{
+              loadingCatalogItems
+                ? 'Loading products...'
+                : 'Select product'
+            }}
+          </option>
+
+          @for (item of filteredCatalogItems; track item.id) {
+            <option [ngValue]="item.id">
+              {{ item.name }}
+              @if (item.sku) {
+                — {{ item.sku }}
+              }
             </option>
+          }
+        </select>
 
-            @for (item of catalogItems; track item.id) {
-              <option [ngValue]="item.id">
-                {{ item.name }}
-                @if (item.sku) {
-                  — {{ item.sku }}
-                }
-              </option>
-            }
-          </select>
+          @if (
+            !loadingCatalogItems &&
+            productSearch &&
+            filteredCatalogItems.length === 0
+          ) {
+            <small class="field-hint">
+              No products match "{{ productSearch }}".
+            </small>
+          }
         </div>
 
         <div class="form-group">
@@ -168,5 +233,144 @@
         </button>
       </div>
     </form>
+
+    @if (showCreateBranch) {
+      <div
+        class="modal-backdrop"
+        (click)="closeCreateBranch()"
+      >
+        <div
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="createBranchTitle"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="modal-header">
+            <div>
+              <h2 id="createBranchTitle">Add New Branch</h2>
+              <p>Create a branch and use it for this stock receipt.</p>
+            </div>
+
+            <button
+              type="button"
+              class="modal-close"
+              (click)="closeCreateBranch()"
+              [disabled]="creatingBranch"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+
+          @if (branchCreateError) {
+            <div class="alert alert-error">
+              {{ branchCreateError }}
+            </div>
+          }
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="newBranchName">
+                Branch Name <span>*</span>
+              </label>
+
+              <input
+                id="newBranchName"
+                name="newBranchName"
+                type="text"
+                [(ngModel)]="newBranch.name"
+                [disabled]="creatingBranch"
+                placeholder="e.g. Accra North"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchCode">
+                Branch Code <span>*</span>
+              </label>
+
+              <input
+                id="newBranchCode"
+                name="newBranchCode"
+                type="text"
+                [(ngModel)]="newBranch.code"
+                [disabled]="creatingBranch"
+                placeholder="e.g. ACC-N01"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchAddress">
+                Address
+              </label>
+
+              <input
+                id="newBranchAddress"
+                name="newBranchAddress"
+                type="text"
+                [(ngModel)]="newBranch.address"
+                [disabled]="creatingBranch"
+                placeholder="Branch address"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchPhone">
+                Phone
+              </label>
+
+              <input
+                id="newBranchPhone"
+                name="newBranchPhone"
+                type="tel"
+                [(ngModel)]="newBranch.phone"
+                [disabled]="creatingBranch"
+                placeholder="Branch phone"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="newBranchEmail">
+                Email
+              </label>
+
+              <input
+                id="newBranchEmail"
+                name="newBranchEmail"
+                type="email"
+                [(ngModel)]="newBranch.email"
+                [disabled]="creatingBranch"
+                placeholder="Branch email"
+              />
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="closeCreateBranch()"
+              [disabled]="creatingBranch"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              class="btn btn-primary"
+              (click)="createBranch()"
+              [disabled]="creatingBranch"
+            >
+              @if (creatingBranch) {
+                Creating...
+              } @else {
+                Create Branch
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   </div>
 </div>

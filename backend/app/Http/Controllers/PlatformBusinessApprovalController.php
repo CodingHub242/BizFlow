@@ -107,4 +107,48 @@ class PlatformBusinessApprovalController extends Controller
             'business' => $tenant,
         ]);
     }
+
+    public function businesses(Request $request): View
+    {
+        $validated = $request->validate([
+            'status' => [
+                'nullable',
+                'string',
+                'in:pending,approved,rejected,suspended',
+            ],
+            'search' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+        ]);
+
+        $status = $validated['status'] ?? null;
+        $search = $validated['search'] ?? null;
+
+        $businesses = Tenant::query()
+            ->when(
+                $status,
+                fn ($query) => $query->where('status', $status)
+            )
+            ->when(
+                $search,
+                fn ($query) => $query->where(function ($query) use ($search) {
+                    $query
+                        ->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                })
+            )
+            ->latest()
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('platform.businesses.index', [
+            'businesses' => $businesses,
+            'status' => $status,
+            'search' => $search,
+        ]);
+    }
 }

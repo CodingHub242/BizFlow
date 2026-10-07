@@ -1,27 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@extends('platform.layouts.app')
 
-    <title>Pending Businesses | Bizflow Platform</title>
+@section('title', 'Pending Businesses')
+
+@section('nav_pending', 'active')
+
+@section('content')
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f4f7fb;
-            color: #172033;
-        }
-
+       
         .page {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 40px 24px;
         }
 
         .header {
@@ -192,9 +181,9 @@
             }
         }
     </style>
-</head>
 
-<body>
+
+
 <div class="page">
 
     <header class="header">
@@ -321,5 +310,4 @@
     @endif
 
 </div>
-</body>
-</html>
+@endsection

@@ -743,4 +743,318 @@ public function test_platform_admin_filter_is_preserved_across_pagination(): voi
         ->assertViewHas('action', 'business.rejected')
        ->assertSee('business.rejected', false);
 }
+public function test_platform_admin_can_view_all_businesses(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Pending Construction',
+        'status' => TenantStatus::PENDING,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Approved Stores',
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Rejected Services',
+        'status' => TenantStatus::REJECTED,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Suspended Logistics',
+        'status' => TenantStatus::SUSPENDED,
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses');
+
+    $response
+        ->assertOk()
+        ->assertSee('Businesses')
+        ->assertSee('Pending Construction')
+        ->assertSee('Approved Stores')
+        ->assertSee('Rejected Services')
+        ->assertSee('Suspended Logistics');
+}
+public function test_tenant_user_cannot_view_all_businesses(): void
+{
+    $tenant = Tenant::factory()->create([
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get('/platform/businesses');
+
+    $response
+        ->assertRedirect(route('platform.login'));
+}
+public function test_platform_admin_can_filter_businesses_by_status(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Pending Construction',
+        'status' => TenantStatus::PENDING,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Approved Stores',
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Rejected Services',
+        'status' => TenantStatus::REJECTED,
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses?status=approved');
+
+    $response
+        ->assertOk()
+        ->assertViewHas('status', 'approved')
+        ->assertSee('Approved Stores')
+        ->assertDontSee('Pending Construction')
+        ->assertDontSee('Rejected Services');
+}
+public function test_business_status_filter_is_rendered_and_selected(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses?status=approved');
+
+    $response
+        ->assertOk()
+        ->assertSee('Filter by status')
+        ->assertSee('approved')
+        ->assertSee('selected', false);
+}
+public function test_platform_admin_can_search_businesses(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Accra Auto Works',
+        'slug' => 'accra-auto-works',
+        'email' => 'info@accraauto.test',
+        'phone' => '0244000000',
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Kumasi Fashion House',
+        'slug' => 'kumasi-fashion-house',
+        'email' => 'info@kumasi-fashion.test',
+        'phone' => '0244111111',
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses?search=Accra');
+
+    $response
+        ->assertOk()
+        ->assertViewHas('search', 'Accra')
+        ->assertSee('Accra Auto Works')
+        ->assertDontSee('Kumasi Fashion House');
+}
+public function test_business_search_is_rendered_and_preserved(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses?search=Accra');
+
+    $response
+        ->assertOk()
+        ->assertSee('Search businesses')
+        ->assertSee('value="Accra"', false);
+}
+public function test_platform_admin_can_search_businesses_with_status_filter(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Accra Auto Works',
+        'slug' => 'accra-auto-works',
+        'email' => 'info@accraauto.test',
+        'phone' => '0244000000',
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Accra Fashion House',
+        'slug' => 'accra-fashion-house',
+        'email' => 'info@accrafashion.test',
+        'phone' => '0244111111',
+        'status' => TenantStatus::PENDING,
+    ]);
+
+    Tenant::factory()->create([
+        'name' => 'Kumasi Auto Works',
+        'slug' => 'kumasi-auto-works',
+        'email' => 'info@kumasiauto.test',
+        'phone' => '0244222222',
+        'status' => TenantStatus::APPROVED,
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses?search=Auto&status=approved');
+
+    $response
+        ->assertOk()
+        ->assertViewHas('search', 'Auto')
+        ->assertViewHas('status', 'approved')
+        ->assertSee('Accra Auto Works')
+        ->assertSee('Kumasi Auto Works')
+        ->assertDontSee('Accra Fashion House');
+}
+public function test_platform_businesses_are_paginated(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()
+        ->count(26)
+        ->create([
+            'status' => TenantStatus::APPROVED,
+        ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses');
+
+    $response
+        ->assertOk()
+        ->assertViewHas('businesses', function ($businesses) {
+            return $businesses->perPage() === 25
+                && $businesses->total() === 26;
+        });
+}
+public function test_business_pagination_controls_are_rendered(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()
+        ->count(26)
+        ->create([
+            'status' => TenantStatus::APPROVED,
+        ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses');
+
+    $response
+        ->assertOk()
+        ->assertSee('Next', false);
+}
+public function test_business_pagination_preserves_search_and_status_filters(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    Tenant::factory()
+        ->count(26)
+        ->create([
+            'name' => 'Accra Business',
+            'status' => TenantStatus::APPROVED,
+        ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses?search=Accra&status=approved&page=2');
+
+    $response
+        ->assertOk()
+        ->assertViewHas('search', 'Accra')
+        ->assertViewHas('status', 'approved')
+        ->assertSee('Accra Business');
+}
+public function test_platform_dashboard_contains_businesses_navigation(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/dashboard');
+
+    $response
+        ->assertOk()
+        ->assertSee('Businesses')
+        ->assertSee(route('platform.businesses.index'), false);
+}
+public function test_pending_businesses_contains_businesses_navigation(): void
+{
+    $admin = PlatformAdmin::create([
+        'name' => 'Platform Administrator',
+        'email' => 'admin@bizflow.test',
+        'password' => 'SecurePassword123!',
+    ]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/businesses/pending');
+
+    $response
+        ->assertOk()
+        ->assertSee('Businesses')
+        ->assertSee(route('platform.businesses.index'), false);
+}
+public function test_audit_logs_contains_businesses_navigation(): void
+{
+    $admin = PlatformAdmin::create([
+    'name' => 'Platform Administrator',
+    'email' => 'admin@bizflow.test',
+    'password' => 'SecurePassword123!',
+]);
+
+    $response = $this->actingAs($admin, 'platform')
+        ->get('/platform/audit-logs');
+
+    $response
+        ->assertOk()
+        ->assertSee('Businesses')
+        ->assertSee(route('platform.businesses.index'), false);
+}
 }

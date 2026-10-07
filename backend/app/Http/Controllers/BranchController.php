@@ -12,6 +12,14 @@ class BranchController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        //normalize request from frontend
+        if(is_string($request->is_active))
+        {
+            $request->merge([
+                'is_active' => $request->boolean('is_active'),
+            ]);
+        }
+
         $request->validate([
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],

@@ -1,0 +1,220 @@
+<div class="register-page">
+
+  <div class="register-card">
+
+    @if (!registrationComplete) {
+      <div class="register-header">
+        <h1>Create your business</h1>
+        <p>
+          Register your business to start using Bizflow.
+        </p>
+      </div>
+
+      @if (errorMessage) {
+        <div class="alert alert-error">
+          {{ errorMessage }}
+        </div>
+      }
+
+      <form [formGroup]="registerForm" (ngSubmit)="submit()">
+
+        <section>
+          <h2>Business Information</h2>
+
+          <div class="form-grid">
+
+            <div class="field">
+              <label for="business_name">Business name</label>
+
+              <input
+                id="business_name"
+                type="text"
+                formControlName="business_name"
+                autocomplete="organization"
+              />
+
+              @if (getFieldError('business_name')) {
+                <small class="error">
+                  {{ getFieldError('business_name') }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="business_type">Business type</label>
+
+              <input
+                id="business_type"
+                type="text"
+                formControlName="business_type"
+                placeholder="e.g. Retail"
+              />
+
+              @if (getFieldError('business_type')) {
+                <small class="error">
+                  {{ getFieldError('business_type') }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="business_email">Business email</label>
+
+              <input
+                id="business_email"
+                type="email"
+                formControlName="business_email"
+                autocomplete="organization"
+              />
+
+              @if (getFieldError('business_email')) {
+                <small class="error">
+                  {{ getFieldError('business_email') }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="business_phone">Business phone</label>
+
+              <input
+                id="business_phone"
+                type="tel"
+                formControlName="business_phone"
+                autocomplete="tel"
+              />
+
+              @if (getFieldError('business_phone')) {
+                <small class="error">
+                  {{ getFieldError('business_phone') }}
+                </small>
+              }
+            </div>
+
+          </div>
+        </section>
+
+        <section>
+          <h2>Owner Account</h2>
+
+          <div class="form-grid">
+
+            <div class="field">
+              <label for="owner_name">Full name</label>
+
+              <input
+                id="owner_name"
+                type="text"
+                formControlName="owner_name"
+                autocomplete="name"
+              />
+
+              @if (getFieldError('owner_name')) {
+                <small class="error">
+                  {{ getFieldError('owner_name') }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="owner_email">Email address</label>
+
+              <input
+                id="owner_email"
+                type="email"
+                formControlName="owner_email"
+                autocomplete="email"
+              />
+
+              @if (getFieldError('owner_email')) {
+                <small class="error">
+                  {{ getFieldError('owner_email') }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="password">Password</label>
+
+              <input
+                id="password"
+                type="password"
+                formControlName="password"
+                autocomplete="new-password"
+              />
+
+              @if (getFieldError('password')) {
+                <small class="error">
+                  {{ getFieldError('password') }}
+                </small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="password_confirmation">
+                Confirm password
+              </label>
+
+              <input
+                id="password_confirmation"
+                type="password"
+                formControlName="password_confirmation"
+                autocomplete="new-password"
+              />
+
+              @if (getFieldError('password_confirmation')) {
+                <small class="error">
+                  {{ getFieldError('password_confirmation') }}
+                </small>
+              }
+            </div>
+
+          </div>
+        </section>
+
+        <button
+          type="submit"
+          [disabled]="isSubmitting"
+        >
+          @if (isSubmitting) {
+            Creating business...
+          } @else {
+            Create Business
+          }
+        </button>
+
+      </form>
+
+    } @else {
+
+      <div class="success-state">
+
+        <div class="success-icon">✓</div>
+
+        <h1>Registration Submitted</h1>
+
+        <p>
+          Your business has been registered successfully.
+        </p>
+
+        <p>
+          Your account is currently awaiting platform approval.
+          You will be able to access Bizflow once your business
+          has been approved.
+        </p>
+
+        <div class="status">
+          <span>Pending Approval</span>
+        </div>
+
+        <a routerLink="/login">
+          Back to Sign In
+        </a>
+
+      </div>
+
+    }
+
+  </div>
+
+</div>

@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AuthController;
@@ -22,11 +23,32 @@ Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth:sanctum');
 
 Route::get('/user', function (Request $request) {
-    return $request->user();
+     $user = $request->user();
+
+    $roles = DB::table('model_has_roles')
+            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+            ->where('model_has_roles.model_id', $user->id)
+            ->where('model_has_roles.model_type', \App\Models\User::class)
+            ->pluck('roles.name');
+
+    foreach($roles as $role){}
+
+    return response()->json([
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'role' => $role,
+        'tenant_id' => $user->tenant_id,
+        'tenant' => [
+            'id' => $user->tenant->id,
+            'name' => $user->tenant->name,
+            'status' => $user->tenant->status->value,
+        ],
+    ]);
 })->middleware('auth:sanctum');
 
 //ONBOARDING BUSINESS/COMPANY
-Route::post('/onboarding/register',[BusinessOnboardingController::class, 'register']);
+Route::post('/onboarding/register',[BusinessOnboardingController::class, 'register'])->middleware('throttle:5,1');
 
 // Route::middleware('auth:sanctum','tenant.approved')
 //     ->get('/core-access-test', function (Request $request) {

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\TenantStatus;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -25,6 +27,40 @@ class AuthController extends Controller
             ], 401);
         }
 
+        $tenant = Tenant::query()->find($user->tenant_id);
+
+        if (!$tenant) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Business account could not be found.',
+                'code' => 'TENANT_NOT_FOUND',
+            ], 403);
+        }
+
+        if ($tenant->status === TenantStatus::PENDING) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your business is awaiting platform approval.',
+                'code' => 'TENANT_PENDING',
+            ], 403);
+        }
+
+        if ($tenant->status === TenantStatus::REJECTED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your business registration was rejected.',
+                'code' => 'TENANT_REJECTED',
+            ], 403);
+        }
+
+        if ($tenant->status === TenantStatus::SUSPENDED) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your business account has been suspended.',
+                'code' => 'TENANT_SUSPENDED',
+            ], 403);
+        }
+
         $token = $user->createToken('BizFlow Web');
 
         $roles = DB::table('model_has_roles')
@@ -33,8 +69,7 @@ class AuthController extends Controller
             ->where('model_has_roles.model_type', \App\Models\User::class)
             ->pluck('roles.name');
 
-        foreach ($roles as $role) {
-        }
+        foreach($roles as $role){}
 
         return response()->json([
             'success' => true,
