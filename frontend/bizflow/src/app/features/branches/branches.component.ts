@@ -1,9 +1,8 @@
 import {ChangeDetectorRef,Component,OnDestroy,OnInit,inject} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import {Branch,BranchApi} from '../../core/services/branch-api';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
-import {Inventory,InventoryApi} from '../../core/services/inventory-api.service';
+import {Subject,debounceTime,distinctUntilChanged,takeUntil} from 'rxjs';
+import { Branch, BranchApi } from '../../core/services/branch-api';
 
 @Component({
   selector: 'app-branches',
@@ -11,8 +10,7 @@ import {Inventory,InventoryApi} from '../../core/services/inventory-api.service'
   styleUrls: ['./branches.component.scss'],
   imports: [FormsModule],
 })
-export class BranchesComponent  implements OnInit {
- private readonly inventoryApi = inject(InventoryApi);
+export class BranchesComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly branchApi = inject(BranchApi);
@@ -20,7 +18,6 @@ export class BranchesComponent  implements OnInit {
   private readonly destroy$ = new Subject<void>();
   private readonly searchSubject = new Subject<string>();
 
-  inventory: Inventory[] = [];
   branches: Branch[] = [];
 
   loading = false;
@@ -28,17 +25,10 @@ export class BranchesComponent  implements OnInit {
 
   search = '';
 
-  selectedBranchId: number | null = null;
-  //selectedStockStatus: StockStatus | '' = '';
-
   currentPage = 1;
   lastPage = 1;
   totalItems = 0;
   perPage = 15;
-
-  branchId: number | null = null;
-
-  branchSearch = '';
 
   showCreateBranch = false;
 
@@ -54,9 +44,8 @@ export class BranchesComponent  implements OnInit {
   branchCreateError = '';
 
   ngOnInit(): void {
-    this.loadBranches();
-
-    this.searchSubject.pipe(
+    this.searchSubject
+      .pipe(
         debounceTime(300),
         distinctUntilChanged(),
         takeUntil(this.destroy$),
@@ -66,88 +55,47 @@ export class BranchesComponent  implements OnInit {
         this.loadBranches(1);
       });
 
-    this.loadBranches();
-  }
-
-  loadBranches(page = 1): void {
-  this.branchApi.list({
-      isActive: true,
-      perPage: 100,
-    }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        this.branches = response.data;
-        this.cdr.markForCheck();
-      },
-
-      error: () => {
-        this.branches = [];
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
-  // loadInventory(page = 1): void {
-  //   this.loading = true;
-  //   this.error = '';
-
-  //   const params: {
-  //     page: number;
-  //     branchId?: number;
-  //     search?: string;
-  //     perPage: number;
-  //   } = {
-  //     page,
-  //     perPage: this.perPage,
-  //   };
-
-  //   if (this.search.trim()) {
-  //     params.search = this.search.trim();
-  //   }
-
-  //   if (this.selectedBranchId !== null) {
-  //     params.branchId = this.selectedBranchId;
-  //   }
-
-  //   this.inventoryApi
-  //     .list(params)
-  //     .pipe(takeUntil(this.destroy$))
-  //     .subscribe({
-  //       next: (response) => {
-  //         this.inventory = response.data;
-  //         this.currentPage = response.meta.current_page;
-  //         this.lastPage = response.meta.last_page;
-  //         this.totalItems = response.meta.total;
-
-  //         this.loading = false;
-
-  //         this.cdr.markForCheck();
-  //       },
-  //       error: () => {
-  //         this.inventory = [];
-  //         this.loading = false;
-  //         this.error = 'Unable to load inventory. Please try again.';
-
-  //         this.cdr.markForCheck();
-  //       },
-  //     });
-  // }
-
-  searchBranch(value: string): void {
-    this.searchSubject.next(value);
-  }
-
-  filterBranch(): void {
     this.loadBranches(1);
   }
 
-  // filterInventory(): void {
-  //    if (this.selectedBranchId !== null) {
-  //     this.loadInventory(1);
-  //   }
-  // }
+  loadBranches(page = 1): void {
+    this.loading = true;
+    this.error = '';
 
-  addBranch(): void {
-    this.router.navigate(['/inventory/receive-stock/']);
+    this.branchApi
+      .list({
+        page,
+        search: this.search || undefined,
+        isActive: true,
+        perPage: this.perPage,
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.branches = response.data;
+
+          this.currentPage = response.meta.current_page;
+          this.lastPage = response.meta.last_page;
+          this.totalItems = response.meta.total;
+
+          this.loading = false;
+
+          this.cdr.markForCheck();
+        },
+
+        error: () => {
+          this.branches = [];
+          this.loading = false;
+          this.error =
+            'Unable to load branches. Please try again.';
+
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  searchBranch(value: string): void {
+    this.searchSubject.next(value);
   }
 
   loadPage(page: number): void {
@@ -162,63 +110,8 @@ export class BranchesComponent  implements OnInit {
     this.loadBranches(page);
   }
 
-  viewInventory(id: number): void {
-    this.router.navigate([
-      '/inventory',
-      id,
-    ]);
-  }
-
-  // getStockStatus(inventory: Inventory): StockStatus {
-  //   const quantity = Number(inventory.quantity);
-  //   const reorderLevel = Number(inventory.reorder_level);
-
-  //   if (quantity <= 0) {
-  //     return 'out-of-stock';
-  //   }
-
-  //   if (quantity <= reorderLevel) {
-  //     return 'low-stock';
-  //   }
-
-  //   return 'in-stock';
-  // }
-
-  // getStockStatusLabel(inventory: Inventory): string {
-  //   switch (this.getStockStatus(inventory)) {
-  //     case 'out-of-stock':
-  //       return 'Out of Stock';
-
-  //     case 'low-stock':
-  //       return 'Low Stock';
-
-  //     default:
-  //       return 'In Stock';
-  //   }
-  // }
-
-  // getStockStatusClass(inventory: Inventory): string {
-  //   return this.getStockStatus(inventory);
-  // }
-
-  formatQuantity(value: number | string): string {
-    return Number(value).toLocaleString(undefined, {
-      maximumFractionDigits: 3,
-    });
-  }
-
-  get filteredBranch(): Branch[] {
-    // if (!this.selectedStockStatus) {
-    //   return this.branches;
-    // }
-    return this.branches;
-    // return this.inventory.filter((item) =>
-    //   this.getStockStatus(item) === this.selectedStockStatus
-    // );
-  }
-
-  formatPrice(value: number | string): string {
-    return Number(value).toFixed(2);
+  viewBranch(id: number): void {
+    this.router.navigate(['/branches', id]);
   }
 
   openCreateBranch(): void {
@@ -235,7 +128,7 @@ export class BranchesComponent  implements OnInit {
     this.showCreateBranch = true;
   }
 
-closeCreateBranch(): void {
+  closeCreateBranch(): void {
     if (this.creatingBranch) {
       return;
     }
@@ -244,66 +137,57 @@ closeCreateBranch(): void {
   }
 
   createBranch(): void {
-  this.branchCreateError = '';
+    this.branchCreateError = '';
 
-  const name = this.newBranch.name.trim();
-  const code = this.newBranch.code.trim();
+    const name = this.newBranch.name.trim();
+    const code = this.newBranch.code.trim();
 
-  if (!name) {
-    this.branchCreateError = 'Branch name is required.';
-    return;
+    if (!name) {
+      this.branchCreateError = 'Branch name is required.';
+      return;
+    }
+
+    if (!code) {
+      this.branchCreateError = 'Branch code is required.';
+      return;
+    }
+
+    this.creatingBranch = true;
+
+    this.branchApi
+      .create({
+        name,
+        code,
+        address: this.newBranch.address.trim() || undefined,
+        phone: this.newBranch.phone.trim() || undefined,
+        email: this.newBranch.email.trim() || undefined,
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const branch = response.data;
+
+          this.creatingBranch = false;
+          this.showCreateBranch = false;
+
+          /*
+           * Reload the current list from the API rather than
+           * manually inserting the branch into a paginated list.
+           */
+          this.loadBranches(this.currentPage);
+        },
+
+        error: (error) => {
+          this.creatingBranch = false;
+
+          this.branchCreateError =
+            error?.error?.message ||
+            'Unable to create branch. Please try again.';
+
+          this.cdr.markForCheck();
+        },
+      });
   }
-
-  if (!code) {
-    this.branchCreateError = 'Branch code is required.';
-    return;
-  }
-
-  this.creatingBranch = true;
-
-  this.branchApi
-    .create({
-      name,
-      code,
-      address: this.newBranch.address.trim() || undefined,
-      phone: this.newBranch.phone.trim() || undefined,
-      email: this.newBranch.email.trim() || undefined,
-    })
-    .pipe(takeUntil(this.destroy$))
-    .subscribe({
-      next: (response) => {
-        const branch = response.data;
-
-        this.branches = [
-          branch,
-          ...this.branches.filter(
-            (existing) => existing.id !== branch.id,
-          ),
-        ];
-
-        this.branchId = branch.id;
-
-        this.branchSearch = '';
-
-        this.creatingBranch = false;
-        this.showCreateBranch = false;
-
-       // this.cdr.markForCheck();
-
-        this.cdr.detectChanges();
-      },
-
-      error: (error) => {
-        this.creatingBranch = false;
-
-        this.branchCreateError =
-          error?.error?.message ||
-          'Unable to create branch. Please try again.';
-
-        this.cdr.markForCheck();
-      },
-    });
-}
 
   ngOnDestroy(): void {
     this.destroy$.next();

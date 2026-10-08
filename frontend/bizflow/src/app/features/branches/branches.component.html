@@ -79,62 +79,67 @@
 
           <thead>
             <tr>
-              <th>Product</th>
-              <th>SKU</th>
               <th>Branch</th>
-              
+              <th>Code</th>
+              <th>Phone</th>
+              <th>Status</th>
               <th></th>
             </tr>
           </thead>
 
-          <tbody>
+        <tbody>
 
-            @for (item of filteredBranch; track item.id) {
+           @for (branch of branches; track branch.id){
 
               <tr>
 
-                <!-- Product -->
                 <td>
                   <div class="product-cell">
+
                     <div class="product-icon">
-                      {{ item?.name?.charAt(0) || '?' }}
+                      {{ branch.name.charAt(0) }}
                     </div>
 
                     <div class="product-info">
                       <span class="product-name">
-                        {{ item.name || 'Unknown product' }}
+                        {{ branch.name }}
                       </span>
 
-                      <span class="product-type">
-                        {{ item.name || 'product' }}
-                      </span>
+                      @if (branch.address) {
+                        <span class="product-type">
+                          {{ branch.address }}
+                        </span>
+                      }
                     </div>
+
                   </div>
                 </td>
 
-                <!-- SKU -->
                 <td>
                   <span class="sku">
-                    {{ item.name || '—' }}
+                    {{ branch.code }}
                   </span>
                 </td>
 
-               
+                <td>
+                  {{ branch.phone || '—' }}
+                </td>
 
-               
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.active]="branch.is_active"
+                    [class.inactive]="!branch.is_active"
+                  >
+                    {{ branch.is_active ? 'Active' : 'Inactive' }}
+                  </span>
+                </td>
 
-               
-
-                
-
-                
-
-                <!-- Actions -->
                 <td>
                   <button
                     class="view-button"
                     type="button"
-                    (click)="viewInventory(item.id)"
+                    (click)="viewBranch(branch.id)"
                   >
                     View
                   </button>
@@ -151,49 +156,49 @@
       </div>
 
       <!-- Pagination -->
-      <div class="pagination">
+    <div class="pagination">
 
-        <div class="pagination-info">
-          Showing
-          <strong>
-            {{ inventory.length }}
-          </strong>
-          of
-          <strong>
-            {{ totalItems }}
-          </strong>
-          inventory records
-        </div>
+      <div class="pagination-info">
+        Showing
+        <strong>
+          {{ branches.length }}
+        </strong>
+        of
+        <strong>
+          {{ totalItems }}
+        </strong>
+        branches
+      </div>
 
-        <div class="pagination-controls">
+      <div class="pagination-controls">
 
-          <button
-            type="button"
-            class="pagination-button"
-            [disabled]="currentPage <= 1"
-            (click)="loadPage(currentPage - 1)"
-          >
-            Previous
-          </button>
+        <button
+          type="button"
+          class="pagination-button"
+          [disabled]="currentPage <= 1 || loading"
+          (click)="loadPage(currentPage - 1)"
+        >
+          Previous
+        </button>
 
-          <span class="page-number">
-            Page {{ currentPage }} of {{ lastPage }}
-          </span>
+        <span class="page-number">
+          Page {{ currentPage }} of {{ lastPage }}
+        </span>
 
-          <button
-            type="button"
-            class="pagination-button"
-            [disabled]="currentPage >= lastPage"
-            (click)="loadPage(currentPage + 1)"
-          >
-            Next
-          </button>
-
-        </div>
+        <button
+          type="button"
+          class="pagination-button"
+          [disabled]="currentPage >= lastPage || loading"
+          (click)="loadPage(currentPage + 1)"
+        >
+          Next
+        </button>
 
       </div>
 
     </div>
+
+  </div>
 
   }
 

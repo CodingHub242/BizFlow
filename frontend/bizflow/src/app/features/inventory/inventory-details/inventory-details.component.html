@@ -1,3 +1,181 @@
-<p>
-  inventory-details works!
-</p>
+<div class="inventory-details-page">
+
+  <div class="page-header">
+    <div>
+      <button
+        type="button"
+        class="back-button"
+        (click)="back()"
+      >
+        ← Back to Inventory
+      </button>
+
+      <h1>Inventory Details</h1>
+
+      @if (inventory) {
+        <p>
+          View stock information for
+          {{ inventory.catalog_item?.name || 'Unknown product' }}.
+        </p>
+      }
+    </div>
+  </div>
+
+  @if (loading) {
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading inventory details...</p>
+    </div>
+  }
+
+  @if (!loading && error) {
+    <div class="state-card error-state">
+      <div class="state-icon">!</div>
+
+      <h3>Unable to load inventory</h3>
+
+      <p>{{ error }}</p>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="back()"
+      >
+        Back to Inventory
+      </button>
+    </div>
+  }
+
+  @if (!loading && !error && inventory) {
+
+    <div class="details-grid">
+
+      <div class="details-card product-card">
+
+        <div class="product-heading">
+
+          <div class="product-icon">
+            @if (inventory.catalog_item?.image_url) {
+              <img
+                [src]="inventory.catalog_item.image_url"
+                [alt]="inventory.catalog_item.name"
+              />
+            } @else {
+              {{
+                inventory.catalog_item?.name?.charAt(0) || '?'
+              }}
+            }
+          </div>
+
+          <div>
+            <h2>
+              {{ inventory.catalog_item?.name || 'Unknown product' }}
+            </h2>
+
+            <p>
+              {{ inventory.catalog_item?.type || 'product' }}
+            </p>
+          </div>
+
+        </div>
+
+        <div class="detail-row">
+          <span>SKU</span>
+          <strong>
+            {{ inventory.catalog_item?.sku || '—' }}
+          </strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Selling Price</span>
+          <strong>
+            GH₵{{ formatPrice(inventory.catalog_item?.selling_price || 0) }}
+          </strong>
+        </div>
+
+      </div>
+
+
+      <div class="details-card stock-card">
+
+        <div class="card-header">
+          <div>
+            <h2>Current Stock</h2>
+            <p>Stock available at this branch.</p>
+          </div>
+
+          <span
+            class="status-badge"
+            [class]="getStockStatus()"
+          >
+            {{ getStockStatusLabel() }}
+          </span>
+        </div>
+
+        <div class="stock-number">
+          {{ formatQuantity(inventory.quantity) }}
+        </div>
+
+        <span class="stock-label">
+          Units available
+        </span>
+
+      </div>
+
+
+      <div class="details-card">
+
+        <div class="card-header">
+          <div>
+            <h2>Branch</h2>
+            <p>Location where this stock is held.</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="branch-link"
+          (click)="viewBranch()"
+        >
+          <strong>
+            {{ inventory.branch?.name || 'Unknown branch' }}
+          </strong>
+
+          @if (inventory.branch?.code) {
+            <span>
+              {{ inventory.branch.code }}
+            </span>
+          }
+        </button>
+
+      </div>
+
+
+      <div class="details-card">
+
+        <div class="card-header">
+          <div>
+            <h2>Stock Settings</h2>
+            <p>Inventory control information.</p>
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <span>Current Quantity</span>
+          <strong>
+            {{ formatQuantity(inventory.quantity) }}
+          </strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Reorder Level</span>
+          <strong>
+            {{ formatQuantity(inventory.reorder_level) }}
+          </strong>
+        </div>
+
+      </div>
+
+    </div>
+  }
+</div>

@@ -25,6 +25,7 @@ export interface Inventory {
     sku?: string | null;
     selling_price: number | string;
     track_inventory: boolean;
+    image_url: string | null;
     is_active: boolean;
   } | null;
 

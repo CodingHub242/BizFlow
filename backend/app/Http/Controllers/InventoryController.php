@@ -76,6 +76,9 @@ class InventoryController extends Controller
             abort(404);
         }
 
+        //load the relationship data
+        $inventory->load(['branch','catalogItem']);
+
         return response()->json([
             'success' => true,
             'data' => new InventoryResource($inventory),

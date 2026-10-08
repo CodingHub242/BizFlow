@@ -35,11 +35,11 @@ class BranchController extends Controller
 
             $query->where(function ($query) use ($search) {
                 $query
-                    ->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('LOWER(code) LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('LOWER(address) LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('LOWER(phone) LIKE ?', ["%{$search}%"])
-                    ->orWhereRaw('LOWER(email) LIKE ?', ["%{$search}%"]);
+                    ->whereRaw('LOWER(name) iLIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(code) iLIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(address) iLIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(phone) iLIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(email) iLIKE ?', ["%{$search}%"]);
             });
         }
 

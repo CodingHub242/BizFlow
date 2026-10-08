@@ -90,11 +90,24 @@ export const routes: Routes = [
           .then(m => m.ReceiveStockComponent),
     },
     {
+      path: 'inventory/:id',
+      loadComponent: () =>
+        import('./features/inventory/inventory-details/inventory-details.component')
+          .then(m => m.InventoryDetailsComponent),
+    },
+  
+    {
       path: 'branches',
     //  canActivate: [authGuard],
       loadComponent: () =>
         import('./features/branches/branches.component')
           .then(m => m.BranchesComponent),
+    },
+    {
+      path: 'branches/:id',
+      loadComponent: () =>
+        import('./features/branches/branch-details/branch-details.component')
+          .then(m => m.BranchDetailsComponent),
     },
       
     ],

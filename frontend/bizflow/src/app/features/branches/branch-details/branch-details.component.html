@@ -1,0 +1,207 @@
+<div class="branch-details-page">
+
+  @if (!loading && !error && branch) {
+
+    <div class="page-header">
+
+      <div>
+
+        <button
+          type="button"
+          class="back-button"
+          (click)="back()"
+        >
+          ← Back to Branches
+        </button>
+
+        <div class="branch-title">
+          <div class="branch-icon">
+            {{ branch.name.charAt(0) }}
+          </div>
+
+          <div>
+            <h1>{{ branch.name }}</h1>
+
+            <p>
+              {{ branch.code }}
+            </p>
+          </div>
+        </div>
+
+      </div>
+
+      <span
+        class="status-badge"
+        [class.active]="branch.is_active"
+        [class.inactive]="!branch.is_active"
+      >
+        {{ branch.is_active ? 'Active' : 'Inactive' }}
+      </span>
+
+    </div>
+
+
+    <div class="details-grid">
+
+      <div class="details-card">
+
+        <div class="card-header">
+          <div>
+            <h2>Branch Information</h2>
+            <p>Basic information about this branch.</p>
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <span>Branch Name</span>
+          <strong>{{ branch.name }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Branch Code</span>
+          <strong>{{ branch.code }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Address</span>
+          <strong>{{ branch.address || '—' }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Phone</span>
+          <strong>{{ branch.phone || '—' }}</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Email</span>
+          <strong>{{ branch.email || '—' }}</strong>
+        </div>
+
+      </div>
+
+
+      <div class="details-card">
+
+        <div class="card-header">
+          <div>
+            <h2>Inventory</h2>
+            <p>
+              Products currently tracked at this branch.
+            </p>
+          </div>
+        </div>
+
+        @if (loadingInventory) {
+
+          <div class="inline-loading">
+            Loading inventory...
+          </div>
+
+        } @else if (inventoryError) {
+
+          <div class="inline-error">
+            {{ inventoryError }}
+          </div>
+
+        } @else if (inventory.length === 0) {
+
+          <div class="empty-state">
+            No inventory has been recorded for this branch yet.
+          </div>
+
+        } @else {
+
+          <div class="inventory-list">
+
+            @for (item of inventory; track item.id) {
+
+              <button
+                type="button"
+                class="inventory-item"
+                (click)="viewInventory(item.id)"
+              >
+
+                <div class="inventory-product">
+
+                  <div class="product-icon">
+                    {{
+                      item.catalog_item?.name?.charAt(0) || '?'
+                    }}
+                  </div>
+
+                  <div>
+                    <strong>
+                      {{
+                        item.catalog_item?.name ||
+                        'Unknown product'
+                      }}
+                    </strong>
+
+                    <span>
+                      {{ item.catalog_item?.sku || 'No SKU' }}
+                    </span>
+                  </div>
+
+                </div>
+
+                <div class="inventory-stock">
+
+                  <strong>
+                    {{ formatQuantity(item.quantity) }}
+                  </strong>
+
+                  <span
+                    class="status-badge"
+                    [class]="getStockStatus(item)"
+                  >
+                    {{ getStockStatusLabel(item) }}
+                  </span>
+
+                </div>
+
+              </button>
+
+            }
+
+          </div>
+
+        }
+
+      </div>
+
+    </div>
+
+  }
+
+
+  @if (loading) {
+
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading branch...</p>
+    </div>
+
+  }
+
+
+  @if (!loading && error) {
+
+    <div class="state-card error-state">
+
+      <h3>Unable to load branch</h3>
+
+      <p>{{ error }}</p>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="back()"
+      >
+        Back to Branches
+      </button>
+
+    </div>
+
+  }
+
+</div>

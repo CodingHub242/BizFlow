@@ -17,6 +17,7 @@ export interface CatalogItem {
   tax_rate?: number | string | null;
   track_inventory: boolean;
   is_active: boolean;
+  image_url : string | null;
   created_at?: string | null;
   updated_at?: string | null;
   deleted_at?: string | null;
