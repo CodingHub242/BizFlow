@@ -76,3 +76,10 @@ $user->getRoleNames();
 
 
 Get-ChildItem src\app\features -Directory
+
+
+$user = \App\Models\PlatformAdmin::create([
+    'name' => 'Jonathan Attram',
+    'email' => 'jonathanattram12@yahoo.com',
+    'password' => \Illuminate\Support\Facades\Hash::make('Nhyiraba12'),
+]);

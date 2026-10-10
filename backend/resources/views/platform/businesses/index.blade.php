@@ -13,7 +13,12 @@
             display: flex;
         }
 
-       
+       a{
+        text-decoration:none;
+       }
+       a:hover{
+        text-decoration:none;
+       }
 
         .brand {
             padding: 0 12px 28px;
@@ -272,7 +277,7 @@
         }
 
         .view-link:hover {
-            text-decoration: underline;
+            text-decoration: none;
         }
 
         /* Empty state */
@@ -517,25 +522,35 @@
                         <tbody>
 
                         @foreach ($businesses as $business)
-
+                            
                             <tr>
-
+                           
                                 <td>
-                                    <div class="business-name">
-                                        {{ $business->name }}
-                                    </div>
+                                     <a
+                                        href="{{ route('platform.businesses.show', $business) }}"
+                                        class="view-lin"
+                                    >
+                                        <div class="business-name">
+                                            {{ $business->name }}
+                                        </div>
 
-                                    <div class="business-slug">
-                                        {{ $business->slug }}
-                                    </div>
+                                        <div class="business-slug">
+                                            {{ $business->slug }}
+                                        </div>
+                                    </a>
                                 </td>
 
                                 <td>
-                                    <div>{{ $business->email ?: '—' }}</div>
+                                     <a
+                                        href="{{ route('platform.businesses.show', $business) }}"
+                                        class="view-lin"
+                                    >
+                                        <div>{{ $business->email ?: '—' }}</div>
 
-                                    <div class="muted">
-                                        {{ $business->phone ?: '—' }}
-                                    </div>
+                                        <div class="muted">
+                                            {{ $business->phone ?: '—' }}
+                                        </div>
+                                    </a>
                                 </td>
 
                                 <td class="muted">
@@ -560,9 +575,9 @@
                                         View
                                     </a>
                                 </td>
-
+                           
                             </tr>
-
+                           
                         @endforeach
 
                         </tbody>
