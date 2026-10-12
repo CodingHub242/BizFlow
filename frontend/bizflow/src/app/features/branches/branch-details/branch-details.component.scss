@@ -536,3 +536,14 @@
     padding: 0 8px;
   }
 }
+
+.product-thumbnail {
+  display: block;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}

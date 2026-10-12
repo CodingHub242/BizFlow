@@ -124,9 +124,19 @@
                 <div class="inventory-product">
 
                   <div class="product-icon">
+                      @if (item.catalog_item?.image_url) {
+                      <img
+                        class="product-thumbnail"
+                        [src]="item.catalog_item!.image_url!"
+                        [alt]="item.catalog_item?.name || 'Product image'"
+                        loading="lazy"
+                      />
+                    }
+                    @else{
                     {{
                       item.catalog_item?.name?.charAt(0) || '?'
                     }}
+                  }
                   </div>
 
                   <div>

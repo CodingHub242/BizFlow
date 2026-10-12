@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\InventoryImportController;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\BusinessOnboardingController;
 use App\Http\Controllers\RoleController;
@@ -138,6 +139,11 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::post('/inventory/transfer', [InventoryController::class, 'transfer'])
         ->middleware('permission:inventory.transfer');
+
+    Route::post('/inventory/imports/preview',[InventoryImportController::class, 'preview']
+    )->middleware('permission:inventory.import');
+
+    Route::get('/inventory/imports/{uuid}',[InventoryImportController::class, 'show'])->middleware('permission:inventory.import');
 
     //EXPENSES
     Route::post('/expenses', [ExpenseController::class, 'store'])

@@ -43,6 +43,7 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+        'inventory.import',
 
         // Branches
         'branches.view',
@@ -107,6 +108,7 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+        'inventory.import',
 
         'branches.view',
         'branches.create',
@@ -163,6 +165,7 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+        'inventory.import',
 
         'branches.view',
         'branches.create',
@@ -215,6 +218,7 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+        'inventory.import',
 
         'branches.view',
         'branches.create',
@@ -283,6 +287,7 @@ class BizFlowRolePermissionSeeder extends Seeder
         'inventory.receive',
         'inventory.adjust',
         'inventory.transfer',
+        'inventory.import',
 
         'branches.view',
 
