@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CatalogItemResource extends JsonResource
@@ -21,6 +22,11 @@ class CatalogItemResource extends JsonResource
             'tax_rate' => $this->tax_rate,
             'track_inventory' => $this->track_inventory,
             'is_active' => $this->is_active,
+
+            'image_url' => $this->image_path
+                ? url(Storage::disk('public')->url($this->image_path))
+                : null,
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'deleted_at' => $this->deleted_at,

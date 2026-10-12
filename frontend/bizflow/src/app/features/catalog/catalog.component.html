@@ -91,6 +91,7 @@
 
         <thead>
           <tr>
+            <th>Image</th>
             <th>Name</th>
             <th>Type</th>
             <th>SKU</th>
@@ -111,9 +112,28 @@
               (click)="viewCatalogItem(item.id)"
             >
 
+            <td>
+              <div class="catalog-item-cell">
+                 @if (item.image_url) {
+                    <img
+                      class="catalog-item-thumbnail"
+                      [src]="item.image_url"
+                      [alt]="item.name"
+                      loading="lazy"
+                    />
+                  } @else {
+                    <div class="catalog-item-thumbnail-fallback" aria-hidden="true">
+                      {{ item.name.charAt(0) || '?' }}
+                    </div>
+                  }
+                </div>
+            </td>
+
               <td>
-                <div class="catalog-name">
-                  {{ item.name }}
+                <div class="catalog-item-cell">
+                  <div class="catalog-name">
+                    {{ item.name }}
+                  </div>
                 </div>
               </td>
 

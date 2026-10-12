@@ -1,4 +1,4 @@
-import { Component, OnInit,inject } from '@angular/core';
+import { Component, OnInit,inject,OnDestroy } from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {Router} from '@angular/router';
 import {CatalogApi,CreateCatalogItemRequest,CatalogItemType,} from '../../../core/services/catalog-api';
@@ -9,10 +9,14 @@ import {CatalogApi,CreateCatalogItemRequest,CatalogItemType,} from '../../../cor
   styleUrls: ['./add-catalog-item.component.scss'],
   imports: [FormsModule],
 })
-export class AddCatalogItemComponent {
+export class AddCatalogItemComponent implements OnDestroy {
   private readonly catalogApi = inject(CatalogApi);
 
   private readonly router = inject(Router);
+
+  selectedImage: File | null = null;
+  imagePreviewUrl: string | null = null;
+  imageError = '';
 
    name = '';
 
@@ -79,25 +83,89 @@ export class AddCatalogItemComponent {
 
     this.submitting = true;
 
-    this.catalogApi.create(data).subscribe({
+    const request$ = this.selectedImage ? this.catalogApi.create(data, this.selectedImage) : this.catalogApi.create(data);
+
+    request$.subscribe({
       next: () => {
         this.submitting = false;
-
+        this.revokeImagePreview();
         this.router.navigate(['/catalog']);
       },
-
-      error: error => {
+      error: (error) => {
         this.submitting = false;
 
-        if (error?.error?.message) {
-          this.errorMessage = error.error.message;
-        } else {
-          this.errorMessage =
-            'Unable to create catalog item.';
-        }
+        this.errorMessage =
+          error?.error?.message ??
+          'Unable to create catalog item. Please try again.';
       },
     });
+
+    // this.catalogApi.create(data).subscribe({
+    //   next: () => {
+    //     this.submitting = false;
+
+    //     this.router.navigate(['/catalog']);
+    //   },
+
+    //   error: error => {
+    //     this.submitting = false;
+
+    //     if (error?.error?.message) {
+    //       this.errorMessage = error.error.message;
+    //     } else {
+    //       this.errorMessage =
+    //         'Unable to create catalog item.';
+    //     }
+    //   },
+    // });
   }
+
+  private revokeImagePreview(): void {
+  if (this.imagePreviewUrl) {
+    URL.revokeObjectURL(this.imagePreviewUrl);
+    this.imagePreviewUrl = null;
+  }
+}
+onImageSelected(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+
+  this.imageError = '';
+
+  if (!file) {
+    return;
+  }
+
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    this.imageError = 'Choose a JPEG, PNG, or WebP image.';
+    input.value = '';
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    this.imageError = 'The image must be 5 MB or smaller.';
+    input.value = '';
+    return;
+  }
+
+  this.revokeImagePreview();
+
+  this.selectedImage = file;
+  this.imagePreviewUrl = URL.createObjectURL(file);
+}
+
+removeSelectedImage(input: HTMLInputElement): void {
+  this.selectedImage = null;
+  this.imageError = '';
+  this.revokeImagePreview();
+  input.value = '';
+}
 
   cancel(): void {
     this.router.navigate(['/catalog']);
@@ -108,5 +176,9 @@ export class AddCatalogItemComponent {
       this.track_inventory = false;
     }
   }
+
+  ngOnDestroy(): void {
+  this.revokeImagePreview();
+}
 
 }

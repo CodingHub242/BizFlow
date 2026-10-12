@@ -7,6 +7,7 @@ use App\Models\CatalogItem;
 use App\Models\Category;
 use App\Models\Branch;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +26,7 @@ class CatalogItemController extends Controller
             'cost_price' => ['required', 'numeric', 'gte:0'],
             'is_active' => ['sometimes', 'boolean'],
             'selling_price' => ['required', 'numeric', 'gte:0'],
+            'image' => ['sometimes','nullable','image','mimes:jpg,jpeg,png,webp','max:5120'],
             'tax_rate' => ['nullable', 'numeric', 'gte:0'],
             'track_inventory' => ['boolean'],
         ]);
@@ -44,10 +46,29 @@ class CatalogItemController extends Controller
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store(
+                "catalog-items/{$user->tenant_id}/{$catalogItem->id}",
+                'public',
+            );
+
+            if (! $path) {
+                $catalogItem->delete();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unable to store the product image.',
+                ], 500);
+            }
+
+            $catalogItem->image_path = $path;
+            $catalogItem->save();
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Catalog item created successfully.',
-            'data' => $catalogItem,
+            'data' => new CatalogItemResource($catalogItem->fresh()),
         ], 201);
     }
 
@@ -257,6 +278,74 @@ class CatalogItemController extends Controller
                 'per_page' => $catalogItems->perPage(),
                 'total' => $catalogItems->total(),
             ],
+        ]);
+    }
+
+    public function uploadImage(Request $request,CatalogItem $catalogItem): JsonResponse {
+        $tenantId = $request->user()->tenant_id;
+
+        if ((int) $catalogItem->tenant_id !== (int) $tenantId) {
+            abort(404);
+        }
+
+        $request->validate([
+            'image' => [
+                'required',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+        ]);
+
+        $path = $request->file('image')->store(
+            "catalog-items/{$tenantId}/{$catalogItem->id}",
+            'public',
+        );
+
+        if (! $path) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to store the product image.',
+            ], 500);
+        }
+
+        $oldPath = $catalogItem->image_path;
+
+        $catalogItem->image_path = $path;
+        $catalogItem->save();
+
+        if ($oldPath && $oldPath !== $path) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catalog image updated successfully.',
+            'data' => new CatalogItemResource($catalogItem->fresh()),
+        ]);
+    }
+
+    public function deleteImage(Request $request,CatalogItem $catalogItem): JsonResponse {
+        if (
+            (int) $catalogItem->tenant_id !==
+            (int) $request->user()->tenant_id
+        ) {
+            abort(404);
+        }
+
+        $oldPath = $catalogItem->image_path;
+
+        $catalogItem->image_path = null;
+        $catalogItem->save();
+
+        if ($oldPath) {
+            Storage::disk('public')->delete($oldPath);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Catalog image removed successfully.',
+            'data' => new CatalogItemResource($catalogItem->fresh()),
         ]);
     }
 }

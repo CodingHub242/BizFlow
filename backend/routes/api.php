@@ -111,6 +111,12 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
         ->middleware('permission:products.update')
         ->withTrashed();
 
+    Route::post('/catalog-items/{catalogItem}/image',[CatalogItemController::class, 'uploadImage']
+    )->middleware('permission:products.update');
+
+    Route::delete('/catalog-items/{catalogItem}/image',[CatalogItemController::class, 'deleteImage']
+    )->middleware('permission:products.update');
+
     //INVENTORY
     Route::get('/inventory', [InventoryController::class, 'index'])
         ->middleware('permission:inventory.view');

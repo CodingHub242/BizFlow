@@ -146,10 +146,46 @@ export class CatalogApi {
 
   create(
     data: CreateCatalogItemRequest,
+    image?: File,
   ): Observable<CatalogItemResponse> {
+    const url = `${this.apiUrl}/catalog-items`;
+
+    if (!image) {
+      return this.http.post<CatalogItemResponse>(url, data);
+    }
+
+    const formData = new FormData();
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === null || value === undefined) {
+        return;
+      }
+
+      if (typeof value === 'boolean') {
+        formData.append(key, value ? '1' : '0');
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+
+    formData.append('image', image);
+
+    return this.http.post<CatalogItemResponse>(url, formData);
+  }
+
+  uploadImage(id: number,image: File): Observable<CatalogItemResponse> {
+    const formData = new FormData();
+    formData.append('image', image);
+
     return this.http.post<CatalogItemResponse>(
-      `${this.apiUrl}/catalog-items`,
-      data,
+      `${this.apiUrl}/catalog-items/${id}/image`,
+      formData,
+    );
+  }
+
+  deleteImage(id: number): Observable<CatalogItemResponse> {
+    return this.http.delete<CatalogItemResponse>(
+      `${this.apiUrl}/catalog-items/${id}/image`,
     );
   }
 

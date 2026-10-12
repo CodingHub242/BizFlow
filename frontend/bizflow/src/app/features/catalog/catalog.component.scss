@@ -553,3 +553,33 @@
 tr{
     cursor: pointer;
 }
+
+.catalog-item-cell {
+  // display: flex;
+  align-items: center;
+  gap: 12px;
+  // min-width: 180px;
+}
+
+.catalog-item-thumbnail,
+.catalog-item-thumbnail-fallback {
+  display: flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e5e9ed;
+  border-radius: 9px;
+  background: #f1f5f9;
+}
+
+.catalog-item-thumbnail {
+  object-fit: cover;
+}
+
+.catalog-item-thumbnail-fallback {
+  color: #0e1014;
+  font-size: 17px;
+  font-weight: 700;
+}

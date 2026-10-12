@@ -105,6 +105,48 @@
 
     </div>
 
+      <div class="form-group">
+        <label for="catalogImage">Product / Service Image</label>
+
+        <input
+          #imageInput
+          id="catalogImage"
+          type="file"
+          name="catalogImage"
+          accept="image/jpeg,image/png,image/webp"
+          (change)="onImageSelected($event)"
+          [disabled]="submitting"
+        />
+
+        <small class="field-hint">
+          JPEG, PNG, or WebP. Maximum size: 5 MB.
+        </small>
+
+        @if (imageError) {
+          <p class="image-error" role="alert">
+            {{ imageError }}
+          </p>
+        }
+
+        @if (imagePreviewUrl) {
+          <div class="image-preview">
+            <img
+              [src]="imagePreviewUrl"
+              alt="Selected catalog item preview"
+            />
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="removeSelectedImage(imageInput)"
+              [disabled]="submitting"
+            >
+              Remove Image
+            </button>
+          </div>
+        }
+      </div>
+
 
     <div class="form-group">
 

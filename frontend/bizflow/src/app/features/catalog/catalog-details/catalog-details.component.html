@@ -157,6 +157,96 @@
             (ngSubmit)="updateCatalogItem()"
           >
 
+            <div class="catalog-image-editor">
+              <div class="image-editor-heading">
+                <label for="edit-catalog-image">
+                  Product / Service Image
+                </label>
+
+                <p>
+                  Choose a new image, or remove the existing image.
+                </p>
+              </div>
+
+              <div class="image-editor-content">
+                <div class="image-editor-preview">
+                  @if (editingImageUrl) {
+                    <img
+                      [src]="editingImageUrl"
+                      [alt]="catalogItem.name"
+                    />
+                  } @else {
+                    <div class="image-placeholder">
+                      <span aria-hidden="true">
+                        {{ catalogItem.name.charAt(0) || '?' }}
+                      </span>
+                      <small>No image</small>
+                    </div>
+                  }
+                </div>
+
+                <div class="image-editor-controls">
+                  <input
+                    #editImageInput
+                    id="edit-catalog-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    [disabled]="isSaving"
+                    (change)="onImageSelected($event)"
+                  />
+
+                  <small class="image-help">
+                    JPEG, PNG, or WebP. Maximum size: 5 MB.
+                  </small>
+
+                  @if (selectedImageFile) {
+                    <p class="selected-image-name">
+                      Selected: {{ selectedImageFile.name }}
+                    </p>
+
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      [disabled]="isSaving"
+                      (click)="cancelImageChange(editImageInput)"
+                    >
+                      Cancel Image Change
+                    </button>
+                  } @else if (hasSavedImage && !removeExistingImage) {
+                    <button
+                      type="button"
+                      class="remove-image-button"
+                      [disabled]="isSaving"
+                      (click)="markImageForRemoval()"
+                    >
+                      Remove Image
+                    </button>
+                  }
+
+                  @if (removeExistingImage) {
+                    <div class="pending-image-removal">
+                      This image will be removed when you save your changes.
+
+                      <button
+                        type="button"
+                        class="secondary-button"
+                        [disabled]="isSaving"
+                        (click)="undoImageRemoval()"
+                      >
+                        Undo Removal
+                      </button>
+                    </div>
+                  }
+
+                  @if (imageError) {
+                    <p class="image-error" role="alert">
+                      {{ imageError }}
+                    </p>
+                  }
+                </div>
+              </div>
+            </div>
+
             <div class="catalog-grid">
 
               <div class="catalog-field">
@@ -194,7 +284,7 @@
                   id="edit-type"
                   formControlName="type"
                   (change)="onTypeChange()"
-                >
+                style="height:40px;">
 
                   <option value="product">
                     Product
@@ -316,7 +406,7 @@
                 <select
                   id="edit-status"
                   formControlName="is_active"
-                >
+                style="height:40px;">
 
                   <option [ngValue]="true">
                     Active
@@ -400,6 +490,24 @@
         </section>
 
       } @else {
+
+        @if (catalogItem.image_url) {
+          <section class="catalog-card catalog-image-display">
+            <div class="saved-catalog-image">
+              <img
+                [src]="catalogItem.image_url"
+                [alt]="catalogItem.name"
+              />
+            </div>
+
+            <div class="saved-catalog-image-info">
+              <h2>{{ catalogItem.name }}</h2>
+              <p>
+                {{ catalogItem.type === 'product' ? 'Product' : 'Service' }}
+              </p>
+            </div>
+          </section>
+        }
 
         <section class="catalog-card">
 

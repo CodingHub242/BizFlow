@@ -26,6 +26,7 @@ class CatalogItem extends Model
         'tax_rate',
         'track_inventory',
         'is_active',
+        'image_path',
     ];
 
     protected $casts = [
