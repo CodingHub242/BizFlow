@@ -21,6 +21,8 @@ class InventoryImportBatch extends Model
         'preview_rows',
         'expires_at',
         'imported_at',
+        'imported_rows',
+        'skipped_rows',
     ];
 
     protected function casts(): array
@@ -32,6 +34,8 @@ class InventoryImportBatch extends Model
             'row_count' => 'integer',
             'valid_rows' => 'integer',
             'invalid_rows' => 'integer',
+            'imported_rows' => 'integer',
+            'skipped_rows' => 'integer',
         ];
     }
 

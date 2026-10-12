@@ -145,6 +145,9 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::get('/inventory/imports/{uuid}',[InventoryImportController::class, 'show'])->middleware('permission:inventory.import');
 
+    Route::post('/inventory/imports/{uuid}/confirm',[InventoryImportController::class, 'confirm']
+    )->middleware('permission:inventory.import');
+
     //EXPENSES
     Route::post('/expenses', [ExpenseController::class, 'store'])
         ->middleware('permission:expenses.create');
