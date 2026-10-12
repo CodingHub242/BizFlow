@@ -1,0 +1,263 @@
+<div class="transfer-stock-page">
+  <div class="page-header">
+    <div>
+      <button
+        type="button"
+        class="back-button"
+        (click)="cancel()"
+      >
+        ← Back to Inventory
+      </button>
+
+      <h1>Transfer Stock</h1>
+      <p>Move inventory between branches and keep stock balances accurate.</p>
+    </div>
+  </div>
+
+  @if (branchLoadError || catalogLoadError) {
+    <div class="alert alert-error" role="alert">
+      @if (branchLoadError) {
+        <p>{{ branchLoadError }}</p>
+      }
+      @if (catalogLoadError) {
+        <p>{{ catalogLoadError }}</p>
+      }
+    </div>
+  }
+
+  <div class="form-card">
+    @if (success) {
+      <div class="alert alert-success" role="status">
+        {{ success }}
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-error" role="alert">
+        {{ error }}
+      </div>
+    }
+
+    <form (ngSubmit)="submit()">
+      <div class="form-grid">
+        <div class="form-group form-group-full">
+          <label for="transferProduct">
+            Product <span>*</span>
+          </label>
+
+          <app-searchable-select
+            inputId="transferProduct"
+            name="transferProduct"
+            [(ngModel)]="catalogItemId"
+            (ngModelChange)="onSelectionChanged()"
+            [options]="productOptions"
+            [disabled]="loading || loadingCatalogItems"
+            [required]="true"
+            placeholder="Select a product"
+            searchPlaceholder="Search product name or SKU..."
+            noResultsText="No matching inventory-tracked products found."
+          />
+
+          @if (loadingCatalogItems) {
+            <small class="field-hint">Loading products...</small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="sourceBranch">
+            From Branch <span>*</span>
+          </label>
+
+          <app-searchable-select
+            inputId="sourceBranch"
+            name="sourceBranch"
+            [(ngModel)]="sourceBranchId"
+            (ngModelChange)="onSelectionChanged()"
+            [options]="branchOptions"
+            [disabled]="loading || loadingBranches"
+            [required]="true"
+            placeholder="Select source branch"
+            searchPlaceholder="Search branch name or code..."
+            noResultsText="No matching branches found."
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="destinationBranch">
+            To Branch <span>*</span>
+          </label>
+
+          <app-searchable-select
+            inputId="destinationBranch"
+            name="destinationBranch"
+            [(ngModel)]="destinationBranchId"
+            (ngModelChange)="onSelectionChanged()"
+            [options]="branchOptions"
+            [disabled]="loading || loadingBranches"
+            [required]="true"
+            placeholder="Select destination branch"
+            searchPlaceholder="Search branch name or code..."
+            noResultsText="No matching branches found."
+          />
+        </div>
+      </div>
+
+      @if (
+        sourceBranchId !== null &&
+        sourceBranchId === destinationBranchId
+      ) {
+        <div class="inline-warning" role="alert">
+          Choose two different branches for a stock transfer.
+        </div>
+      }
+
+      @if (
+        sourceBranchId !== null &&
+        destinationBranchId !== null &&
+        catalogItemId !== null
+      ) {
+        <section class="balance-section">
+          <div class="section-heading">
+            <h2>Stock Balances</h2>
+            <p>Quantities before and after this transfer.</p>
+          </div>
+
+          @if (loadingBalances) {
+            <div class="balance-loading">
+              Checking branch stock balances...
+            </div>
+          } @else if (balanceError) {
+            <div class="inline-warning" role="alert">
+              {{ balanceError }}
+
+              @if (
+                sourceBranchId !== destinationBranchId
+              ) {
+                <button
+                  type="button"
+                  class="retry-button"
+                  (click)="loadBalances()"
+                  [disabled]="loading"
+                >
+                  Retry
+                </button>
+              }
+            </div>
+          } @else if (balancesLoaded && sourceInventory) {
+            <div class="balance-grid">
+              <div class="balance-card">
+                <span class="balance-label">Source Stock</span>
+                <strong class="balance-value">
+                  {{ formatQuantity(sourceQuantity!) }}
+                </strong>
+                <small>Available before transfer</small>
+
+                <div class="balance-result">
+                  <span>Remaining</span>
+                  <strong>
+                    @if (projectedSourceQuantity !== null) {
+                      {{ formatQuantity(projectedSourceQuantity) }}
+                    } @else {
+                      —
+                    }
+                  </strong>
+                </div>
+              </div>
+
+              <div class="balance-card destination-card">
+                <span class="balance-label">Destination Stock</span>
+                <strong class="balance-value">
+                  {{ formatQuantity(destinationQuantity) }}
+                </strong>
+                <small>Current balance at destination</small>
+
+                <div class="balance-result">
+                  <span>After transfer</span>
+                  <strong>
+                    @if (projectedDestinationQuantity !== null) {
+                      {{ formatQuantity(projectedDestinationQuantity) }}
+                    } @else {
+                      —
+                    }
+                  </strong>
+                </div>
+              </div>
+            </div>
+          }
+        </section>
+      }
+
+      <div class="form-grid transfer-fields">
+        <div class="form-group">
+          <label for="transferQuantity">
+            Transfer Quantity <span>*</span>
+          </label>
+
+          <input
+            id="transferQuantity"
+            name="transferQuantity"
+            type="number"
+            min="0.001"
+            step="0.001"
+            [(ngModel)]="quantity"
+            [disabled]="loading || !sourceInventory"
+            placeholder="Enter quantity"
+            required
+          />
+
+          <small class="field-hint">
+            Maximum available: {{ sourceQuantity === null
+              ? '—'
+              : formatQuantity(sourceQuantity) }}
+          </small>
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="transferNotes">Notes</label>
+
+          <textarea
+            id="transferNotes"
+            name="transferNotes"
+            rows="3"
+            [(ngModel)]="notes"
+            [disabled]="loading"
+            placeholder="Optional reason or transfer reference..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="cancel()"
+          [disabled]="loading"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="
+            loading ||
+            loadingBranches ||
+            loadingCatalogItems ||
+            loadingBalances ||
+            !balancesLoaded ||
+            !sourceInventory ||
+            sourceBranchId === null ||
+            destinationBranchId === null ||
+            sourceBranchId === destinationBranchId
+          "
+        >
+          @if (loading) {
+            Transferring...
+          } @else {
+            Transfer Stock
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -2,6 +2,7 @@ import {ChangeDetectorRef,Component,OnDestroy,OnInit,inject} from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
+import {SearchableSelectComponent,SearchableSelectOption} from '../../../shared/components/searchable-select/searchable-select.component';
 import {InventoryApi,ReceiveStockRequest,} from '../../../core/services/inventory-api.service';
 import { Branch, BranchApi } from '../../../core/services/branch-api';
 import {CatalogApi,CatalogItem,} from '../../../core/services/catalog-api';
@@ -9,7 +10,7 @@ import {CatalogApi,CatalogItem,} from '../../../core/services/catalog-api';
 @Component({
   selector: 'app-receive-stock',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule,SearchableSelectComponent],
   templateUrl: './receive-stock.component.html',
   styleUrl: './receive-stock.component.scss',
 })
@@ -39,10 +40,6 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
 
   error = '';
   success = '';
-
-
-  branchSearch = '';
-  productSearch = '';
 
   showCreateBranch = false;
 
@@ -167,9 +164,14 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
           this.success =
             response.message ||
             'Stock received successfully.';
+
           this.cdr.markForCheck();
 
           this.cdr.detectChanges();
+
+           this.branchId = null;
+          this.catalogItemId = null;
+          this.quantity = null;
         },
         error: () => {
           this.loading = false;
@@ -184,31 +186,31 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
     this.router.navigate(['/inventory']);
   }
 
-  get filteredBranches(): Branch[] {
-  const search = this.branchSearch.trim().toLowerCase();
+//   get filteredBranches(): Branch[] {
+//   const search = this.branchSearch.trim().toLowerCase();
 
-  if (!search) {
-    return this.branches;
-  }
+//   if (!search) {
+//     return this.branches;
+//   }
 
-  return this.branches.filter((branch) =>
-    branch.name.toLowerCase().includes(search) ||
-    branch.code.toLowerCase().includes(search),
-  );
-}
+//   return this.branches.filter((branch) =>
+//     branch.name.toLowerCase().includes(search) ||
+//     branch.code.toLowerCase().includes(search),
+//   );
+// }
 
-get filteredCatalogItems(): CatalogItem[] {
-  const search = this.productSearch.trim().toLowerCase();
+// get filteredCatalogItems(): CatalogItem[] {
+//   const search = this.productSearch.trim().toLowerCase();
 
-  if (!search) {
-    return this.catalogItems;
-  }
+//   if (!search) {
+//     return this.catalogItems;
+//   }
 
-  return this.catalogItems.filter((item) =>
-    item.name.toLowerCase().includes(search) ||
-    (item.sku ?? '').toLowerCase().includes(search),
-  );
-}
+//   return this.catalogItems.filter((item) =>
+//     item.name.toLowerCase().includes(search) ||
+//     (item.sku ?? '').toLowerCase().includes(search),
+//   );
+// }
 
 openCreateBranch(): void {
     this.branchCreateError = '';
@@ -272,8 +274,6 @@ closeCreateBranch(): void {
 
         this.branchId = branch.id;
 
-        this.branchSearch = '';
-
         this.creatingBranch = false;
         this.showCreateBranch = false;
 
@@ -293,6 +293,23 @@ closeCreateBranch(): void {
       },
     });
 }
+
+//managing search and selectors
+  get branchOptions(): SearchableSelectOption[] {
+    return this.branches.map((branch) => ({
+      value: branch.id,
+      label: branch.name,
+      description: branch.code || undefined,
+    }));
+  }
+
+  get productOptions(): SearchableSelectOption[] {
+    return this.catalogItems.map((item) => ({
+      value: item.id,
+      label: item.name,
+      description: item.sku || undefined,
+    }));
+  }
 
   ngOnDestroy(): void {
     this.destroy$.next();

@@ -1,0 +1,96 @@
+<div class="searchable-select" [class.is-open]="isOpen">
+  <div class="select-control">
+    <input
+      [id]="inputId"
+      type="text"
+      role="combobox"
+      autocomplete="off"
+      [value]="displayValue"
+      [placeholder]="isOpen ? searchPlaceholder : placeholder"
+      [required]="required"
+      [attr.aria-required]="required"
+      [attr.aria-expanded]="isOpen"
+      [attr.aria-controls]="listboxId"
+      [attr.disabled]="isDisabled ? '' : null"
+      [attr.aria-activedescendant]="
+        isOpen && filteredOptions.length
+          ? optionId(activeIndex)
+          : null
+      "
+      [attr.aria-autocomplete]="'list'"
+      (focus)="openDropdown()"
+      (input)="onInput($event)"
+      (keydown)="onKeydown($event)"
+    />
+
+    @if (canClearSelection) {
+  <button
+    type="button"
+    class="clear-button"
+    aria-label="Clear selection"
+    (click)="clearSelection($event)"
+  >
+    ×
+  </button>
+}
+
+    <button
+      type="button"
+      class="toggle-button"
+      [attr.aria-label]="isOpen ? 'Close options' : 'Open options'"
+      [attr.aria-expanded]="isOpen"
+      [attr.disabled]="isDisabled ? '' : null"
+      (click)="toggleDropdown()"
+    >
+      <span [class.rotated]="isOpen">⌄</span>
+    </button>
+  </div>
+
+  @if (isOpen) {
+    <div class="select-dropdown">
+      <div
+        class="select-options"
+        role="listbox"
+        [id]="listboxId"
+        [attr.aria-label]="placeholder"
+      >
+        @for (
+          option of filteredOptions;
+          track option.value;
+          let i = $index
+        ) {
+          <button
+            type="button"
+            class="select-option"
+            [class.active]="i === activeIndex"
+            [class.selected]="option.value === selectedOption?.value"
+            [id]="optionId(i)"
+            role="option"
+            [attr.aria-selected]="option.value === selectedOption?.value"
+            (mousedown)="onOptionMouseDown($event)"
+            (click)="selectOption(option)"
+            (mouseenter)="activeIndex = i"
+          >
+            <span class="option-text">
+              <span class="option-label">{{ option.label }}</span>
+
+              @if (option.description) {
+                <span class="option-description">
+                  {{ option.description }}
+                </span>
+              }
+            </span>
+
+            @if (option.value === selectedOption?.value) {
+              <span class="selected-check" aria-hidden="true">✓</span>
+            }
+          </button>
+        } @empty {
+          <div class="no-results">
+            {{ noResultsText }}
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

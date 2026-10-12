@@ -7,10 +7,21 @@
       <p>Manage stock levels across your branches.</p>
     </div>
 
-    <button class="primary-button" type="button" (click)="receiveStock()">
-      <span>+</span>
-      Receive Stock
-    </button>
+
+    <div class="header-actions">
+      <button style="padding:15px 17px;" class="secondary-button" type="button" (click)="transferStock()">
+        Transfer Stock
+      </button>
+
+      <button style="padding:15px 17px;" class="secondary-button" type="button" (click)="adjustStock()">
+        Adjust Stock
+      </button>
+
+      <button class="primary-button" type="button" (click)="receiveStock()">
+        <span>+</span>
+        Receive Stock
+      </button>
+    </div>
   </div>
 
   <!-- Toolbar -->

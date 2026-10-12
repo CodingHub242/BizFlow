@@ -1,0 +1,223 @@
+<div class="adjust-stock-page">
+  <div class="page-header">
+    <div>
+      <button
+        type="button"
+        class="back-button"
+        (click)="cancel()"
+      >
+        ← Back to Inventory
+      </button>
+
+      <h1>Adjust Stock</h1>
+      <p>Correct inventory quantities and record the reason.</p>
+    </div>
+  </div>
+
+  @if (branchLoadError || catalogLoadError) {
+    <div class="alert alert-error">
+      @if (branchLoadError) {
+        <p>{{ branchLoadError }}</p>
+      }
+      @if (catalogLoadError) {
+        <p>{{ catalogLoadError }}</p>
+      }
+    </div>
+  }
+
+  <div class="form-card">
+    @if (success) {
+      <div class="alert alert-success" role="status">
+        {{ success }}
+      </div>
+    }
+
+    @if (error) {
+      <div class="alert alert-error" role="alert">
+        {{ error }}
+      </div>
+    }
+
+    <form (ngSubmit)="submit()">
+      <div class="form-grid">
+       <div class="form-group">
+          <label for="branch">
+            Branch <span>*</span>
+          </label>
+
+          <app-searchable-select
+            inputId="branch"
+            name="branch"
+            [(ngModel)]="branchId"
+            (ngModelChange)="onSelectionChanged()"
+            [options]="branchOptions"
+            [disabled]="loading || loadingBranches"
+            [required]="true"
+            placeholder="Select a branch"
+            searchPlaceholder="Search branch name or code..."
+            noResultsText="No matching branches found."
+          />
+
+          @if (loadingBranches) {
+            <small class="field-hint">Loading branches...</small>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="product">
+            Product <span>*</span>
+          </label>
+
+          <app-searchable-select
+            inputId="product"
+            name="product"
+            [(ngModel)]="catalogItemId"
+            (ngModelChange)="onSelectionChanged()"
+            [options]="productOptions"
+            [disabled]="loading || loadingCatalogItems"
+            [required]="true"
+            placeholder="Select a product"
+            searchPlaceholder="Search product name or SKU..."
+            noResultsText="No matching products found."
+          />
+
+          @if (loadingCatalogItems) {
+            <small class="field-hint">Loading products...</small>
+          }
+        </div>
+      </div>
+
+      @if (branchId !== null && catalogItemId !== null) {
+        <div class="stock-summary">
+          @if (loadingCurrentStock) {
+            <p>Checking current stock...</p>
+          } @else if (stockLookupError) {
+            <p class="summary-error">{{ stockLookupError }}</p>
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="loadCurrentStock()"
+            >
+              Retry
+            </button>
+          } @else if (currentInventory) {
+            <div class="stock-summary-grid">
+              <div>
+                <span>Current Stock</span>
+                <strong>
+                  {{ formatQuantity(currentInventory.quantity) }}
+                </strong>
+              </div>
+
+              <div>
+                <span>Stock After Adjustment</span>
+                <strong
+                  [class.negative-quantity]="
+                    previewQuantity !== null && previewQuantity < 0
+                  "
+                >
+                  @if (previewQuantity === null) {
+                    —
+                  } @else {
+                    {{ formatQuantity(previewQuantity) }}
+                  }
+                </strong>
+              </div>
+            </div>
+          } @else if (stockLookupComplete) {
+            <p class="summary-error">
+              No inventory record exists for this product at this branch.
+              Receive stock first before adjusting it.
+            </p>
+          }
+        </div>
+      }
+
+      <div class="form-grid adjustment-fields">
+        <div class="form-group">
+          <label for="direction">
+            Adjustment Type <span>*</span>
+          </label>
+
+          <select
+            id="direction"
+            name="direction"
+            [(ngModel)]="direction"
+            [disabled]="loading"
+            required
+           style="height:44px;">
+            <option value="increase">Increase Stock</option>
+            <option value="decrease">Decrease Stock</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="quantity">
+            Adjustment Quantity <span>*</span>
+          </label>
+
+          <input
+            id="quantity"
+            name="quantity"
+            type="number"
+            min="0.001"
+            step="0.001"
+            [(ngModel)]="quantity"
+            [disabled]="loading || !currentInventory"
+            placeholder="Enter quantity"
+            required
+          />
+          <small class="field-hint">
+            Enter a positive quantity. The adjustment type determines
+            whether stock increases or decreases.
+          </small>
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="notes">
+            Reason for Adjustment <span>*</span>
+          </label>
+
+          <textarea
+            id="notes"
+            name="notes"
+            rows="3"
+            [(ngModel)]="notes"
+            [disabled]="loading"
+            placeholder="e.g. Physical count correction, damaged goods..."
+            required
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="cancel()"
+          [disabled]="loading"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="
+            loading ||
+            loadingBranches ||
+            loadingCatalogItems ||
+            loadingCurrentStock ||
+            !currentInventory
+          "
+        >
+          @if (loading) {
+            Adjusting Stock...
+          } @else {
+            Adjust Stock
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

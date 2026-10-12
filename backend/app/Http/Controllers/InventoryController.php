@@ -46,8 +46,8 @@ class InventoryController extends Controller
 
             $query->whereHas('catalogItem', function ($catalogQuery) use ($search) {
                 $catalogQuery
-                    ->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('sku', 'LIKE', "%{$search}%");
+                    ->where('name', 'iLIKE', "%{$search}%")
+                    ->orWhere('sku', 'iLIKE', "%{$search}%");
             });
         }
 
@@ -236,6 +236,12 @@ class InventoryController extends Controller
 
     public function transfer(Request $request,InventoryService $inventoryService): JsonResponse 
     {
+        if ($request->has('source_branch_id') && $request->has('destination_branch_id')) {
+            $request->merge([
+                'from_branch_id' => $request->input('source_branch_id'),
+                'to_branch_id' => $request->input('destination_branch_id')
+            ]);
+        }
         $request->validate([
             'from_branch_id' => ['required', 'integer', 'min:1'],
             'to_branch_id' => ['required', 'integer', 'min:1'],

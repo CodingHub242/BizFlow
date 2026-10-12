@@ -42,107 +42,47 @@
     <form (ngSubmit)="submit()">
       <div class="form-grid">
 
-        <div class="form-group">
-          <label>
-            Branch <span>*</span>
-          </label>
+       <div class="form-group">
+        <label for="branch">
+          Branch <span>*</span>
+        </label>
 
-          <!-- <button
-            type="button"
-            class="btn btn-add-branch"
-            (click)="openCreateBranch()"
-            [disabled]="loading || creatingBranch"
-          >
-            + Add New Branch
-          </button> -->
+        <app-searchable-select
+          inputId="branch"
+          name="branch"
+          [(ngModel)]="branchId"
+          [options]="branchOptions"
+          [disabled]="loading || loadingBranches"
+          [required]="true"
+          placeholder="Select a branch"
+          searchPlaceholder="Search branch name or code..."
+        />
 
-          <input
-            id="branchSearch"
-            name="branchSearch"
-            type="search"
-            [(ngModel)]="branchSearch"
-            [disabled]="loading || loadingBranches"
-            placeholder="Search branches..."
-            class="search-input"
-          />
+        @if (loadingBranches) {
+          <small class="field-hint">Loading branches...</small>
+        }
+      </div>
 
-          <select
-            id="branch"
-            name="branch"
-            [(ngModel)]="branchId"
-            [disabled]="loading || loadingBranches"
-          >
-            <option [ngValue]="null">
-              {{ loadingBranches ? 'Loading branches...' : 'Select branch' }}
-            </option>
-
-            @for (branch of filteredBranches; track branch.id) {
-              <option [ngValue]="branch.id">
-                {{ branch.name }} — {{ branch.code }}
-              </option>
-            }
-          </select>
-
-          @if (
-            !loadingBranches &&
-            branchSearch &&
-            filteredBranches.length === 0
-          ) {
-            <small class="field-hint">
-              No branches match "{{ branchSearch }}".
-            </small>
-          }
-        </div>
-
-        <div class="form-group">
+      <div class="form-group">
         <label for="product">
           Product <span>*</span>
         </label>
 
-        <input
-          id="productSearch"
-          name="productSearch"
-          type="search"
-          [(ngModel)]="productSearch"
-          [disabled]="loading || loadingCatalogItems"
-          placeholder="Search products..."
-          class="search-input"
-        />
+       <app-searchable-select
+        inputId="product"
+        name="product"
+        [(ngModel)]="catalogItemId"
+        [options]="productOptions"
+        [disabled]="loading || loadingCatalogItems"
+        [required]="true"
+        placeholder="Select a product"
+        searchPlaceholder="Search product name or SKU..."
+      />
 
-        <select
-          id="product"
-          name="product"
-          [(ngModel)]="catalogItemId"
-          [disabled]="loading || loadingCatalogItems"
-        >
-          <option [ngValue]="null">
-            {{
-              loadingCatalogItems
-                ? 'Loading products...'
-                : 'Select product'
-            }}
-          </option>
-
-          @for (item of filteredCatalogItems; track item.id) {
-            <option [ngValue]="item.id">
-              {{ item.name }}
-              @if (item.sku) {
-                — {{ item.sku }}
-              }
-            </option>
-          }
-        </select>
-
-          @if (
-            !loadingCatalogItems &&
-            productSearch &&
-            filteredCatalogItems.length === 0
-          ) {
-            <small class="field-hint">
-              No products match "{{ productSearch }}".
-            </small>
-          }
-        </div>
+        @if (loadingCatalogItems) {
+          <small class="field-hint">Loading products...</small>
+        }
+      </div>
 
         <div class="form-group">
           <label for="quantity">

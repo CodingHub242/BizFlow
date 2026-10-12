@@ -4,10 +4,7 @@ import { Router } from '@angular/router';
 import {Branch,BranchApi} from '../../core/services/branch-api';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
-import {
-  Inventory,
-  InventoryApi,
-} from '../../core/services/inventory-api.service';
+import {Inventory,InventoryApi} from '../../core/services/inventory-api.service';
 
 type StockStatus =
   | 'in-stock'
@@ -45,6 +42,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
   lastPage = 1;
   totalItems = 0;
   perPage = 15;
+
 
   ngOnInit(): void {
     this.loadBranches();
@@ -113,7 +111,11 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
           this.loading = false;
 
+        //  this.loadMovements(1);
+
           this.cdr.markForCheck();
+
+          this.cdr.detectChanges();
         },
         error: () => {
           this.inventory = [];
@@ -121,9 +123,15 @@ export class InventoryComponent implements OnInit, OnDestroy {
           this.error = 'Unable to load inventory. Please try again.';
 
           this.cdr.markForCheck();
+
+          this.cdr.detectChanges();
         },
       });
   }
+
+ 
+
+
 
   searchInventoryItems(value: string): void {
     this.searchSubject.next(value);
@@ -141,6 +149,14 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
   receiveStock(): void {
     this.router.navigate(['/inventory/receive-stock/']);
+  }
+
+  adjustStock(): void {
+    this.router.navigate(['/inventory/adjust-stock']);
+  }
+
+  transferStock(): void {
+    this.router.navigate(['/inventory/transfer-stock']);
   }
 
   loadPage(page: number): void {
@@ -161,6 +177,8 @@ export class InventoryComponent implements OnInit, OnDestroy {
       id,
     ]);
   }
+
+  
 
   getStockStatus(inventory: Inventory): StockStatus {
     const quantity = Number(inventory.quantity);

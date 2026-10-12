@@ -177,5 +177,121 @@
       </div>
 
     </div>
+
+    <section class="movement-card">
+      <div class="movement-header">
+        <div>
+          <h2>Stock Movement History</h2>
+          <p>Track stock changes for this product at this branch.</p>
+        </div>
+
+        <span class="movement-count">
+          {{ movementTotal }} records
+        </span>
+      </div>
+
+      @if (movementsLoading) {
+        <div class="movement-state">
+          <div class="loading-spinner"></div>
+          <p>Loading stock movements...</p>
+        </div>
+      } @else if (movementsError) {
+        <div class="movement-state movement-error">
+          <p>{{ movementsError }}</p>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="loadMovements(movementPage)"
+          >
+            Try Again
+          </button>
+        </div>
+      } @else if (movements.length === 0) {
+        <div class="movement-state">
+          <p>No stock movements have been recorded for this item at this branch.</p>
+        </div>
+      } @else {
+        <div class="movement-table-wrapper">
+          <table class="movement-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Movement</th>
+                <th>Quantity</th>
+                <th>Reference / Notes</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              @for (movement of movements; track movement.id) {
+                <tr>
+                  <td>
+                    {{ formatMovementDate(movement.created_at) }}
+                  </td>
+
+                  <td>
+                    <span
+                      class="movement-type-badge"
+                      [class]="getMovementClass(movement.type)"
+                    >
+                      {{ getMovementLabel(movement.type) }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <strong
+                      class="movement-quantity"
+                      [class.quantity-in]="
+                        formatMovementQuantity(movement).startsWith('+')
+                      "
+                      [class.quantity-out]="
+                        formatMovementQuantity(movement).startsWith('−')
+                      "
+                    >
+                      {{ formatMovementQuantity(movement) }}
+                    </strong>
+                  </td>
+
+                  <td class="movement-notes">
+                    {{ movement.notes || '—' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (movementLastPage > 1) {
+          <div class="movement-pagination">
+            <span>
+              Page {{ movementPage }} of {{ movementLastPage }}
+            </span>
+
+            <div>
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="movementPage <= 1 || movementsLoading"
+                (click)="loadMovementPage(movementPage - 1)"
+              >
+                Previous
+              </button>
+
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="
+                  movementPage >= movementLastPage || movementsLoading
+                "
+                (click)="loadMovementPage(movementPage + 1)"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        }
+      }
+    </section>
   }
 </div>

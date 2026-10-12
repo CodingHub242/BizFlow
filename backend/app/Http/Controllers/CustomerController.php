@@ -49,9 +49,9 @@ class CustomerController extends Controller
             $query->where(function ($query) use ($search) {
                 $term = '%' . strtolower($search) . '%';
 
-                $query->whereRaw('LOWER(name) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(email) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(phone) LIKE ?', [$term]);
+                $query->whereRaw('LOWER(name) iLIKE ?', [$term])
+                    ->orWhereRaw('LOWER(email) iLIKE ?', [$term])
+                    ->orWhereRaw('LOWER(phone) iLIKE ?', [$term]);
             });
         }
 

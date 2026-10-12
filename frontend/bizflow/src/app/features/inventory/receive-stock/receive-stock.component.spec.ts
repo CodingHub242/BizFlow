@@ -232,20 +232,22 @@ describe('ReceiveStockComponent', () => {
       'Unable to receive stock. Please try again.',
     );
   });
-  it('should render the branch selector', () => {
-  const select = fixture.nativeElement.querySelector(
+  it('should render the branch searchable selector', () => {
+  const input = fixture.nativeElement.querySelector(
     '#branch',
-  ) as HTMLSelectElement;
+  ) as HTMLInputElement;
 
-  expect(select).toBeTruthy();
+  expect(input).toBeTruthy();
+  expect(input.type).toBe('text');
 });
 
-it('should render the product selector', () => {
-  const select = fixture.nativeElement.querySelector(
+it('should render the product searchable selector', () => {
+  const input = fixture.nativeElement.querySelector(
     '#product',
-  ) as HTMLSelectElement;
+  ) as HTMLInputElement;
 
-  expect(select).toBeTruthy();
+  expect(input).toBeTruthy();
+  expect(input.type).toBe('text');
 });
 
 it('should render the quantity input', () => {
@@ -280,5 +282,57 @@ it('should render the receive stock button', () => {
       button.textContent?.includes('Receive Stock'),
     ),
   ).toBe(true);
+});
+
+it('should filter and select a branch using the searchable selector', () => {
+  const input = fixture.nativeElement.querySelector(
+    '#branch',
+  ) as HTMLInputElement;
+
+  input.dispatchEvent(new Event('focus'));
+  fixture.detectChanges();
+
+  input.value = 'Kumasi';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  fixture.detectChanges();
+
+  const options = Array.from(
+    fixture.nativeElement.querySelectorAll('.select-option'),
+  ) as HTMLButtonElement[];
+
+  expect(options).toHaveLength(1);
+  expect(options[0].textContent).toContain('Kumasi Branch');
+
+  options[0].click();
+  fixture.detectChanges();
+
+  expect(component.branchId).toBe(2);
+  expect(input.value).toBe('Kumasi Branch');
+});
+
+it('should search products by SKU and select the matching product', () => {
+  const input = fixture.nativeElement.querySelector(
+    '#product',
+  ) as HTMLInputElement;
+
+  input.dispatchEvent(new Event('focus'));
+  fixture.detectChanges();
+
+  input.value = 'BRAKE-001';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  fixture.detectChanges();
+
+  const options = Array.from(
+    fixture.nativeElement.querySelectorAll('.select-option'),
+  ) as HTMLButtonElement[];
+
+  expect(options).toHaveLength(1);
+  expect(options[0].textContent).toContain('Brake Pads');
+
+  options[0].click();
+  fixture.detectChanges();
+
+  expect(component.catalogItemId).toBe(6);
+  expect(input.value).toBe('Brake Pads');
 });
 });

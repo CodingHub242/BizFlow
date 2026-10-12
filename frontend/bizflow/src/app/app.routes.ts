@@ -90,6 +90,18 @@ export const routes: Routes = [
           .then(m => m.ReceiveStockComponent),
     },
     {
+      path: 'inventory/adjust-stock',
+      loadComponent: () =>
+        import('./features/inventory/adjust-stock/adjust-stock.component')
+          .then(m => m.AdjustStockComponent),
+    },
+    {
+      path: 'inventory/transfer-stock',
+      loadComponent: () =>
+        import('./features/inventory/transfer-stock/transfer-stock.component')
+          .then(m => m.TransferStockComponent),
+    },
+    {
       path: 'inventory/:id',
       loadComponent: () =>
         import('./features/inventory/inventory-details/inventory-details.component')
