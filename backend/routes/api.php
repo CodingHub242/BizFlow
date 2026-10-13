@@ -10,6 +10,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\InventoryImportController;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\BusinessOnboardingController;
@@ -128,6 +129,9 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/inventory/movements', [InventoryController::class, 'movements'])
         ->middleware('permission:inventory.view');
 
+    Route::get('/inventory/export',[InventoryExportController::class, 'export']
+    )->middleware('permission:inventory.view');
+
     Route::get('/inventory/{inventory}', [InventoryController::class, 'show'])
         ->middleware('permission:inventory.view');
 
@@ -148,6 +152,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/inventory/imports/{uuid}/confirm',[InventoryImportController::class, 'confirm']
     )->middleware('permission:inventory.import');
 
+    
     //EXPENSES
     Route::post('/expenses', [ExpenseController::class, 'store'])
         ->middleware('permission:expenses.create');

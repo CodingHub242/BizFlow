@@ -3,9 +3,33 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #0f172a;
+  background: linear-gradient(360deg,rgb(74, 31, 15),#0f172a);
   color: #ffffff;
   padding: 20px 14px;
+}
+.splash-container {
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  width: 200px;
+  position: absolute;
+  top:50%;
+  z-index: 0;
+  opacity:0.1;
+}
+.splash {
+  width: 200px;
+  height: 200px;
+  /* Use a combination of colors (like blue) over a white background */
+  background: repeating-conic-gradient(rgba(188, 188, 189, 0.426) 0 3%, #0000 0 11%) #ffffff00; 
+  
+  /* The Secret Sauce: Blur out the lines, then crank up contrast to sharpen them into blobs */
+  filter: blur(20px) contrast(30);
+  
+  /* Fixes "funky" transparent blurring around the edges of the element box */
+  box-shadow: 0 0 0 50px #ffffff00; 
 }
 
 .brand {
@@ -55,6 +79,7 @@
   min-height: 42px;
   padding: 0 12px;
   border-radius: 7px;
+  z-index: 1;
   color: #cbd5e1;
   text-decoration: none;
   font-size: 14px;

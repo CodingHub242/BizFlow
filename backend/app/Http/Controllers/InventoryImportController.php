@@ -254,10 +254,7 @@ class InventoryImportController extends Controller
     /**
      * Validate rows against this tenant's branches and catalog items.
      */
-    private function buildPreviewRows(
-        int $tenantId,
-        array $inputRows
-    ): array {
+    private function buildPreviewRows(int $tenantId,array $inputRows): array {
         $prepared = [];
         $branchCodes = [];
         $skus = [];
@@ -455,10 +452,7 @@ class InventoryImportController extends Controller
                 }
             }
 
-            if ($item !== null && (
-                $item->type !== 'product'
-                || ! $item->track_inventory
-            )) {
+           if ($item !== null && ! $this->isInventoryTrackedProduct($item)) {
                 $errors[] = 'This item does not track physical inventory.';
             }
 
@@ -546,9 +540,7 @@ class InventoryImportController extends Controller
         return $preview;
     }
 
-    private function formatBatch(
-        InventoryImportBatch $batch
-    ): array {
+    private function formatBatch(InventoryImportBatch $batch): array {
         return [
             'import_id' => $batch->uuid,
             'file_name' => $batch->file_name,
@@ -561,12 +553,12 @@ class InventoryImportController extends Controller
                 'invalid_rows' => $batch->invalid_rows,
                 'can_confirm' => $batch->status === 'previewed'
                     && $batch->valid_rows > 0,
+                'imported_rows' => $batch->imported_rows,
+                'skipped_rows' => $batch->skipped_rows,
             ],
             'required_headers' => self::REQUIRED_HEADERS,
             'optional_headers' => self::OPTIONAL_HEADERS,
             'rows' => $batch->preview_rows ?? [],
-            'imported_rows' => $batch->imported_rows,
-            'skipped_rows' => $batch->skipped_rows,
         ];
     }
 
@@ -628,281 +620,298 @@ class InventoryImportController extends Controller
     }
 
     public function confirm(Request $request, string $uuid): JsonResponse
-{
-    $result = DB::transaction(function () use ($request, $uuid) {
-        $batch = InventoryImportBatch::query()
-            ->where('uuid', $uuid)
-            ->where('tenant_id', $request->user()->tenant_id)
-            ->where('user_id', $request->user()->id)
-            ->lockForUpdate()
-            ->firstOrFail();
-
-        if ($batch->status !== 'previewed') {
-            return [
-                'http_status' => 409,
-                'message' => 'This import has already been processed or is no longer available.',
-            ];
-        }
-
-        if ($batch->expires_at?->isPast()) {
-            $batch->update(['status' => 'expired']);
-
-            return [
-                'http_status' => 410,
-                'message' => 'This preview has expired. Upload the file again.',
-                'file_path' => $batch->file_path,
-            ];
-        }
-
-        $rows = $batch->preview_rows ?? [];
-
-        if ($batch->valid_rows < 1) {
-            return [
-                'http_status' => 422,
-                'message' => 'There are no valid rows to import. Correct the file and upload it again.',
-            ];
-        }
-
-        $jobs = [];
-        $importedRows = 0;
-        $skippedRows = 0;
-
-        foreach ($rows as $index => $row) {
-            if (! ($row['valid'] ?? false)) {
-                $rows[$index]['import_status'] = 'skipped';
-                $rows[$index]['import_errors'] = $row['errors'] ?? [];
-                $skippedRows++;
-
-                continue;
-            }
-
-            $jobs[] = [
-                'index' => $index,
-                'row' => $row,
-            ];
-        }
-
-        // Apply locks in a consistent order to reduce deadlock risk.
-        usort($jobs, static function (array $a, array $b): int {
-            $branchComparison = strcmp(
-                strtolower((string) $a['row']['branch_code']),
-                strtolower((string) $b['row']['branch_code'])
-            );
-
-            return $branchComparison !== 0
-                ? $branchComparison
-                : strcmp(
-                    strtolower((string) $a['row']['sku']),
-                    strtolower((string) $b['row']['sku'])
-                );
-        });
-
-        foreach ($jobs as $job) {
-            $index = $job['index'];
-            $row = $job['row'];
-            $errors = [];
-
-            $branchCode = trim((string) ($row['branch_code'] ?? ''));
-            $sku = trim((string) ($row['sku'] ?? ''));
-
-            $targetQuantity = $this->parseDecimal(
-                $row['target_quantity'] ?? null
-            );
-
-            $targetReorderLevel = $this->parseDecimal(
-                $row['target_reorder_level'] ?? null
-            );
-
-            if ($targetQuantity === null || $targetReorderLevel === null) {
-                $errors[] = 'The target quantity or reorder level is invalid. Upload the file again.';
-            }
-
-            $branches = Branch::query()
-                ->where('tenant_id', $batch->tenant_id)
-                ->whereRaw('LOWER(code) = ?', [strtolower($branchCode)])
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->limit(2)
-                ->get(['id', 'name', 'code']);
-
-            $items = CatalogItem::query()
-                ->where('tenant_id', $batch->tenant_id)
-                ->whereRaw('LOWER(sku) = ?', [strtolower($sku)])
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->limit(2)
-                ->get(['id', 'name', 'sku', 'type', 'track_inventory']);
-
-            if ($branches->count() !== 1) {
-                $errors[] = 'The branch no longer exists or its code is ambiguous.';
-            }
-
-            if ($items->count() !== 1) {
-                $errors[] = 'The catalog item no longer exists or its SKU is ambiguous.';
-            }
-
-            $branch = $branches->count() === 1
-                ? $branches->first()
-                : null;
-
-            $item = $items->count() === 1
-                ? $items->first()
-                : null;
-
-            if ($item !== null && (
-                $item->type !== 'product'
-                || ! $item->track_inventory
-            )) {
-                $errors[] = 'The catalog item no longer qualifies for inventory tracking.';
-            }
-
-            if ($errors !== []) {
-                $rows[$index]['valid'] = false;
-                $rows[$index]['errors'] = array_values(array_unique(
-                    array_merge($row['errors'] ?? [], $errors)
-                ));
-                $rows[$index]['import_status'] = 'skipped';
-                $rows[$index]['import_errors'] = $rows[$index]['errors'];
-
-                $skippedRows++;
-
-                continue;
-            }
-
-            /*
-             * The unique database constraint protects each
-             * tenant/branch/catalog-item combination.
-             *
-             * Insert a zero balance only when no record exists.
-             * insertOrIgnore handles a concurrent creation attempt.
-             */
-            $inserted = DB::table('inventories')->insertOrIgnore([
-                'tenant_id' => $batch->tenant_id,
-                'branch_id' => $branch->id,
-                'catalog_item_id' => $item->id,
-                'quantity' => 0,
-                'reorder_level' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $inventory = Inventory::query()
-                ->where('tenant_id', $batch->tenant_id)
-                ->where('branch_id', $branch->id)
-                ->where('catalog_item_id', $item->id)
+    {
+        $result = DB::transaction(function () use ($request, $uuid) {
+            $batch = InventoryImportBatch::query()
+                ->where('uuid', $uuid)
+                ->where('tenant_id', $request->user()->tenant_id)
+                ->where('user_id', $request->user()->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $wasCreated = $inserted > 0;
-
-            // Reconcile against the latest balance, not the old preview.
-            $currentQuantity = (float) $inventory->quantity;
-            $currentReorderLevel = (float) $inventory->reorder_level;
-
-            $quantityDelta = round(
-                $targetQuantity - $currentQuantity,
-                3
-            );
-
-            $reorderChanged = abs(
-                $targetReorderLevel - $currentReorderLevel
-            ) > 0.000001;
-
-            $quantityChanged = abs($quantityDelta) > 0.000001;
-
-            $inventory->quantity = $targetQuantity;
-            $inventory->reorder_level = $targetReorderLevel;
-            $inventory->save();
-
-            $notes = sprintf(
-                'Inventory import %s; file %s; row %d.',
-                $batch->uuid,
-                $batch->file_name,
-                $row['row_number'] ?? ($index + 2)
-            );
-
-            if ($wasCreated && $targetQuantity > 0) {
-                InventoryMovement::create([
-                    'tenant_id' => $batch->tenant_id,
-                    'branch_id' => $branch->id,
-                    'catalog_item_id' => $item->id,
-                    'type' => InventoryMovementType::OPENING,
-                    'quantity' => $targetQuantity,
-                    'reference_type' => 'inventory_import',
-                    'reference_id' => $batch->id,
-                    'notes' => $notes,
-                ]);
-            } elseif (! $wasCreated && $quantityChanged) {
-                InventoryMovement::create([
-                    'tenant_id' => $batch->tenant_id,
-                    'branch_id' => $branch->id,
-                    'catalog_item_id' => $item->id,
-                    'type' => InventoryMovementType::ADJUSTMENT,
-                    'quantity' => $quantityDelta,
-                    'reference_type' => 'inventory_import',
-                    'reference_id' => $batch->id,
-                    'notes' => $notes,
-                ]);
+            if ($batch->status !== 'previewed') {
+                return [
+                    'http_status' => 409,
+                    'message' => 'This import has already been processed or is no longer available.',
+                ];
             }
 
-            $rows[$index]['import_status'] = 'imported';
-            $rows[$index]['actual_action'] = $wasCreated
-                ? 'created'
-                : (
-                    $quantityChanged || $reorderChanged
-                        ? 'updated'
-                        : 'no_change'
-                );
-            $rows[$index]['quantity_before_import'] = $currentQuantity;
-            $rows[$index]['quantity_delta_applied'] = $quantityDelta;
+            if ($batch->expires_at?->isPast()) {
+                $batch->update(['status' => 'expired']);
 
-            $importedRows++;
+                return [
+                    'http_status' => 410,
+                    'message' => 'This preview has expired. Upload the file again.',
+                    'file_path' => $batch->file_path,
+                ];
+            }
+
+            $rows = $batch->preview_rows ?? [];
+
+            if ($batch->valid_rows < 1) {
+                return [
+                    'http_status' => 422,
+                    'message' => 'There are no valid rows to import. Correct the file and upload it again.',
+                ];
+            }
+
+            $jobs = [];
+            $importedRows = 0;
+            $skippedRows = 0;
+
+            foreach ($rows as $index => $row) {
+                if (! ($row['valid'] ?? false)) {
+                    $rows[$index]['import_status'] = 'skipped';
+                    $rows[$index]['import_errors'] = $row['errors'] ?? [];
+                    $skippedRows++;
+
+                    continue;
+                }
+
+                $jobs[] = [
+                    'index' => $index,
+                    'row' => $row,
+                ];
+            }
+
+            // Apply locks in a consistent order to reduce deadlock risk.
+            usort($jobs, static function (array $a, array $b): int {
+                $branchComparison = strcmp(
+                    strtolower((string) $a['row']['branch_code']),
+                    strtolower((string) $b['row']['branch_code'])
+                );
+
+                return $branchComparison !== 0
+                    ? $branchComparison
+                    : strcmp(
+                        strtolower((string) $a['row']['sku']),
+                        strtolower((string) $b['row']['sku'])
+                    );
+            });
+
+            foreach ($jobs as $job) {
+                $index = $job['index'];
+                $row = $job['row'];
+                $errors = [];
+
+                $branchCode = trim((string) ($row['branch_code'] ?? ''));
+                $sku = trim((string) ($row['sku'] ?? ''));
+
+                $targetQuantity = $this->parseDecimal(
+                    $row['target_quantity'] ?? null
+                );
+
+                $targetReorderLevel = $this->parseDecimal(
+                    $row['target_reorder_level'] ?? null
+                );
+
+                if ($targetQuantity === null || $targetReorderLevel === null) {
+                    $errors[] = 'The target quantity or reorder level is invalid. Upload the file again.';
+                }
+
+                $branches = Branch::query()
+                    ->where('tenant_id', $batch->tenant_id)
+                    ->whereRaw('LOWER(code) = ?', [strtolower($branchCode)])
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->limit(2)
+                    ->get(['id', 'name', 'code']);
+
+                $items = CatalogItem::query()
+                    ->where('tenant_id', $batch->tenant_id)
+                    ->whereRaw('LOWER(sku) = ?', [strtolower($sku)])
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->limit(2)
+                    ->get(['id', 'name', 'sku', 'type', 'track_inventory']);
+
+                if ($branches->count() !== 1) {
+                    $errors[] = 'The branch no longer exists or its code is ambiguous.';
+                }
+
+                if ($items->count() !== 1) {
+                    $errors[] = 'The catalog item no longer exists or its SKU is ambiguous.';
+                }
+
+                $branch = $branches->count() === 1
+                    ? $branches->first()
+                    : null;
+
+                $item = $items->count() === 1
+                    ? $items->first()
+                    : null;
+
+                if ($item !== null && ! $this->isInventoryTrackedProduct($item)) {
+                    $errors[] = 'The catalog item no longer qualifies for inventory tracking.';
+                }
+
+                if ($errors !== []) {
+                    $rows[$index]['valid'] = false;
+                    $rows[$index]['errors'] = array_values(array_unique(
+                        array_merge($row['errors'] ?? [], $errors)
+                    ));
+                    $rows[$index]['import_status'] = 'skipped';
+                    $rows[$index]['import_errors'] = $rows[$index]['errors'];
+
+                    $skippedRows++;
+
+                    continue;
+                }
+
+                /*
+                * The unique database constraint protects each
+                * tenant/branch/catalog-item combination.
+                *
+                * Insert a zero balance only when no record exists.
+                * insertOrIgnore handles a concurrent creation attempt.
+                */
+                $inserted = DB::table('inventories')->insertOrIgnore([
+                    'tenant_id' => $batch->tenant_id,
+                    'branch_id' => $branch->id,
+                    'catalog_item_id' => $item->id,
+                    'quantity' => 0,
+                    'reorder_level' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $inventory = Inventory::query()
+                    ->where('tenant_id', $batch->tenant_id)
+                    ->where('branch_id', $branch->id)
+                    ->where('catalog_item_id', $item->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $wasCreated = $inserted > 0;
+
+                // Reconcile against the latest balance, not the old preview.
+                $currentQuantity = (float) $inventory->quantity;
+                $currentReorderLevel = (float) $inventory->reorder_level;
+
+                $quantityDelta = round(
+                    $targetQuantity - $currentQuantity,
+                    3
+                );
+
+                $reorderChanged = abs(
+                    $targetReorderLevel - $currentReorderLevel
+                ) > 0.000001;
+
+                $quantityChanged = abs($quantityDelta) > 0.000001;
+
+                $inventory->quantity = $targetQuantity;
+                $inventory->reorder_level = $targetReorderLevel;
+                $inventory->save();
+
+                $notes = sprintf(
+                    'Inventory import %s; file %s; row %d.',
+                    $batch->uuid,
+                    $batch->file_name,
+                    $row['row_number'] ?? ($index + 2)
+                );
+
+                if ($wasCreated && $targetQuantity > 0) {
+                    InventoryMovement::create([
+                        'tenant_id' => $batch->tenant_id,
+                        'branch_id' => $branch->id,
+                        'catalog_item_id' => $item->id,
+                        'type' => InventoryMovementType::OPENING,
+                        'quantity' => $targetQuantity,
+                        'reference_type' => 'inventory_import',
+                        'reference_id' => $batch->id,
+                        'notes' => $notes,
+                    ]);
+                } elseif (! $wasCreated && $quantityChanged) {
+                    InventoryMovement::create([
+                        'tenant_id' => $batch->tenant_id,
+                        'branch_id' => $branch->id,
+                        'catalog_item_id' => $item->id,
+                        'type' => InventoryMovementType::ADJUSTMENT,
+                        'quantity' => $quantityDelta,
+                        'reference_type' => 'inventory_import',
+                        'reference_id' => $batch->id,
+                        'notes' => $notes,
+                    ]);
+                }
+
+                $rows[$index]['import_status'] = 'imported';
+                $rows[$index]['actual_action'] = $wasCreated
+                    ? 'created'
+                    : (
+                        $quantityChanged || $reorderChanged
+                            ? 'updated'
+                            : 'no_change'
+                    );
+                $rows[$index]['quantity_before_import'] = $currentQuantity;
+                $rows[$index]['quantity_delta_applied'] = $quantityDelta;
+
+                $importedRows++;
+            }
+
+            $status = $importedRows === 0
+                ? 'failed'
+                : ($skippedRows > 0 ? 'partially_imported' : 'imported');
+
+            $batch->update([
+                'status' => $status,
+                'imported_rows' => $importedRows,
+                'skipped_rows' => $skippedRows,
+                'preview_rows' => $rows,
+                'imported_at' => now(),
+            ]);
+
+            return [
+                'http_status' => $importedRows > 0 ? 200 : 422,
+                'success' => $importedRows > 0,
+                'message' => $importedRows > 0
+                    ? 'Inventory import processed.'
+                    : 'No rows could be imported. Review the row errors.',
+                'data' => $this->formatBatch($batch->fresh()),
+            ];
+        });
+
+        if (($result['http_status'] ?? null) === 410) {
+            if (! empty($result['file_path'])) {
+                Storage::disk('local')->delete($result['file_path']);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 410);
         }
 
-        $status = $importedRows === 0
-            ? 'failed'
-            : ($skippedRows > 0 ? 'partially_imported' : 'imported');
-
-        $batch->update([
-            'status' => $status,
-            'imported_rows' => $importedRows,
-            'skipped_rows' => $skippedRows,
-            'preview_rows' => $rows,
-            'imported_at' => now(),
-        ]);
-
-        return [
-            'http_status' => $importedRows > 0 ? 200 : 422,
-            'success' => $importedRows > 0,
-            'message' => $importedRows > 0
-                ? 'Inventory import processed.'
-                : 'No rows could be imported. Review the row errors.',
-            'data' => $this->formatBatch($batch->fresh()),
-        ];
-    });
-
-    if (($result['http_status'] ?? null) === 410) {
-        if (! empty($result['file_path'])) {
-            Storage::disk('local')->delete($result['file_path']);
+        if (isset($result['data'])) {
+            return response()->json([
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'data' => $result['data'],
+            ], $result['http_status']);
         }
 
         return response()->json([
             'success' => false,
             'message' => $result['message'],
-        ], 410);
-    }
-
-    if (isset($result['data'])) {
-        return response()->json([
-            'success' => $result['success'],
-            'message' => $result['message'],
-            'data' => $result['data'],
         ], $result['http_status']);
     }
 
-    return response()->json([
-        'success' => false,
-        'message' => $result['message'],
-    ], $result['http_status']);
-}
+    private function isInventoryTrackedProduct(CatalogItem $item): bool
+    {
+        $type = $item->type;
+
+        // Support both backed enums and plain strings.
+        if ($type instanceof \BackedEnum) {
+            $type = $type->value;
+        }
+
+        $isProduct = strtolower(trim((string) $type)) === 'product';
+
+        $tracksInventory = filter_var(
+            $item->track_inventory,
+            FILTER_VALIDATE_BOOLEAN,
+            FILTER_NULL_ON_FAILURE
+        ) === true;
+
+        return $isProduct && $tracksInventory;
+    }
 }

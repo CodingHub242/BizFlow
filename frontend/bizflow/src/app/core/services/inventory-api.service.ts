@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient,HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api.config';
 
@@ -141,6 +141,59 @@ export interface InventoryActionResponse {
   data?: Inventory;
 }
 
+export interface InventoryImportPreviewRow {
+  row_number: number;
+  branch_code: string;
+  branch_name: string | null;
+  sku: string;
+  catalog_item_name: string | null;
+  current_quantity: number | null;
+  target_quantity: number | null;
+  quantity_delta: number | null;
+  current_reorder_level: number | null;
+  target_reorder_level: number | null;
+  action: 'invalid' | 'create' | 'update' | 'no_change';
+  valid: boolean;
+  errors: string[];
+  import_status?: 'imported' | 'skipped';
+  import_errors?: string[];
+  actual_action?: string;
+  quantity_before_import?: number;
+  quantity_delta_applied?: number;
+}
+
+export interface InventoryImportBatch {
+  import_id: string;
+  file_name: string;
+  file_type: string;
+  status: string;
+  expires_at: string | null;
+  summary: {
+    total_rows: number;
+    valid_rows: number;
+    invalid_rows: number;
+    can_confirm: boolean;
+    imported_rows?: number;
+    skipped_rows?: number;
+  };
+  required_headers: string[];
+  optional_headers: string[];
+  rows: InventoryImportPreviewRow[];
+}
+
+export interface InventoryImportBatchResponse {
+  success: boolean;
+  message?: string;
+  data: InventoryImportBatch;
+}
+
+export interface InventoryExportParams {
+  format: 'csv' | 'xlsx';
+  branchId?: number;
+  search?: string;
+  stockStatus?: 'in-stock' | 'low-stock' | 'out-of-stock';
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -220,11 +273,7 @@ export class InventoryApi {
     );
   }
 
-  availability(
-    branchId: number,
-    catalogItemId: number,
-    quantity: number,
-  ): Observable<InventoryAvailabilityResponse> {
+  availability(branchId: number,catalogItemId: number,quantity: number): Observable<InventoryAvailabilityResponse> {
     return this.http.get<InventoryAvailabilityResponse>(
       `${this.apiUrl}/inventory/availability`,
       {
@@ -237,30 +286,71 @@ export class InventoryApi {
     );
   }
 
-  receive(
-    data: ReceiveStockRequest,
-  ): Observable<InventoryActionResponse> {
+  receive(data: ReceiveStockRequest): Observable<InventoryActionResponse> {
     return this.http.post<InventoryActionResponse>(
       `${this.apiUrl}/inventory/receive`,
       data,
     );
   }
 
-  adjust(
-    data: AdjustStockRequest,
-  ): Observable<InventoryActionResponse> {
+  adjust(data: AdjustStockRequest): Observable<InventoryActionResponse> {
     return this.http.post<InventoryActionResponse>(
       `${this.apiUrl}/inventory/adjust`,
       data,
     );
   }
 
-  transfer(
-    data: TransferStockRequest,
-  ): Observable<InventoryActionResponse> {
+  transfer(data: TransferStockRequest): Observable<InventoryActionResponse> {
     return this.http.post<InventoryActionResponse>(
       `${this.apiUrl}/inventory/transfer`,
       data,
     );
+  }
+
+  previewImport(file: File): Observable<InventoryImportBatchResponse> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    return this.http.post<InventoryImportBatchResponse>(
+      `${this.apiUrl}/inventory/imports/preview`,
+      formData,
+    );
+  }
+
+  getImportPreview(importId: string): Observable<InventoryImportBatchResponse> {
+    return this.http.get<InventoryImportBatchResponse>(
+      `${this.apiUrl}/inventory/imports/${encodeURIComponent(importId)}`,
+    );
+  }
+
+  confirmImport(importId: string): Observable<InventoryImportBatchResponse> {
+    return this.http.post<InventoryImportBatchResponse>(
+      `${this.apiUrl}/inventory/imports/${encodeURIComponent(importId)}/confirm`,
+      {},
+    );
+  }
+
+  exportInventory(params: InventoryExportParams): Observable<HttpResponse<Blob>> {
+    const queryParams: Record<string, string> = {
+      format: params.format,
+    };
+
+    if (params.branchId !== undefined) {
+      queryParams['branch_id'] = String(params.branchId);
+    }
+
+    if (params.search?.trim()) {
+      queryParams['search'] = params.search.trim();
+    }
+
+    if (params.stockStatus) {
+      queryParams['stock_status'] = params.stockStatus;
+    }
+
+    return this.http.get(`${this.apiUrl}/inventory/export`, {
+      params: queryParams,
+      responseType: 'blob',
+      observe: 'response',
+    });
   }
 }

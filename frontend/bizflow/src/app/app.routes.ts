@@ -102,6 +102,12 @@ export const routes: Routes = [
           .then(m => m.TransferStockComponent),
     },
     {
+      path: 'inventory/import-export',
+      loadComponent: () =>
+        import('./features/inventory/inventory-import-export/inventory-import-export.component')
+          .then(m => m.InventoryImportExportComponent),
+    },
+    {
       path: 'inventory/:id',
       loadComponent: () =>
         import('./features/inventory/inventory-details/inventory-details.component')

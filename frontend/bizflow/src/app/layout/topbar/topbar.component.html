@@ -1,7 +1,9 @@
 <header class="topbar">
   <div class="page-context">
     <h1>Dashboard</h1>
-    <span class="business-name">Your Business</span>
+      @if (authService.currentUser$ | async; as user) {
+        <span class="business-name">{{user.tenant?.name}}</span>
+      }
   </div>
 
   <div class="topbar-actions">

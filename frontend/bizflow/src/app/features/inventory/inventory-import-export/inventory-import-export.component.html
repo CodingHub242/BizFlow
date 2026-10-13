@@ -1,0 +1,327 @@
+<div class="inventory-import-export-page">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb">Inventory / Import & Export</div>
+      <h1>Inventory Import & Export</h1>
+      <p>Import stock levels in bulk or export your inventory records.</p>
+    </div>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="backToInventory()"
+    >
+      Back to Inventory
+    </button>
+  </div>
+
+  <!-- Export -->
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Export Inventory</h2>
+        <p>Export all records matching your selected filters.</p>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="export-branch">Branch</label>
+        <select id="export-branch" [(ngModel)]="exportBranchId" style="height:40px;">
+          <option [ngValue]="null">All branches</option>
+          @for (branch of branches; track branch.id) {
+            <option [ngValue]="branch.id">{{ branch.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="export-search">Search</label>
+        <input
+          id="export-search"
+          type="text"
+          [(ngModel)]="exportSearch"
+          placeholder="Product name or SKU"
+        />
+      </div>
+
+      <div class="field">
+        <label for="export-status">Stock status</label>
+        <select id="export-status" [(ngModel)]="exportStockStatus" style="height:40px;">
+          <option value="">All statuses</option>
+          <option value="in-stock">In Stock</option>
+          <option value="low-stock">Low Stock</option>
+          <option value="out-of-stock">Out of Stock</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="export-format">File format</label>
+        <select id="export-format" [(ngModel)]="exportFormat" style="height:40px;">
+          <option value="xlsx">Excel (.xlsx)</option>
+          <option value="csv">CSV (.csv)</option>
+        </select>
+      </div>
+    </div>
+
+    @if (exportError) {
+      <div class="message error-message" role="alert">
+        {{ exportError }}
+      </div>
+    }
+
+    <div class="panel-actions">
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="exporting"
+        (click)="exportInventory()"
+      >
+        {{ exporting ? 'Preparing export...' : 'Download Inventory' }}
+      </button>
+    </div>
+  </section>
+
+  <!-- Import -->
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Import Inventory</h2>
+        <p>
+          Upload a CSV or Excel file to review proposed stock levels before
+          applying any changes.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="downloadTemplate()"
+      >
+        Download CSV Template
+      </button>
+    </div>
+
+    <div class="import-guidance">
+      <strong>Required columns</strong>
+      <p><code>branch_code</code>, <code>sku</code>, and <code>quantity</code></p>
+      <p>
+        Optional: <code>reorder_level</code>. Leave it blank to preserve an
+        existing reorder level.
+      </p>
+      <p>
+        Quantity is the target stock level, not the amount to add. Branch codes
+        and SKUs must match records in your company.
+      </p>
+    </div>
+
+    <div class="file-picker">
+      <label for="inventory-import-file">Choose CSV or Excel file</label>
+      <input
+        id="inventory-import-file"
+        type="file"
+        accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        [disabled]="analyzing || confirming"
+        (change)="onFileSelected($event)"
+      />
+
+      @if (selectedFile) {
+        <p class="selected-file">
+          Selected: <strong>{{ selectedFile.name }}</strong>
+          ({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)
+        </p>
+      }
+
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="!selectedFile || analyzing || confirming"
+        (click)="analyzeFile()"
+      >
+        {{ analyzing ? 'Analyzing file...' : 'Analyze & Preview' }}
+      </button>
+    </div>
+
+    @if (importError) {
+      <div class="message error-message" role="alert">
+        {{ importError }}
+      </div>
+    }
+
+    @if (importSuccess) {
+      <div class="message success-message" role="status">
+        {{ importSuccess }}
+      </div>
+    }
+  </section>
+
+  <!-- Preview and results -->
+  @if (batch) {
+    <section class="panel preview-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Import Preview</h2>
+          <p>{{ batch.file_name }}</p>
+          @if (batch.status === 'previewed' && batch.expires_at) {
+            <p class="muted">
+              Preview expires: {{ batch.expires_at | date:'medium' }}
+            </p>
+          }
+        </div>
+
+        <span class="status-pill" [class.completed]="batch.status === 'imported'">
+          {{ batch.status.replace('_', ' ') }}
+        </span>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span>Total rows</span>
+          <strong>{{ batch.summary.total_rows }}</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Valid rows</span>
+          <strong class="valid-count">{{ batch.summary.valid_rows }}</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Invalid rows</span>
+          <strong class="invalid-count">{{ batch.summary.invalid_rows }}</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Imported rows</span>
+          <strong>{{ batch.summary.imported_rows ?? 0 }}</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Skipped rows</span>
+          <strong>{{ batch.summary.skipped_rows ?? 0 }}</strong>
+        </div>
+      </div>
+
+      @if (batch.status === 'previewed') {
+        <p class="preview-note">
+          Preview only — stock has not been changed. Confirming applies valid
+          rows; invalid rows will be skipped.
+        </p>
+      }
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Row</th>
+              <th>Branch</th>
+              <th>Product</th>
+              <th>Current stock</th>
+              <th>Target stock</th>
+              <th>Difference</th>
+              <th>Action / Validation</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (row of pagedPreviewRows; track row.row_number) {
+              <tr>
+                <td>{{ row.row_number }}</td>
+
+                <td>
+                  <strong>{{ row.branch_name || row.branch_code }}</strong>
+                  <span class="table-subtext">{{ row.branch_code }}</span>
+                </td>
+
+                <td>
+                  <strong>{{ row.catalog_item_name || 'Unmatched product' }}</strong>
+                  <span class="table-subtext">{{ row.sku }}</span>
+                </td>
+
+                <td>
+                  {{ row.current_quantity === null ? '—' : row.current_quantity }}
+                </td>
+
+                <td>
+                  {{ row.target_quantity === null ? '—' : row.target_quantity }}
+                </td>
+
+                <td>
+                  {{ row.quantity_delta === null ? '—' : row.quantity_delta }}
+                </td>
+
+                <td>
+                  @if (row.valid) {
+                    <span class="status-pill valid-pill">
+                      {{ row.action.replace('_', ' ') }}
+                    </span>
+                  } @else {
+                    <span class="status-pill invalid-pill">Invalid</span>
+                  }
+
+                  @if (row.errors.length > 0) {
+                    <ul class="row-errors">
+                      @for (message of row.errors; track message) {
+                        <li>{{ message }}</li>
+                      }
+                    </ul>
+                  }
+
+                  @if (row.import_status === 'skipped') {
+                    <p class="table-subtext">Skipped during import</p>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <span>
+          Page {{ previewPage }} of {{ previewPageCount }}
+        </span>
+
+        <div class="pagination-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="previewPage <= 1"
+            (click)="previousPreviewPage()"
+          >
+            Previous
+          </button>
+
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="previewPage >= previewPageCount"
+            (click)="nextPreviewPage()"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      @if (batch.status === 'previewed') {
+        <div class="confirm-section">
+          <div>
+            <strong>Ready to apply these stock levels?</strong>
+            <p>
+              This action updates inventory and records the resulting stock
+              movements. Review invalid rows before continuing.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="!batch.summary.can_confirm || confirming || analyzing"
+            (click)="confirmImport()"
+          >
+            {{ confirming ? 'Importing...' : 'Confirm Import' }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+</div>

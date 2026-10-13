@@ -232,6 +232,10 @@ export class InventoryComponent implements OnInit, OnDestroy {
     return Number(value).toFixed(2);
   }
 
+  openImportExport(): void {
+    this.router.navigate(['/inventory/import-export']);
+  }
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
