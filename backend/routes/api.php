@@ -11,6 +11,16 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InventoryExportController;
+use App\Http\Controllers\QuickBooksCustomerImportController;
+use App\Http\Controllers\QuickBooksMigrationCatalogController;
+use App\Http\Controllers\QuickBooksCatalogItemsImportController;
+use App\Http\Controllers\QuickBooksChartOfAccountsImportController;
+use App\Http\Controllers\QuickBooksInvoicesImportController;
+use App\Http\Controllers\QuickBooksSupplierImportController;
+use App\Http\Controllers\QuickBooksCompanyInfoController;
+use App\Http\Controllers\QuickBooksBillsImportController;
+use App\Http\Controllers\QuickBooksEstimatesImportController;
+use App\Http\Controllers\QuickBooksOAuthController;
 use App\Http\Controllers\InventoryImportController;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\BusinessOnboardingController;
@@ -48,6 +58,98 @@ Route::get('/user', function (Request $request) {
         ],
     ]);
 })->middleware('auth:sanctum');
+
+// The callback is intentionally public and protected by the single-use OAuth state value.
+Route::prefix('integrations/quickbooks')->name('quickbooks.')->group(function () {
+    Route::get('/callback', [QuickBooksOAuthController::class, 'callback'])
+        ->middleware('throttle:20,1')
+        ->name('callback');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/connect', [QuickBooksOAuthController::class, 'connect'])
+            ->middleware('throttle:10,1')
+            ->name('connect');
+        Route::get('/status', [QuickBooksOAuthController::class, 'status'])
+            ->name('status');
+
+        Route::get('/connections/{connection}/company-info', [QuickBooksCompanyInfoController::class, 'show'])
+            ->whereNumber('connection')
+            ->middleware('throttle:30,1')
+            ->name('company-info');
+
+        Route::get('/connections/{connection}/migration-catalog', [QuickBooksMigrationCatalogController::class, 'index'])
+        ->whereNumber('connection')
+        ->middleware('throttle:10,1')
+        ->name('migration-catalog.index');
+
+        Route::get('/connections/{connection}/migration-catalog/{entityType}', [QuickBooksMigrationCatalogController::class, 'show'])
+            ->whereNumber('connection')
+            ->where('entityType', 'customers|suppliers|catalog_items|invoices|bills|estimates|chart_of_accounts|expenses|payments')
+            ->middleware('throttle:30,1')
+            ->name('migration-catalog.preview');
+
+        Route::post(
+        '/connections/{connection}/migration-catalog/chart_of_accounts/import',
+        [QuickBooksChartOfAccountsImportController::class, 'store']
+    )
+        ->whereNumber('connection')
+        ->middleware('throttle:5,1')
+        ->name('migration-catalog.chart-of-accounts.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/customers/import',
+            [QuickBooksCustomerImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.customers.import');
+
+        Route::post(
+        '/connections/{connection}/migration-catalog/suppliers/import',
+        [QuickBooksSupplierImportController::class, 'store']
+        )
+        ->whereNumber('connection')
+        ->middleware('throttle:5,1')
+        ->name('migration-catalog.suppliers.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/catalog_items/import',
+            [QuickBooksCatalogItemsImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.catalog-items.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/bills/import',
+            [QuickBooksBillsImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.bills.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/estimates/import',
+            [QuickBooksEstimatesImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.estimates.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/invoices/import',
+            [QuickBooksInvoicesImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.invoices.import');
+
+        Route::delete('/connections/{connection}', [QuickBooksOAuthController::class, 'disconnect'])
+            ->whereNumber('connection')
+            ->middleware('throttle:10,1')
+            ->name('disconnect');
+    });
+});
 
 //ONBOARDING BUSINESS/COMPANY
 Route::post('/onboarding/register',[BusinessOnboardingController::class, 'register'])->middleware('throttle:5,1');

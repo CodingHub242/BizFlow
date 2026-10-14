@@ -1,0 +1,482 @@
+
+<div class="migration-page">
+  <div class="page-header">
+    <div>
+      <div class="breadcrumb">Data Migration Center / QuickBooks</div>
+      <h1>QuickBooks Migration</h1>
+      <p>Import your existing business data from QuickBooks into Bizflow.</p>
+    </div>
+
+    @if (session) {
+      <span class="session-badge">
+        Session #{{ session.id }}
+      </span>
+    }
+  </div>
+
+  <div class="stepper" aria-label="Migration progress">
+    @for (step of steps; track step; let index = $index) {
+      <div
+        class="stepper-step"
+        [class.active]="currentStep === index + 1"
+        [class.done]="currentStep > index + 1"
+      >
+        <span class="step-number">
+          @if (currentStep > index + 1) {
+            ✓
+          } @else {
+            {{ index + 1 }}
+          }
+        </span>
+
+        <span class="step-label">{{ step }}</span>
+      </div>
+    }
+  </div>
+
+  @if (errorMessage) {
+    <div class="message error-message" role="alert">
+      <strong>Something needs attention</strong>
+      <p>{{ errorMessage }}</p>
+    </div>
+  }
+
+  @if (successMessage) {
+    <div class="message success-message" role="status">
+      {{ successMessage }}
+    </div>
+  }
+
+  <!-- Initial screen -->
+  @if (!session) {
+    <section class="panel start-panel">
+      <div class="start-icon" aria-hidden="true">⇧</div>
+      <h2>Start a QuickBooks migration</h2>
+      <p>
+        Upload a CSV export, map the columns to Bizflow, validate your records,
+        and review the results before finishing.
+      </p>
+
+      <div class="support-note">
+        <strong>Before you start</strong>
+        <span>Export one data type at a time from QuickBooks.</span>
+        <span>CSV files only, up to 10 MB per file.</span>
+        <span>Importing changes records in your Bizflow company.</span>
+      </div>
+
+      <button
+        class="primary-button"
+        type="button"
+        [disabled]="isBusy"
+        (click)="createMigration()"
+      >
+        {{ busyAction === 'creating' ? 'Starting...' : 'Start Migration' }}
+      </button>
+    </section>
+  }
+
+  <!-- Step 1 and 2: Upload and Analyze -->
+  @if (session && currentStep <= 2) {
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Upload QuickBooks Export</h2>
+          <p>
+            Choose the CSV export for the data type you want to import.
+          </p>
+        </div>
+        <span class="status-pill">
+          {{ fileUploaded ? 'Uploaded' : 'Awaiting file' }}
+        </span>
+      </div>
+
+      @if (!fileUploaded) {
+        <label class="upload-zone" for="quickbooks-file">
+          <span class="upload-icon" aria-hidden="true">↑</span>
+          <strong>Choose a QuickBooks CSV file</strong>
+          <span>CSV format · Maximum 10 MB</span>
+
+          <input
+            id="quickbooks-file"
+            type="file"
+            accept=".csv,text/csv"
+            [disabled]="isBusy"
+            (change)="onFileSelected($event)"
+          />
+        </label>
+
+        @if (selectedFile) {
+          <div class="selected-file">
+            <div>
+              <strong>{{ selectedFile.name }}</strong>
+              <span>
+                {{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB
+              </span>
+            </div>
+            <button
+              type="button"
+              class="text-button"
+              (click)="selectedFile = null"
+            >
+              Remove
+            </button>
+          </div>
+        }
+
+        <div class="panel-actions">
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="!selectedFile || isBusy"
+            (click)="uploadFile()"
+          >
+            {{ busyAction === 'uploading' ? 'Uploading...' : 'Upload CSV' }}
+          </button>
+        </div>
+      } @else {
+        <div class="uploaded-file">
+          <div class="file-icon" aria-hidden="true">CSV</div>
+          <div class="uploaded-file-info">
+            <strong>
+              {{ session.original_filename || selectedFile?.name }}
+            </strong>
+            <span>File uploaded successfully.</span>
+          </div>
+          <span class="success-check">✓</span>
+        </div>
+
+        <div class="panel-actions">
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="isBusy"
+            (click)="analyzeFile()"
+          >
+            {{ busyAction === 'analyzing' ? 'Analyzing...' : 'Analyze File' }}
+          </button>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Step 3: Mapping -->
+  @if (analysis && currentStep === 3) {
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Map QuickBooks Columns</h2>
+          <p>
+            Match each source column to its Bizflow field. Columns can be
+            skipped if they aren't needed.
+          </p>
+        </div>
+        <span class="status-pill">
+          {{ analysis.row_count }} data rows
+        </span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="migration-entity">Data type</label>
+          <select
+            id="migration-entity"
+            name="migration-entity"
+            [(ngModel)]="entityType"
+            (ngModelChange)="onEntityTypeChange($event)"
+          >
+            @for (entity of entities; track entity.value) {
+              <option [ngValue]="entity.value">
+                {{ entity.label }}
+              </option>
+            }
+          </select>
+          <small>{{ selectedEntity.description }}</small>
+        </div>
+
+       @if (selectedEntity.requiresBranch) {
+        <div class="selected-branch">
+          <span>Records will be assigned to</span>
+          <strong>{{ selectedBranchName }}</strong>
+        </div>
+      }
+      </div>
+
+      <div class="mapping-notice">
+        <strong>Review the suggested mappings</strong>
+        <p>
+          Bizflow suggests matches based on the QuickBooks column names.
+          Check that important fields such as names, invoice numbers, and
+          amounts are mapped correctly.
+        </p>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="mapping-table">
+          <thead>
+            <tr>
+              <th>QuickBooks Column</th>
+              <th>Sample Value</th>
+              <th>Bizflow Field</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (header of mappingHeaders; track header) {
+              <tr>
+                <td>
+                  <strong>{{ header }}</strong>
+                </td>
+                <td class="sample-value">
+                  {{ analysis.sample_rows.length
+                    ? sampleValue(analysis.sample_rows[0], header, $index)
+                    : '—' }}
+                </td>
+                <td>
+                  <select
+                    [id]="'migration-map-' + $index"
+                    [name]="'migration-map-' + $index"
+                    [(ngModel)]="fieldMapping[header]"
+                  >
+                    <option [ngValue]="null">Skip this column</option>
+
+                    @for (field of selectedEntity.fields; track field.key) {
+                      <option [ngValue]="field.key">
+                        {{ field.label }}
+                        {{ selectedEntity.requiredTargets.includes(field.key) ? '(Required)' : '' }}
+                      </option>
+                    }
+                  </select>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      @if (missingRequiredTargets.length > 0) {
+        <div class="message warning-message">
+          Required Bizflow fields still need a mapping:
+          <strong>{{ missingRequiredTargets.join(', ') }}</strong>
+        </div>
+      }
+
+      <div class="panel-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="isBusy"
+          (click)="startAnotherMigration()"
+        >
+          Start Over
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="isBusy || missingRequiredTargets.length > 0"
+          (click)="validateMappingAndContinue()"
+        >
+          {{ busyAction === 'validating' ? 'Validating...' : 'Save Mapping & Validate' }}
+        </button>
+      </div>
+    </section>
+  }
+
+  <!-- Step 4: Validation -->
+  @if (validation && currentStep === 4) {
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Validation Results</h2>
+          <p>
+            Review the row counts and errors before importing.
+          </p>
+        </div>
+        <span class="status-pill">
+          {{ validation.invalid_rows === 0 ? 'Ready for import' : 'Review errors' }}
+        </span>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span>Total Rows</span>
+          <strong>{{ validation.total_rows }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Valid Rows</span>
+          <strong class="valid-number">{{ validation.valid_rows }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Invalid Rows</span>
+          <strong class="invalid-number">{{ validation.invalid_rows }}</strong>
+        </div>
+      </div>
+
+      @if (validationIssues.length > 0) {
+        <div class="issue-section">
+          <h3>Issues to review</h3>
+          <div class="issue-list">
+            @for (issue of validationIssues; track $index) {
+              <div class="issue-row">
+                <span class="issue-row-number">{{ issue.rowLabel }}</span>
+                <span>{{ issue.message }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+        <div class="clean-validation">
+          ✓ No validation errors were reported.
+        </div>
+      }
+
+      <!-- @if (selectedEntity.requiresBranch) {
+        <div class="selected-branch">
+          <span>Records will be assigned to</span>
+          <strong>
+            {{ branches.find ? '' : '' }}
+            {{ branches.length && branchId !== null
+              ? (branches | keyvalue).length && (branchId !== null)
+                ? (branches.length > 0 ? 'Selected branch' : '')
+                : ''
+              : 'No branch selected' }}
+          </strong>
+        </div>
+      } -->
+
+      <div class="import-warning">
+        <strong>Before importing</strong>
+        <p>
+          The import will write data into your Bizflow company.
+          Review the selected data type, column mapping, and branch before
+          continuing. Any import failures will be reported.
+        </p>
+      </div>
+
+      <div class="panel-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          [disabled]="isBusy"
+          (click)="currentStep = 3"
+        >
+          Back to Mapping
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="!canImport"
+          (click)="confirmImport()"
+        >
+          {{ busyAction === 'importing' ? 'Importing...' : 'Confirm & Import' }}
+        </button>
+      </div>
+    </section>
+  }
+
+  <!-- Step 5: Import in progress -->
+  @if (currentStep === 5 && busyAction === 'importing') {
+    <section class="panel progress-panel" aria-live="polite">
+      <div class="loading-spinner"></div>
+      <h2>Importing QuickBooks data</h2>
+      <p>
+        Bizflow is processing the validated rows and recording the result.
+        Keep this page open until the import finishes.
+      </p>
+    </section>
+  }
+
+  <!-- Step 6: Review -->
+  @if (currentStep === 6 && batch) {
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Migration Results</h2>
+          <p>
+            {{ batch.entity_type.replace('_', ' ') }} import summary
+          </p>
+        </div>
+        <span class="status-pill" [class.status-complete]="batch.status === 'completed'">
+          {{ batch.status.replace('_', ' ') }}
+        </span>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span>Total Rows</span>
+          <strong>{{ batch.total_rows }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Imported Successfully</span>
+          <strong class="valid-number">{{ batch.successful_rows }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Failed Rows</span>
+          <strong class="invalid-number">{{ batch.failed_rows }}</strong>
+        </div>
+      </div>
+
+      @if (importIssues.length > 0) {
+        <div class="issue-section">
+          <h3>Import errors</h3>
+          <div class="issue-list">
+            @for (issue of importIssues; track $index) {
+              <div class="issue-row">
+                <span class="issue-row-number">{{ issue.rowLabel }}</span>
+                <span>{{ issue.message }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (reportData?.summary; as summary) {
+        <div class="report-section">
+          <h3>Migration Session Report</h3>
+          <div class="report-grid">
+            <div><span>Total batches</span><strong>{{ summary.total_batches ?? 0 }}</strong></div>
+            <div><span>Completed</span><strong>{{ summary.completed_batches ?? 0 }}</strong></div>
+            <div><span>Failed batches</span><strong>{{ summary.failed_batches ?? 0 }}</strong></div>
+            <div><span>Total rows</span><strong>{{ summary.total_rows ?? 0 }}</strong></div>
+            <div><span>Successful rows</span><strong>{{ summary.successful_rows ?? 0 }}</strong></div>
+            <div><span>Failed rows</span><strong>{{ summary.failed_rows ?? 0 }}</strong></div>
+          </div>
+        </div>
+      }
+
+      @if (reportError) {
+        <div class="message warning-message">
+          {{ reportError }}
+        </div>
+      }
+
+      @if (reviewData?.analysis; as reviewedAnalysis) {
+        <div class="review-details">
+          <h3>Review Summary</h3>
+          <p>
+            Entity: <strong>{{ reviewedAnalysis.entity_type || batch.entity_type }}</strong>
+          </p>
+          <p>
+            Analyzed rows: <strong>{{ reviewedAnalysis.row_count ?? batch.total_rows }}</strong>
+          </p>
+          @if (reviewData?.mapping?.field_mapping; as savedMapping) {
+            <p>
+              Mapped columns:
+              <strong>{{ (savedMapping | keyvalue).length }}</strong>
+            </p>
+          }
+        </div>
+      }
+
+      <div class="panel-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="startAnotherMigration()"
+        >
+          Import Another CSV
+        </button>
+      </div>
+    </section>
+  }
+</div>

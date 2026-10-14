@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Tenant;
+use App\TenantStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class TenantFactory extends Factory
@@ -24,7 +25,7 @@ class TenantFactory extends Factory
                 'plumbing',
             ]),
             'logo_path' => null,
-            'status' => 'active',
+            'status' => TenantStatus::APPROVED,
         ];
     }
 }
