@@ -1,0 +1,400 @@
+<div class="quickbooks-migration-page">
+  <div class="page-header">
+    <div>
+      <h1>QuickBooks Migration Center</h1>
+      <p>
+        Connect your QuickBooks company, review your existing records,
+        and migrate your business data into BizFlow.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="primary-button"
+      (click)="connectQuickBooks()"
+      [disabled]="connecting || loadingConnections"
+    >
+      {{ connecting ? 'Connecting...' : '+ Connect QuickBooks' }}
+    </button>
+  </div>
+
+  @if (successMessage) {
+    <div class="alert alert-success" role="status">
+      {{ successMessage }}
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-error" role="alert">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <section class="connection-card">
+    <div class="section-heading">
+      <div>
+        <h2>Connected company</h2>
+        <p>Select the QuickBooks company whose data you want to migrate.</p>
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="loadConnections()"
+        [disabled]="loadingConnections"
+      >
+        {{ loadingConnections ? 'Refreshing...' : 'Refresh' }}
+      </button>
+    </div>
+
+    @if (loadingConnections) {
+      <p class="muted">Loading QuickBooks connections...</p>
+    } @else if (connections.length === 0) {
+      <div class="empty-state">
+        <h3>No QuickBooks company connected</h3>
+        <p>
+          Connect a QuickBooks company to discover its customers,
+          products, invoices, and other available records.
+        </p>
+      </div>
+    } @else {
+      <div class="connection-controls">
+        <label for="quickbooks-connection">QuickBooks company</label>
+
+        <select
+          id="quickbooks-connection"
+          name="quickbooksConnection"
+          [(ngModel)]="selectedConnectionId"
+          (ngModelChange)="onConnectionChange()"
+        >
+          @for (connection of connections; track connection.id) {
+            <option [ngValue]="connection.id">
+              {{
+                connection.company_name ||
+                'QuickBooks company ' + connection.realm_id
+              }}
+              — {{ connection.connection_status }}
+            </option>
+          }
+        </select>
+      </div>
+
+      @if (selectedConnection; as connection) {
+        <div class="connection-details">
+          <div>
+            <span class="detail-label">Status</span>
+            <span
+              class="status-badge"
+              [class.connected]="connection.connection_status === 'connected'"
+              [class.disconnected]="connection.connection_status !== 'connected'"
+            >
+              {{ connection.connection_status.replaceAll('_', ' ') }}
+            </span>
+          </div>
+
+          <div>
+            <span class="detail-label">Realm ID</span>
+            <strong>{{ connection.realm_id }}</strong>
+          </div>
+
+          @if (connection.last_synced_at) {
+            <div>
+              <span class="detail-label">Last synced</span>
+              <strong>{{ connection.last_synced_at }}</strong>
+            </div>
+          }
+
+          <button
+            type="button"
+            class="text-button danger-text"
+            (click)="disconnectQuickBooks()"
+            [disabled]="connection.connection_status !== 'connected'"
+          >
+            Disconnect
+          </button>
+        </div>
+      }
+
+      @if (loadingCompanyInfo) {
+        <p class="muted company-loading">
+          Loading company information...
+        </p>
+      }
+
+      @if (companyInfo?.company; as company) {
+        <div class="company-summary">
+          <h3>{{ company.company_name || company.legal_name || 'Company details' }}</h3>
+
+          @if (company.email) {
+            <p>{{ company.email }}</p>
+          }
+
+          @if (company.phone) {
+            <p>{{ company.phone }}</p>
+          }
+
+          @if (company.address.city || company.address.country) {
+            <p>
+              {{ company.address.city }}
+              @if (company.address.city && company.address.country) {
+                ,
+              }
+              {{ company.address.country }}
+            </p>
+          }
+        </div>
+      }
+    }
+  </section>
+
+  <section class="migration-section">
+    <div class="section-heading">
+      <div>
+        <h2>Available QuickBooks records</h2>
+        <p>
+          Preview source records before running an import into BizFlow.
+          Importing again will not duplicate records already mapped.
+        </p>
+      </div>
+    </div>
+
+    @if (!selectedConnectionId && !loadingConnections) {
+      <div class="empty-state">
+        <p>Connect and select a QuickBooks company to view its records.</p>
+      </div>
+    } @else if (loadingCatalog) {
+      <div class="loading-state">
+        <span class="loader-dot"></span>
+        Discovering QuickBooks records...
+      </div>
+    } @else if (catalog) {
+      <div class="entity-grid">
+        @for (entity of entities; track entity.entity_type) {
+          <article class="entity-card">
+            <div class="entity-card-heading">
+              <h3>{{ entity.label }}</h3>
+              <span class="record-count">
+                {{ entity.record_count }}
+              </span>
+            </div>
+
+            <p class="entity-description">
+              QuickBooks type:
+              <span>{{ entity.quickbooks_entity }}</span>
+            </p>
+
+            <div class="entity-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="previewEntity(entity.entity_type)"
+                [disabled]="loadingPreview !== null || importingEntity !== null"
+              >
+                {{
+                  loadingPreview === entity.entity_type
+                    ? 'Loading preview...'
+                    : 'Preview'
+                }}
+              </button>
+
+              @if (isImportable(entity.entity_type)) {
+                <button
+                  type="button"
+                  class="primary-button import-button"
+                  (click)="requestImport(entity.entity_type)"
+                  [disabled]="
+                    entity.record_count === 0 ||
+                    importingEntity !== null ||
+                    loadingPreview !== null ||
+                    selectedConnection?.connection_status !== 'connected'
+                  "
+                >
+                  {{
+                    importingEntity === entity.entity_type
+                      ? 'Importing...'
+                      : 'Import records'
+                  }}
+                </button>
+              } @else {
+                <span class="coming-soon">Import not available yet</span>
+              }
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (pendingImportEntity) {
+        <div class="branch-selection-panel">
+          <h3>Choose the destination branch</h3>
+
+          <p>
+            Select the BizFlow branch for
+            {{ getEntityLabel(pendingImportEntity) }}.
+          </p>
+
+          @if (branchError) {
+            <p class="field-error" role="alert">
+              {{ branchError }}
+            </p>
+          }
+
+          @if (loadingBranches) {
+            <p class="muted">Loading active branches...</p>
+          } @else if (branchOptions.length === 0) {
+            <p class="muted">
+              No active branches are available. Create or activate a
+              branch before importing these records.
+            </p>
+          } @else {
+            <label for="migration-branch">
+              Destination branch
+            </label>
+
+            <app-searchable-select
+              inputId="migration-branch"
+              [(ngModel)]="branchId"
+              [options]="branchOptions"
+              placeholder="Select a BizFlow branch"
+              searchPlaceholder="Search branches..."
+              noResultsText="No matching branches found."
+              [disabled]="importingEntity !== null"
+              [required]="true"
+            />
+          }
+
+          <div class="branch-input-row">
+            <button
+              type="button"
+              class="primary-button"
+              (click)="confirmPendingImport()"
+              [disabled]="
+                loadingBranches ||
+                branchOptions.length === 0 ||
+                branchId === null ||
+                importingEntity !== null
+              "
+            >
+              Continue
+            </button>
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="cancelPendingImport()"
+              [disabled]="importingEntity !== null"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </section>
+
+  @if (preview; as previewData) {
+    <section class="preview-panel">
+      <div class="section-heading">
+        <div>
+          <h2>{{ previewData.label }} preview</h2>
+          <p>
+            Showing {{ previewData.sample_count }} of
+            {{ previewData.record_count }} source records.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="closePreview()"
+        >
+          Close preview
+        </button>
+      </div>
+
+      @if (previewData.samples.length === 0) {
+        <p class="muted">No sample records were returned.</p>
+      } @else {
+        <div class="preview-records">
+          @for (
+            sample of previewData.samples;
+            track sample.quickbooks_id || $index
+          ) {
+            <article class="preview-record">
+              <h3>
+                {{ sample.name || sample.customer || sample.supplier ||
+                   sample.quickbooks_id || 'Source record' }}
+              </h3>
+
+              <div class="preview-fields">
+                @for (
+                  entry of previewEntries(sample);
+                  track entry.key
+                ) {
+                  <div class="preview-field">
+                    <span>{{ entry.key }}</span>
+                    <strong>{{ entry.value }}</strong>
+                  </div>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (importResult; as result) {
+    <section class="import-result-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Import results</h2>
+          <p>
+            {{ getEntityLabel(result.entity_type) }} import summary
+          </p>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-stat">
+          <span>Fetched</span>
+          <strong>{{ result.fetched_count }}</strong>
+        </div>
+
+        <div class="result-stat">
+          <span>Imported</span>
+          <strong>{{ result.imported_count }}</strong>
+        </div>
+
+        <div class="result-stat">
+          <span>Already imported</span>
+          <strong>{{ result.already_imported_count }}</strong>
+        </div>
+
+        <div class="result-stat">
+          <span>Skipped</span>
+          <strong>{{ result.skipped_count }}</strong>
+        </div>
+
+        @if (result.unresolved_line_reference_count !== undefined) {
+          <div class="result-stat">
+            <span>Unresolved line references</span>
+            <strong>{{ result.unresolved_line_reference_count }}</strong>
+          </div>
+        }
+
+        @if (result.allocation_count !== undefined) {
+          <div class="result-stat">
+            <span>Payment allocations</span>
+            <strong>{{ result.allocation_count }}</strong>
+          </div>
+        }
+      </div>
+
+      <p class="muted">
+        BizFlow keeps existing imported records in place when you rerun an
+        import. Review skipped records and unresolved references before
+        deciding on a follow-up action.
+      </p>
+    </section>
+  }
+</div>

@@ -8,7 +8,7 @@
       </p>
     </div>
 
-    <button class="primary-action" type="button">
+    <button class="primary-action" type="button" [routerLink]="['/sales']">
       <ion-icon name="cart-outline"></ion-icon>
       New Sale
     </button>
@@ -143,10 +143,10 @@
 
       <div class="chart">
         <div class="chart-y-axis">
-          <span>30k</span>
-          <span>20k</span>
-          <span>10k</span>
-          <span>0</span>
+          <span>{{ salesChartAxisLabels[0] }}</span>
+          <span>{{ salesChartAxisLabels[1] }}</span>
+          <span>{{ salesChartAxisLabels[2] }}</span>
+          <span>{{ salesChartAxisLabels[3] }}</span>
         </div>
 
         <div class="chart-area">
@@ -200,7 +200,7 @@
       </div>
 
       <div class="branch-sales-list">
-        @for (branch of dashboardData.sales_by_branch; track branch.branch_id) {
+       @for (branch of displayedBranchSales;track branch.key) {
           <div class="branch-sales-item">
             <div class="branch-sales-header">
               <strong>{{ branch.branch_name }}</strong>
@@ -231,7 +231,7 @@
       </div>
 
       <div class="payment-method-list">
-        @for (payment of dashboardData.payments_by_method; track payment.payment_method) {
+       @for (payment of displayedPaymentsByMethod;track payment.key) {
           <div class="payment-method-item">
             <div class="payment-method-header">
               <strong>{{ payment.payment_method | titlecase }}</strong>
@@ -271,7 +271,7 @@
       </div>
 
       <div class="activity-list">
-        @for (activity of dashboardData.recent_activity; track $index) {
+        @for (activity of dashboardData.recent_activity.slice(0, 5); track $index) {
           <div class="activity-item">
             <div class="activity-icon">
               <ion-icon
@@ -298,6 +298,11 @@
             </strong>
           </div>
         }
+        @empty {
+          <div class="empty-state">
+            No recent activity data available.
+          </div>
+        }
       </div>
     </section>
   </div>
@@ -310,14 +315,14 @@
           <p>Items requiring attention</p>
         </div>
 
-        <button class="text-action" type="button">
+        <button class="text-action" type="button" [routerLink]="['/inventory']">
           View inventory
           <ion-icon name="arrow-forward-outline"></ion-icon>
         </button>
       </div>
 
       <div class="stock-list">
-        @for (item of dashboardData.low_stock_items; track item.id) {
+       @for (item of dashboardData.low_stock_items.slice(0, 5); track item.id) {
         <div class="stock-item">
           <div>
             <strong>{{ item.name }}</strong>
@@ -328,7 +333,11 @@
             {{ item.quantity | number }} left
           </span>
         </div>
-        }
+      } @empty {
+        <div class="empty-state">
+          No low-stock items to show.
+        </div>
+      }
       </div>
     </section>
 
@@ -339,7 +348,7 @@
           <p>Invoices awaiting payment</p>
         </div>
 
-        <button class="text-action" type="button">
+        <button class="text-action" type="button"  [routerLink]="['/invoices']">
           View invoices
           <ion-icon name="arrow-forward-outline"></ion-icon>
         </button>
@@ -354,7 +363,7 @@
         </div>
 
         <div class="invoice-list">
-          @for (invoice of dashboardData.outstanding_invoices; track invoice.id) {
+          @for (invoice of dashboardData.outstanding_invoices.slice(0, 5); track invoice.id) {
             <div class="invoice-item">
               <div>
                 <strong>{{ invoice.invoice_number }}</strong>

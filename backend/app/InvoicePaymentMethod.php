@@ -8,5 +8,6 @@ enum InvoicePaymentMethod: string
     case BANK_TRANSFER = 'bank_transfer';
     case MOBILE_MONEY = 'mobile_money';
     case CARD = 'card';
+    case CHEQUE = 'cheque';
     case OTHER = 'other';
 }

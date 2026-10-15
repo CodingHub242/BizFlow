@@ -399,25 +399,50 @@ class DashboardService
                 ) * 100;
         }
 
-        $salesTrend = Invoice::query()
+       $trendStart = $dateFrom
+            ? \Carbon\Carbon::parse($dateFrom)->startOfDay()
+            : (
+                $dateTo
+                    ? \Carbon\Carbon::parse($dateTo)
+                        ->subMonths(6)
+                        ->startOfMonth()
+                    : now()->subMonths(6)->startOfMonth()
+            );
+
+        $trendEnd = $dateTo
+            ? \Carbon\Carbon::parse($dateTo)->endOfDay()
+            : now()->endOfDay();
+
+        $monthlySales = Invoice::query()
             ->where('tenant_id', $tenantId)
             ->whereNotIn('status', ['draft', 'cancelled'])
-            ->when($dateFrom, function ($query) use ($dateFrom) {
-                $query->whereDate('issued_at', '>=', $dateFrom);
-            })
-            ->when($dateTo, function ($query) use ($dateTo) {
-                $query->whereDate('issued_at', '<=', $dateTo);
-            })
-            ->selectRaw('DATE(issued_at) as date, SUM(total) as sales')
-            ->groupByRaw('DATE(issued_at)')
-            ->orderByRaw('DATE(issued_at)')
+            ->whereBetween('issued_at', [$trendStart, $trendEnd])
+            ->selectRaw(
+                "DATE_TRUNC('month', issued_at) AS month, SUM(total) AS sales"
+            )
+            ->groupByRaw("DATE_TRUNC('month', issued_at)")
+            ->orderByRaw("DATE_TRUNC('month', issued_at)")
             ->get()
-            ->map(fn ($row) => [
-                'date' => $row->date,
-                'sales' => (float) $row->sales,
-            ])
-            ->values()
-            ->all();
+            ->keyBy(
+                fn ($row) => \Carbon\Carbon::parse($row->month)->format('Y-m')
+            );
+
+        $salesTrend = [];
+
+        $cursor = $trendStart->copy()->startOfMonth();
+        $lastMonth = $trendEnd->copy()->startOfMonth();
+
+        while ($cursor->lessThanOrEqualTo($lastMonth)) {
+            $monthKey = $cursor->format('Y-m');
+            $monthData = $monthlySales->get($monthKey);
+
+            $salesTrend[] = [
+                'date' => $cursor->toDateString(),
+                'sales' => (float) ($monthData?->sales ?? 0),
+            ];
+
+            $cursor->addMonth();
+        }
 
         $salesPreviousPeriod = 0;
 

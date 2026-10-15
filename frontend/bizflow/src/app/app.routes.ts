@@ -127,18 +127,20 @@ export const routes: Routes = [
         import('./features/branches/branch-details/branch-details.component')
           .then(m => m.BranchDetailsComponent),
     },
+    {
+      path: 'integrations/quickbooks-migration',
+      loadComponent: () =>
+        import(
+          './features/integrations/quickbooks-migration/quickbooks-migration.component'
+        ).then((m) => m.QuickBooksMigrationComponent),
+    },
     // {
     //   path: 'expenses',
     //   loadComponent: () =>
     //     import('./features/expe/branch-details.component')
     //       .then(m => m.BranchDetailsComponent),
     // },
-    {
-      path: 'migration/quickbooks',
-      loadComponent: () =>
-        import('./features/migration/quickbooks-migration.component')
-          .then((m) => m.QuickbooksMigrationComponent),
-    },
+   
       
     ],
   },

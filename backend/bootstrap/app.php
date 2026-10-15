@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->throttleApi(60);
+        $middleware->throttleApi(62);
         $middleware->alias([
             'tenant.permission' => SetTenantPermissionContext::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,

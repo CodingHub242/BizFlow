@@ -1,7 +1,7 @@
 import { Component, OnInit,inject,ChangeDetectorRef } from '@angular/core';
 import { DecimalPipe,DatePipe,TitleCasePipe } from '@angular/common';
 import { IonIcon } from '@ionic/angular';
-
+import { RouterLink } from '@angular/router';
 import { addIcons } from 'ionicons';
 import {
   arrowDownOutline,
@@ -27,17 +27,32 @@ interface SalesChartPoint {
   y: number;
 }
 
+interface DashboardBranchSummary {
+  key: string;
+  branch_name: string;
+  sales: number;
+}
+
+interface DashboardPaymentSummary {
+  key: string;
+  payment_method: string;
+  total: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
   standalone: true,
-  imports: [IonIcon,DecimalPipe,DatePipe,TitleCasePipe],
+  imports: [IonIcon,DecimalPipe,DatePipe,TitleCasePipe,RouterLink],
 })
 export class DashboardComponent {
  private readonly dashboardApi = inject(DashboardApiService);
  private readonly changeDetector = inject(ChangeDetectorRef);
 salesChartPoints: SalesChartPoint[] = [];
+salesChartAxisLabels: string[] = ['30k', '20k', '10k', '0'];
+displayedBranchSales: DashboardBranchSummary[] = [];
+displayedPaymentsByMethod: DashboardPaymentSummary[] = [];
  dashboardData: DashboardData = {
     sales_total: 0,
     product_sales: 0,
@@ -89,6 +104,13 @@ salesChartPoints: SalesChartPoint[] = [];
     this.dashboardApi.getDashboard().subscribe({
       next: (response) => {
         this.dashboardData = response.data;
+        this.displayedBranchSales = this.buildBranchSummary(
+          response.data.sales_by_branch
+        );
+
+        this.displayedPaymentsByMethod = this.buildPaymentSummary(
+          response.data.payments_by_method
+        );
          this.salesChartPoints = this.buildSalesChartPoints(
         response.data.sales_trend,);
         this.changeDetector.detectChanges();
@@ -96,45 +118,141 @@ salesChartPoints: SalesChartPoint[] = [];
     });
   }
 
-  private buildSalesChartPoints(trend: DashboardData['sales_trend'],): SalesChartPoint[] 
-  {
-    if (trend.length === 0) {
-      return [];
-    }
+  private buildBranchSummary(
+  branches: DashboardData['sales_by_branch']
+): DashboardBranchSummary[] {
+  const sorted = [...branches].sort(
+    (a, b) => b.sales - a.sales
+  );
 
-  if (trend.length === 1) {
-    return [
-      {
-        x: 0,
-        y: 110,
-      },
-    ];
+  const result: DashboardBranchSummary[] = sorted
+    .slice(0, 5)
+    .map(branch => ({
+      key: `branch-${branch.branch_id}`,
+      branch_name: branch.branch_name,
+      sales: Number(branch.sales) || 0,
+    }));
+
+  const remaining = sorted.slice(5);
+
+  if (remaining.length > 0) {
+    result.push({
+      key: 'other-branches',
+      branch_name: 'Other branches',
+      sales: remaining.reduce(
+        (total, branch) => total + (Number(branch.sales) || 0),
+        0
+      ),
+    });
   }
 
+  return result;
+}
+
+private buildPaymentSummary(
+    methods: DashboardData['payments_by_method']
+  ): DashboardPaymentSummary[] {
+    const sorted = [...methods].sort(
+      (a, b) => b.total - a.total
+    );
+
+    const result: DashboardPaymentSummary[] = sorted
+      .slice(0, 4)
+      .map(payment => ({
+        key: `method-${payment.payment_method}`,
+        payment_method: payment.payment_method,
+        total: Number(payment.total) || 0,
+      }));
+
+    const remaining = sorted.slice(4);
+
+    if (remaining.length > 0) {
+      result.push({
+        key: 'other-methods',
+        payment_method: 'Other methods',
+        total: remaining.reduce(
+          (total, payment) => total + (Number(payment.total) || 0),
+          0
+        ),
+      });
+    }
+
+    return result;
+  }
+
+  private buildSalesChartPoints(
+  trend: DashboardData['sales_trend']
+): SalesChartPoint[] {
   const chartWidth = 700;
   const chartHeight = 220;
   const padding = 15;
-
-  const maxSales = Math.max(...trend.map((item) => item.sales));
-
   const usableHeight = chartHeight - padding * 2;
 
-  return trend.map((item, index) => {
-    const x = (index / (trend.length - 1)) * chartWidth;
+  const maxSales = Math.max(
+    0,
+    ...trend.map(item => Math.max(0, Number(item.sales) || 0))
+  );
 
-    const normalized =
-      maxSales > 0 ? item.sales / maxSales : 0;
+  // Choose a rounded maximum with three equal vertical intervals.
+  const axisStep = this.getNiceSalesAxisStep(maxSales);
+  const axisMax = axisStep * 3;
+
+  this.salesChartAxisLabels = [
+    this.formatSalesAxisLabel(axisMax),
+    this.formatSalesAxisLabel(axisStep * 2),
+    this.formatSalesAxisLabel(axisStep),
+    '0',
+  ];
+
+  if (trend.length === 0) {
+    return [];
+  }
+
+  return trend.map((item, index) => {
+    const sales = Math.max(0, Number(item.sales) || 0);
+
+    const x = trend.length === 1
+      ? chartWidth / 2
+      : (index / (trend.length - 1)) * chartWidth;
 
     const y =
       chartHeight -
       padding -
-      normalized * usableHeight;
+      (sales / axisMax) * usableHeight;
 
-    return {
-      x,
-      y,
-    };
+    return { x, y };
   });
+}
+
+private getNiceSalesAxisStep(maxSales: number): number {
+  if (maxSales <= 0) {
+    return 500;
+  }
+
+  const roughStep = maxSales / 3;
+  const magnitude = Math.pow(
+    10,
+    Math.floor(Math.log10(roughStep))
+  );
+  const normalized = roughStep / magnitude;
+
+  const niceMultiplier =
+    normalized <= 1 ? 1 :
+    normalized <= 2 ? 2 :
+    normalized <= 2.5 ? 2.5 :
+    normalized <= 5 ? 5 : 10;
+
+  return niceMultiplier * magnitude;
+}
+
+private formatSalesAxisLabel(value: number): string {
+  if (value >= 1000) {
+    const thousands = value / 1000;
+    const formatted = Number(thousands.toFixed(1));
+    return `${formatted}k`;
+  }
+
+  return Math.round(value).toString();
 }
 
 getSalesChartLabels(): string[] {
@@ -143,33 +261,31 @@ getSalesChartLabels(): string[] {
 
     return date.toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric',
+      // day: 'numeric',
     });
   });
 }
 
-getBranchSalesPercentage(sales: number): number {
-  const maxSales = Math.max(
-    ...this.dashboardData.sales_by_branch.map((branch) => branch.sales),
-  );
+  getBranchSalesPercentage(sales: number): number {
+    const maxSales = Math.max(
+      0,
+      ...this.displayedBranchSales.map(branch => branch.sales)
+    );
 
-  if (maxSales <= 0) {
-    return 0;
+    return maxSales > 0
+      ? Math.min(100, (sales / maxSales) * 100)
+      : 0;
   }
 
-  return (sales / maxSales) * 100;
-}
 
-getPaymentMethodPercentage(total: number): number {
-  const totalPayments = this.dashboardData.payments_by_method.reduce(
-    (sum, payment) => sum + payment.total,
-    0,
-  );
+  getPaymentMethodPercentage(total: number): number {
+    const totalPayments = this.displayedPaymentsByMethod.reduce(
+      (sum, payment) => sum + payment.total,
+      0
+    );
 
-  if (totalPayments <= 0) {
-    return 0;
+    return totalPayments > 0
+      ? (total / totalPayments) * 100
+      : 0;
   }
-
-  return (total / totalPayments) * 100;
-}
 }

@@ -59,6 +59,39 @@ class QuickBooksInvoicesImporter
         // Fetch all provider pages before opening the local transaction.
         $records = $this->fetchAllInvoices($connection);
 
+        Log::info('QuickBooks invoice due-date diagnostic', [
+            'connection_id' => $connection->id,
+            'tenant_id' => $tenantId,
+            'invoice_count' => count($records),
+
+            'records_with_due_date_field' => count(array_filter(
+                $records,
+                fn (array $record): bool =>
+                    array_key_exists('DueDate', $record)
+            )),
+
+            'records_with_nonempty_due_date' => count(array_filter(
+                $records,
+                fn (array $record): bool =>
+                    $this->nullableString($record['DueDate'] ?? null) !== null
+            )),
+
+            'records_with_valid_due_date' => count(array_filter(
+                $records,
+                fn (array $record): bool =>
+                    $this->validDate($record['DueDate'] ?? null) !== null
+            )),
+
+            'samples' => array_map(
+                fn (array $record): array => [
+                    'quickbooks_id' => $record['Id'] ?? null,
+                    'due_date_present' => array_key_exists('DueDate', $record),
+                    'source_due_date' => $record['DueDate'] ?? null,
+                ],
+                array_slice($records, 0, 5)
+            ),
+        ]);
+
         return DB::transaction(function () use ($connection, $tenantId, $branch, $userId, $records, $lineTable): array {
             $imported = 0;
             $alreadyImported = 0;
@@ -69,6 +102,7 @@ class QuickBooksInvoicesImporter
             foreach ($records as $record) {
                 $quickBooksId = $this->nullableString($record['Id'] ?? null);
                 $invoiceDate = $this->validDate($record['TxnDate'] ?? null);
+                $dueDate = $this->validDate($record['DueDate'] ?? null);
                 if ($quickBooksId === null || $invoiceDate === null) {
                     $skipped++;
                     continue;
@@ -85,7 +119,29 @@ class QuickBooksInvoicesImporter
                         ->where('id', $mapping->local_id)
                         ->first();
                     if ($existing) {
-                        // Keep local edits and never append duplicate invoice lines on re-import.
+                        // Repair only a missing issue date using the verified QuickBooks
+                        // transaction date. Preserve all other existing invoice fields.
+                        if ($existing->issued_at === null) {
+                            DB::table('invoices')
+                                ->where('tenant_id', $tenantId)
+                                ->where('id', $existing->id)
+                                ->whereNull('issued_at')
+                                ->update([
+                                    'issued_at' => $invoiceDate,
+                                ]);
+                        }
+
+                        if ($existing->due_at === null && $dueDate !== null) {
+                            DB::table('invoices')
+                                ->where('tenant_id', $tenantId)
+                                ->where('id', $existing->id)
+                                ->whereNull('due_at')
+                                ->update([
+                                    'due_at' => $dueDate,
+                                ]);
+                        }
+
+                        // Never recreate invoice lines or overwrite local edits.
                         $alreadyImported++;
                         continue;
                     }
@@ -214,7 +270,9 @@ class QuickBooksInvoicesImporter
                     'invoice_date' => $invoiceDate,
                     'issue_date' => $invoiceDate,
                     'date' => $invoiceDate,
-                    'due_date' => $this->validDate($record['DueDate'] ?? null),
+                    'due_at' => $dueDate,
+                    // Canonical timestamp used by Bizflow's dashboard.
+                    'issued_at' => $invoiceDate,
                     'subtotal' => round($total - $tax, 2),
                     'tax_amount' => $tax,
                     'tax' => $tax,

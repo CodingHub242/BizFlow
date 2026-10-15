@@ -1,48 +1,53 @@
-import { Component, OnInit,inject,ChangeDetectorRef } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { IonIcon } from '@ionic/angular';
 import { Router } from '@angular/router';
-import { AuthService,AuthUser } from '../../core/services/auth.service';
-import { AsyncPipe } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthService, AuthUser } from '../../core/services/auth.service';
 import { addIcons } from 'ionicons';
-import {notificationsOutline,searchOutline,chevronDownOutline} from 'ionicons/icons';
-
+import {
+  notificationsOutline,
+  searchOutline,
+  chevronDownOutline,
+} from 'ionicons/icons';
 
 @Component({
   selector: 'app-topbar',
   templateUrl: './topbar.component.html',
   styleUrls: ['./topbar.component.scss'],
   standalone: true,
-  imports: [IonIcon,AsyncPipe],
+  imports: [IonIcon],
 })
-export class TopbarComponent   {
-public readonly authService = inject(AuthService);
-private readonly router = inject(Router);
-private readonly changeDetector = inject(ChangeDetectorRef);
-isProfileMenuOpen = false;
-LoggedInUser: any;
-Initials: string = '';
+export class TopbarComponent {
+  public readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
-   constructor() {
+  readonly currentUser = signal<AuthUser | null>(null);
+
+  isProfileMenuOpen = false;
+
+  constructor() {
     addIcons({
       notificationsOutline,
       searchOutline,
       chevronDownOutline,
     });
-   
-   
-  }
 
+    this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => {
+        this.currentUser.set(user);
+      });
+  }
 
   logout(): void {
     this.isProfileMenuOpen = false;
     this.authService.logout();
-    //remove user data from local storage
     localStorage.removeItem('bizflow_user');
     this.router.navigate(['/login']);
   }
 
   toggleProfileMenu(): void {
-  this.isProfileMenuOpen = !this.isProfileMenuOpen;
-}
-
+    this.isProfileMenuOpen = !this.isProfileMenuOpen;
+  }
 }

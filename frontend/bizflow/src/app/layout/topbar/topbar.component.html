@@ -1,7 +1,8 @@
+@let user = currentUser();
 <header class="topbar">
   <div class="page-context">
     <h1>Dashboard</h1>
-      @if (authService.currentUser$ | async; as user) {
+      @if (user) {
         <span class="business-name">{{user.tenant?.name}}</span>
       }
   </div>
@@ -30,7 +31,7 @@
           [attr.aria-expanded]="isProfileMenuOpen"
           (click)="toggleProfileMenu()"
         >
-         @if (authService.currentUser$ | async; as user) {
+         @if (user) {
         <span class="avatar">{{ user.name.split(" ").map(word => word.charAt(0).toUpperCase()).join("").slice(0, 2) }}</span>
 
         <span class="profile-details">

@@ -17,6 +17,7 @@ use App\Http\Controllers\QuickBooksCatalogItemsImportController;
 use App\Http\Controllers\QuickBooksChartOfAccountsImportController;
 use App\Http\Controllers\QuickBooksInvoicesImportController;
 use App\Http\Controllers\QuickBooksSupplierImportController;
+use App\Http\Controllers\QuickBooksPaymentsImportController;
 use App\Http\Controllers\QuickBooksCompanyInfoController;
 use App\Http\Controllers\QuickBooksBillsImportController;
 use App\Http\Controllers\QuickBooksEstimatesImportController;
@@ -141,8 +142,16 @@ Route::prefix('integrations/quickbooks')->name('quickbooks.')->group(function ()
             [QuickBooksInvoicesImportController::class, 'store']
         )
             ->whereNumber('connection')
-            ->middleware('throttle:5,1')
+            ->middleware('throttle:8,1')
             ->name('migration-catalog.invoices.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/payments/import',
+            [QuickBooksPaymentsImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.payments.import');
 
         Route::delete('/connections/{connection}', [QuickBooksOAuthController::class, 'disconnect'])
             ->whereNumber('connection')

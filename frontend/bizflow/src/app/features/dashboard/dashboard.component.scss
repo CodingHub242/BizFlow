@@ -15,6 +15,114 @@
   margin-bottom: 28px;
 }
 
+/* Recent activity */
+.activity-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.activity-icon ion-icon {
+  font-size: 17px;
+}
+
+.activity-details {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-details strong,
+.activity-details span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-details strong {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.activity-details span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+/* Outstanding invoice list */
+.invoice-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.invoice-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.invoice-item > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoice-item > div:first-child strong {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.invoice-item > div:first-child span {
+  color: #64748b;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.invoice-amount {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.invoice-amount strong {
+  color: #0f172a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.invoice-amount small {
+  color: #94a3b8;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .invoice-item {
+    gap: 8px;
+  }
+
+  .invoice-amount strong {
+    font-size: 11px;
+  }
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: #040f27;
@@ -156,15 +264,18 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(340px, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   gap: 16px;
   margin-bottom: 16px;
+  align-items: start;
 }
+
 
 .bottom-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .panel {
@@ -508,8 +619,10 @@
   }
 }
 
-.sales-by-branch {
-  min-height: 100%;
+.sales-by-branch,
+.payment-methods {
+  min-height: 0;
+  align-self: start;
 }
 
 .branch-sales-list {
