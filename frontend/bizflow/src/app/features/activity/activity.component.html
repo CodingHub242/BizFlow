@@ -1,0 +1,113 @@
+<section class="activity-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">BUSINESS OVERVIEW</p>
+      <h1>Activity History</h1>
+      <p class="page-description">
+        Review your recent invoices, payments and expenses.
+      </p>
+    </div>
+
+    <a class="back-link" routerLink="/dashboard">
+      Back to dashboard
+    </a>
+  </header>
+
+  <section class="activity-card">
+    <div class="activity-toolbar">
+      <div class="filter-control">
+        <label for="activity-type">Transaction type</label>
+
+        <select
+          id="activity-type"
+          [value]="selectedType"
+          (change)="onTypeChange($event)"
+          [disabled]="loading"
+        style="height:40px;border-radius:10px;">
+          <option value="all">All activity</option>
+          <option value="invoice">Invoices</option>
+          <option value="payment">Payments</option>
+          <option value="expense">Expenses</option>
+        </select>
+      </div>
+
+      <span class="record-count">
+        {{ total }} records
+      </span>
+    </div>
+
+    @if (errorMessage) {
+      <div class="state-message error" role="alert">
+        {{ errorMessage }}
+
+        <button
+          type="button"
+          (click)="loadActivity(currentPage)"
+        >
+          Retry
+        </button>
+      </div>
+    } @else if (loading) {
+      <div class="state-message">
+        Loading activity…
+      </div>
+    } @else if (activities.length === 0) {
+      <div class="state-message">
+        No activity found for this selection.
+      </div>
+    } @else {
+      <div class="activity-list">
+        @for (
+          activity of activities;
+          track trackActivity($index, activity)
+        ) {
+          <article class="activity-row">
+            <div
+              class="activity-type"
+              [class.invoice]="activity.type === 'invoice'"
+              [class.payment]="activity.type === 'payment'"
+              [class.expense]="activity.type === 'expense'"
+            >
+              {{ getTypeLabel(activity.type) }}
+            </div>
+
+            <div class="activity-details">
+              <strong>{{ activity.description }}</strong>
+              <span>
+                {{ activity.timestamp | date:'MMM d, y · h:mm a' }}
+              </span>
+            </div>
+
+            <div class="activity-amount">
+              GH₵ {{ activity.amount | number:'1.2-2' }}
+            </div>
+          </article>
+        }
+      </div>
+
+      <footer class="pagination">
+        <span>
+          Page {{ currentPage }} of {{ lastPage }}
+        </span>
+
+        <div class="pagination-actions">
+          <button
+            type="button"
+            (click)="loadActivity(currentPage - 1)"
+            [disabled]="currentPage <= 1 || loading"
+          >
+            Previous
+          </button>
+
+          <button
+            type="button"
+            (click)="loadActivity(currentPage + 1)"
+            [disabled]="currentPage >= lastPage || loading"
+          >
+            Next
+          </button>
+        </div>
+      </footer>
+    }
+  </section>
+</section>

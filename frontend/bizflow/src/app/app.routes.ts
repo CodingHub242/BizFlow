@@ -128,6 +128,24 @@ export const routes: Routes = [
           .then(m => m.BranchDetailsComponent),
     },
     {
+      path: 'sales',
+      loadComponent: () =>
+        import('./features/sales/sales.component')
+          .then(m => m.SalesComponent),
+    },
+    {
+      path: 'invoices',
+      loadComponent: () =>
+        import('./features/invoices/invoices.component')
+          .then(m => m.InvoicesComponent),
+    },
+    {
+      path: 'activity',
+      loadComponent: () =>
+        import('./features/activity/activity.component')
+          .then(m => m.ActivityComponent),
+    },
+    {
       path: 'integrations/quickbooks-migration',
       loadComponent: () =>
         import(

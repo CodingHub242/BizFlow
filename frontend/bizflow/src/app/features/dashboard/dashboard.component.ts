@@ -17,10 +17,7 @@ import {
   ellipsisHorizontalOutline,
 } from 'ionicons/icons';
 
-import {
-  DashboardApiService,
-  DashboardData,
-} from '../../core/services/dashboard-api';
+import {DashboardApiService,DashboardData,DashboardOutstandingInvoice} from '../../core/services/dashboard-api';
 
 interface SalesChartPoint {
   x: number;
@@ -287,5 +284,76 @@ getSalesChartLabels(): string[] {
     return totalPayments > 0
       ? (total / totalPayments) * 100
       : 0;
+  }
+
+  isInvoiceOverdue(invoice: DashboardOutstandingInvoice): boolean {
+    if (invoice.outstanding <= 0) {
+      return false;
+    }
+
+    const dueDate = this.toDateOnly(invoice.due_at);
+
+    if (!dueDate) {
+      return false;
+    }
+
+    return dueDate < this.getTodayDateOnly();
+  }
+
+  getDaysOverdue(invoice: DashboardOutstandingInvoice): number {
+    if (!this.isInvoiceOverdue(invoice)) {
+      return 0;
+    }
+
+    const dueDate = this.toDateOnly(invoice.due_at);
+
+    if (!dueDate) {
+      return 0;
+    }
+
+    const today = this.getTodayDateOnly();
+    const dueTime = Date.parse(`${dueDate}T00:00:00Z`);
+    const todayTime = Date.parse(`${today}T00:00:00Z`);
+
+    return Math.floor(
+      (todayTime - dueTime) / (1000 * 60 * 60 * 24)
+    );
+  }
+
+  private toDateOnly(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    // Works with YYYY-MM-DD and ISO timestamp responses.
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+
+    if (!match) {
+      return null;
+    }
+
+    const dateString = match[1];
+    const [year, month, day] = dateString.split('-').map(Number);
+    const parsed = new Date(Date.UTC(year, month - 1, day));
+
+    // Reject invalid calendar dates instead of mislabeling invoices.
+    if (
+      parsed.getUTCFullYear() !== year ||
+      parsed.getUTCMonth() !== month - 1 ||
+      parsed.getUTCDate() !== day
+    ) {
+      return null;
+    }
+
+    return dateString;
+  }
+
+  private getTodayDateOnly(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
   }
 }

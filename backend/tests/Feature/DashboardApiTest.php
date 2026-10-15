@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\InvoiceStatus;
 use App\Models\InvoicePayment;
+use Spatie\Permission\Models\Permission;
 use App\Models\Tenant;
 use Spatie\Permission\Models\Role;
 use App\Models\User;
@@ -21,17 +22,24 @@ class DashboardApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function assignRole(
+ private function assignRole(
     User $user,
     string $roleName = 'Accountant'
 ): void {
     setPermissionsTeamId($user->tenant_id);
 
-    $role = Role::query()
-        ->where('tenant_id', $user->tenant_id)
-        ->where('name', $roleName)
-        ->firstOrFail();
+    $permission = Permission::firstOrCreate([
+        'name' => 'reports.view',
+        'guard_name' => 'web',
+    ]);
 
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $user->tenant_id,
+        'name' => $roleName,
+        'guard_name' => 'web',
+    ]);
+
+    $role->givePermissionTo($permission);
     $user->assignRole($role);
 }
 
@@ -796,4 +804,167 @@ public function test_returns_payments_grouped_by_method(): void
         ->assertJsonPath('data.payments_by_method.2.payment_method', 'bank_transfer')
         ->assertJsonPath('data.payments_by_method.2.total', 11000);
 }
+
+public function test_activity_feed_requires_authentication(): void
+{
+    $this->getJson('/api/dashboard/activity')
+        ->assertUnauthorized();
+}
+
+public function test_activity_feed_only_returns_records_for_authenticated_users_tenant(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $this->assignRole($user);
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $invoice = Invoice::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-ACTIVITY-OWN',
+        'status' => 'issued',
+        'total' => 1500,
+        'issued_at' => '2026-09-27 10:00:00',
+    ]);
+
+    $otherInvoice = Invoice::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'created_by' => $otherUser->id,
+        'invoice_number' => 'INV-ACTIVITY-OTHER',
+        'status' => 'issued',
+        'total' => 9000,
+        'issued_at' => '2026-09-27 10:00:00',
+    ]);
+
+    InvoicePayment::factory()->create([
+        'tenant_id' => $tenant->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 250,
+        'paid_at' => '2026-09-27 12:00:00',
+    ]);
+
+    InvoicePayment::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'invoice_id' => $otherInvoice->id,
+        'amount' => 750,
+        'paid_at' => '2026-09-27 12:00:00',
+    ]);
+
+    Expense::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'amount' => 125,
+        'expense_date' => '2026-09-27',
+    ]);
+
+    Expense::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'created_by' => $otherUser->id,
+        'amount' => 999,
+        'expense_date' => '2026-09-27',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->getJson('/api/dashboard/activity?per_page=50');
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('meta.total', 3)
+        ->assertJsonFragment([
+            'description' => 'Invoice INV-ACTIVITY-OWN created',
+        ])
+        ->assertJsonMissing([
+            'description' => 'Invoice INV-ACTIVITY-OTHER created',
+        ])
+        ->assertJsonMissing([
+            'amount' => 999,
+        ])
+        ->assertJsonMissing([
+            'amount' => 750,
+        ]);
+}
+
+public function test_activity_feed_filters_by_type_and_paginates(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    foreach ([100, 200, 300] as $index => $amount) {
+        Invoice::factory()->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-ACT-' . ($index + 1),
+            'status' => 'issued',
+            'total' => $amount,
+            'issued_at' => sprintf(
+                '2026-09-%02d 10:00:00',
+                10 + $index
+            ),
+        ]);
+    }
+
+    Expense::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'amount' => 75,
+        'expense_date' => '2026-09-15',
+    ]);
+
+    $this->actingAs($user);
+
+    // Filtering returns only expenses.
+    $this->getJson('/api/dashboard/activity?type=expense')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.type', 'expense');
+
+    // Page one contains two of the three invoices.
+    $this->getJson(
+        '/api/dashboard/activity?type=invoice&per_page=2&page=1'
+    )
+        ->assertOk()
+        ->assertJsonPath('meta.current_page', 1)
+        ->assertJsonPath('meta.last_page', 2)
+        ->assertJsonPath('meta.total', 3)
+        ->assertJsonCount(2, 'data');
+
+    // Page two contains the remaining invoice.
+    $this->getJson(
+        '/api/dashboard/activity?type=invoice&per_page=2&page=2'
+    )
+        ->assertOk()
+        ->assertJsonPath('meta.current_page', 2)
+        ->assertJsonCount(1, 'data');
+}
+
 }

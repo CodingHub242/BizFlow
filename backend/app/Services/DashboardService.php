@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\InvoicePayment;
+use Illuminate\Support\Facades\DB;
 use App\Models\Expense;
 use App\Models\Inventory;
 use App\Models\InvoiceItem;
@@ -544,5 +545,81 @@ class DashboardService
             'sales_previous_period' => (float) $salesPreviousPeriod,
             'sales_change_percentage' => round($salesChangePercentage, 2),
         ];
+    }
+
+    public function activityFeed(int $tenantId,?string $type = null,?string $dateFrom = null,?string $dateTo = null,
+    int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator 
+    {
+       $invoices = DB::table('invoices')
+            ->where('tenant_id', $tenantId)
+            ->whereNotIn('status', ['draft', 'cancelled'])
+            ->whereNotNull('issued_at')
+            ->selectRaw("
+                'invoice' AS type,
+                ('Invoice ' || invoice_number || ' created') AS description,
+                total AS amount,
+                issued_at AS activity_at,
+                id AS source_id
+            ");
+
+       $payments = DB::table('invoice_payments as p')
+            ->leftJoin('invoices as i', function ($join) {
+                $join->on('i.id', '=', 'p.invoice_id')
+                    ->on('i.tenant_id', '=', 'p.tenant_id');
+            })
+            ->where('p.tenant_id', $tenantId)
+            ->whereNotNull('p.paid_at')
+            ->selectRaw("
+                'payment' AS type,
+                (
+                    'Payment received for ' ||
+                    COALESCE(i.invoice_number, 'invoice')
+                ) AS description,
+                p.amount AS amount,
+                p.paid_at AS activity_at,
+                p.id AS source_id
+            ");
+
+        $expenses = DB::table('expenses')
+            ->where('tenant_id', $tenantId)
+            ->whereNotNull('expense_date')
+            ->selectRaw("
+                'expense' AS type,
+                'Expense recorded' AS description,
+                amount AS amount,
+                expense_date AS activity_at,
+                id AS source_id
+            ");
+
+        $union = $invoices
+            ->unionAll($payments)
+            ->unionAll($expenses);
+
+        $query = DB::query()
+            ->fromSub($union, 'activity_feed')
+            ->select([
+                'type',
+                'description',
+                'amount',
+                'activity_at',
+                'source_id',
+            ]);
+
+        if ($type !== null) {
+            $query->where('type', $type);
+        }
+
+        if ($dateFrom !== null) {
+            $query->whereDate('activity_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo !== null) {
+            $query->whereDate('activity_at', '<=', $dateTo);
+        }
+
+        return $query
+            ->orderByDesc('activity_at')
+            ->orderByDesc('source_id')
+            ->paginate(min(max($perPage, 1), 50));
     }
 }

@@ -625,6 +625,7 @@
   align-self: start;
 }
 
+
 .branch-sales-list {
   display: flex;
   flex-direction: column;
@@ -736,4 +737,22 @@
   align-self: flex-end;
   color: #6b7280;
   font-size: 12px;
+}
+
+.invoice-due-status {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.invoice-due-status.overdue {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
+.invoice-due-status:not(.overdue) {
+  color: #94a3b8;
 }

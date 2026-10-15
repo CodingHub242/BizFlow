@@ -3,6 +3,36 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api.config';
 
+export type DashboardActivityType =
+  | 'invoice'
+  | 'payment'
+  | 'expense';
+
+  export interface DashboardActivityItem
+  extends DashboardRecentActivity {
+  id: number;
+}
+
+export interface DashboardActivityResponse {
+  success: boolean;
+  data: DashboardActivityItem[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
+export interface DashboardActivityParams {
+  page?: number;
+  perPage?: number;
+  type?: DashboardActivityType;
+  dateFrom?: string;
+  dateTo?: string;
+}
+//////////ACTIVITY END///////////
+
 export interface DashboardTrendItem {
   date: string;
   sales: number;
@@ -98,5 +128,29 @@ export class DashboardApiService {
     }
 
    return this.http.get<DashboardResponse>(`${API_URL}/dashboard`, { params });
+  }
+
+  getActivity(params: DashboardActivityParams = {}): Observable<DashboardActivityResponse> 
+  {
+    let httpParams = new HttpParams()
+      .set('page', params.page ?? 1)
+      .set('per_page', params.perPage ?? 20);
+
+    if (params.type) {
+      httpParams = httpParams.set('type', params.type);
+    }
+
+    if (params.dateFrom) {
+      httpParams = httpParams.set('date_from', params.dateFrom);
+    }
+
+    if (params.dateTo) {
+      httpParams = httpParams.set('date_to', params.dateTo);
+    }
+
+    return this.http.get<DashboardActivityResponse>(
+      `${API_URL}/dashboard/activity`,
+      { params: httpParams }
+    );
   }
 }

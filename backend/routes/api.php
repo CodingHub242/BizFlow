@@ -284,6 +284,8 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('permission:reports.view');
 
+    Route::get('/dashboard/activity',[DashboardController::class, 'activity']);
+
     // EMPLOYEES
     Route::post('/employees', [EmployeeController::class, 'store'])
     ->middleware('permission:employees.create');

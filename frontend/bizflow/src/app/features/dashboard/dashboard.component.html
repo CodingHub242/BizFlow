@@ -264,7 +264,7 @@
           <p>Latest business transactions</p>
         </div>
 
-        <button class="text-action" type="button">
+        <button class="text-action" type="button" [routerLink]="['/activity']">
           View all
           <ion-icon name="arrow-forward-outline"></ion-icon>
         </button>
@@ -375,9 +375,20 @@
                   GH₵ {{ invoice.outstanding | number: '1.2-2' }}
                 </strong>
 
-                <small>
-                  Due {{ invoice.due_at | date: 'mediumDate' }}
-                </small>
+                @if (isInvoiceOverdue(invoice)) {
+                    <small class="invoice-due-status overdue">
+                      Overdue by {{ getDaysOverdue(invoice) }}
+                      {{ getDaysOverdue(invoice) === 1 ? 'day' : 'days' }}
+                      · Due {{ invoice.due_at | date:'MMM d, y' }}
+                    </small>
+                  } @else {
+                    <small class="invoice-due-status">
+                      {{ invoice.due_at
+                        ? 'Due ' + (invoice.due_at | date:'MMM d, y')
+                        : 'Due date unavailable'
+                      }}
+                    </small>
+                  }
               </div>
             </div>
           }
