@@ -17,6 +17,7 @@ export type QuickBooksMigrationEntityType =
   | 'estimates'
   | 'chart_of_accounts'
   | 'expenses'
+  | 'credit_memos'
   | 'payments';
 
 export type QuickBooksImportEntityType =
@@ -25,6 +26,8 @@ export type QuickBooksImportEntityType =
   | 'catalog_items'
   | 'invoices'
   | 'bills'
+  | 'expenses'
+  | 'credit_memos'
   | 'estimates'
   | 'chart_of_accounts'
   | 'payments';
@@ -132,6 +135,15 @@ export interface QuickBooksDisconnectResponse {
   message: string;
 }
 
+export interface QuickBooksCreditMemoReconciliationResult {
+  connection_id: number;
+  entity_type: 'credit_memo_applications';
+  fetched_payment_count: number;
+  created_count: number;
+  already_applied_count: number;
+  skipped_count: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -215,4 +227,17 @@ export class QuickBooksApi {
       body,
     );
   }
+
+  reconcileCreditMemoApplications(
+  connectionId: number,
+): Observable<
+  QuickBooksApiResponse<QuickBooksCreditMemoReconciliationResult>
+> {
+  return this.http.post<
+    QuickBooksApiResponse<QuickBooksCreditMemoReconciliationResult>
+  >(
+    `${this.baseUrl}/connections/${connectionId}/migration-catalog/credit_memos/reconcile-applications`,
+    {},
+  );
+}
 }

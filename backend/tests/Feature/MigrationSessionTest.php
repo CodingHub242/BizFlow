@@ -34,6 +34,8 @@ use Laravel\Sanctum\Sanctum;
 use App\Services\MigrationCustomerImporter;
 use App\Services\MigrationSupplierImporter;
 use App\Models\MigrationValidationResult;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use App\Services\MigrationSessionService;
 use App\Services\MigrationCustomerCreator;
 use App\Services\MigrationExpenseCreator;
@@ -50,16 +52,51 @@ class MigrationSessionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function assignRole(
+   protected function setUp(): void
+{
+    parent::setUp();
+
+    $registrar = app(PermissionRegistrar::class);
+    $registrar->forgetCachedPermissions();
+
+    foreach ([
+    'migration.create',
+    'migration.import',
+    'migration.view',
+] as $permissionName) {
+    Permission::firstOrCreate([
+        'name' => $permissionName,
+        'guard_name' => 'web',
+    ]);
+}
+
+    $registrar->forgetCachedPermissions();
+}
+
+   private function assignRole(
     User $user,
     string $roleName = 'Accountant'
 ): void {
     setPermissionsTeamId($user->tenant_id);
 
-    $role = Role::query()
-        ->where('tenant_id', $user->tenant_id)
-        ->where('name', $roleName)
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $user->tenant_id,
+        'name' => $roleName,
+        'guard_name' => 'web',
+    ]);
+
+   foreach ([
+    'migration.create',
+    'migration.import',
+    'migration.view',
+] as $permissionName) {
+    $permission = Permission::query()
+        ->where('name', $permissionName)
+        ->where('guard_name', 'web')
         ->firstOrFail();
+
+    $role->givePermissionTo($permission);
+}
 
     $user->assignRole($role);
 }

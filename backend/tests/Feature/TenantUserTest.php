@@ -19,7 +19,7 @@ class TenantUserTest extends TestCase
             'email' => 'business@example.com',
             'phone' => '0240000000',
             'business_type' => 'Retail',
-            'status' => 'active',
+            'status' => 'approved',
         ]);
 
         $user = User::create([
@@ -40,7 +40,7 @@ class TenantUserTest extends TestCase
             'email' => 'business@example.com',
             'phone' => '0240000000',
             'business_type' => 'Retail',
-            'status' => 'active',
+            'status' => 'approved',
         ]);
 
         $user = User::create([

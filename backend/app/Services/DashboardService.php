@@ -414,35 +414,65 @@ class DashboardService
             ? \Carbon\Carbon::parse($dateTo)->endOfDay()
             : now()->endOfDay();
 
-        $monthlySales = Invoice::query()
+        $useDailyTrend = $dateFrom !== null
+            && $dateTo !== null
+            && \Carbon\Carbon::parse($dateFrom)
+                ->startOfDay()
+                ->diffInDays(
+                    \Carbon\Carbon::parse($dateTo)->startOfDay()
+                ) <= 30;
+
+        $driver = DB::connection()->getDriverName();
+
+        if ($useDailyTrend) {
+            $periodExpression = $driver === 'sqlite'
+                ? 'DATE(issued_at)'
+                : 'CAST(issued_at AS DATE)';
+
+            $periodFormat = 'Y-m-d';
+            $cursor = $trendStart->copy()->startOfDay();
+            $lastPeriod = $trendEnd->copy()->startOfDay();
+        } else {
+            $periodExpression = $driver === 'sqlite'
+                ? "strftime('%Y-%m-01', issued_at)"
+                : "DATE_TRUNC('month', issued_at)";
+
+            $periodFormat = 'Y-m';
+            $cursor = $trendStart->copy()->startOfMonth();
+            $lastPeriod = $trendEnd->copy()->startOfMonth();
+        }
+
+        $trendSales = Invoice::query()
             ->where('tenant_id', $tenantId)
             ->whereNotIn('status', ['draft', 'cancelled'])
             ->whereBetween('issued_at', [$trendStart, $trendEnd])
             ->selectRaw(
-                "DATE_TRUNC('month', issued_at) AS month, SUM(total) AS sales"
+                "$periodExpression AS period, SUM(total) AS sales"
             )
-            ->groupByRaw("DATE_TRUNC('month', issued_at)")
-            ->orderByRaw("DATE_TRUNC('month', issued_at)")
+            ->groupByRaw($periodExpression)
+            ->orderByRaw($periodExpression)
             ->get()
             ->keyBy(
-                fn ($row) => \Carbon\Carbon::parse($row->month)->format('Y-m')
+                fn ($row) => \Carbon\Carbon::parse($row->period)
+                    ->format($periodFormat)
             );
 
         $salesTrend = [];
 
-        $cursor = $trendStart->copy()->startOfMonth();
-        $lastMonth = $trendEnd->copy()->startOfMonth();
-
-        while ($cursor->lessThanOrEqualTo($lastMonth)) {
-            $monthKey = $cursor->format('Y-m');
-            $monthData = $monthlySales->get($monthKey);
+        while ($cursor->lessThanOrEqualTo($lastPeriod)) {
+            $periodKey = $cursor->format($periodFormat);
+            $periodData = $trendSales->get($periodKey);
 
             $salesTrend[] = [
                 'date' => $cursor->toDateString(),
-                'sales' => (float) ($monthData?->sales ?? 0),
+                'sales' => (float) ($periodData?->sales ?? 0),
             ];
 
-            $cursor->addMonth();
+            if ($useDailyTrend) {
+                $cursor->addDay();
+            } else {
+                $cursor->addMonth();
+            }
         }
 
         $salesPreviousPeriod = 0;

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\CatalogItem;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -13,6 +14,25 @@ use Tests\TestCase;
 class StoreInvoiceRequestTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function makeRequestForTenant(
+    Tenant $tenant,
+    array $data
+): StoreInvoiceRequest {
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $request = StoreInvoiceRequest::create(
+        '/api/invoices',
+        'POST',
+        $data
+    );
+
+    $request->setUserResolver(fn () => $user);
+
+    return $request;
+}
 
     public function test_invoice_requires_at_least_one_item(): void
     {
@@ -22,7 +42,7 @@ class StoreInvoiceRequestTest extends TestCase
             'tenant_id' => $tenant->id,
         ]);
 
-        $request = StoreInvoiceRequest::create('/api/invoices', 'POST', [
+        $request = $this->makeRequestForTenant($tenant, [
             'tenant_id' => $tenant->id,
             'branch_id' => $branch->id,
             'invoice_number' => 'INV-001',
@@ -43,66 +63,66 @@ class StoreInvoiceRequestTest extends TestCase
     }
 
     public function test_invoice_number_is_required(): void
-{
-    $tenant = Tenant::factory()->create();
+    {
+        $tenant = Tenant::factory()->create();
 
-    $branch = Branch::factory()->create([
-        'tenant_id' => $tenant->id,
-    ]);
+        $branch = Branch::factory()->create([
+            'tenant_id' => $tenant->id,
+        ]);
 
-    $request = StoreInvoiceRequest::create('/api/invoices', 'POST', [
-        'tenant_id' => $tenant->id,
-        'branch_id' => $branch->id,
-        'items' => [
-            [
-                'catalog_item_id' => 1,
-                'quantity' => 1,
-                'unit_price' => 1000,
+        $request = $this->makeRequestForTenant($tenant, [
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'items' => [
+                [
+                    'catalog_item_id' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                ],
             ],
-        ],
-    ]);
+        ]);
 
-    $validator = Validator::make(
-        $request->all(),
-        $request->rules()
-    );
+        $validator = Validator::make(
+            $request->all(),
+            $request->rules()
+        );
 
-    $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->fails());
 
-    $this->assertArrayHasKey(
-        'invoice_number',
-        $validator->errors()->toArray()
-    );
-}
+        $this->assertArrayHasKey(
+            'invoice_number',
+            $validator->errors()->toArray()
+        );
+    }
 
-public function test_branch_is_required(): void
-{
-    $tenant = Tenant::factory()->create();
+    public function test_branch_is_required(): void
+    {
+        $tenant = Tenant::factory()->create();
 
-    $request = StoreInvoiceRequest::create('/api/invoices', 'POST', [
-        'tenant_id' => $tenant->id,
-        'invoice_number' => 'INV-001',
-        'items' => [
-            [
-                'catalog_item_id' => 1,
-                'quantity' => 1,
-                'unit_price' => 1000,
+        $request = $this->makeRequestForTenant($tenant, [
+            'tenant_id' => $tenant->id,
+            'invoice_number' => 'INV-001',
+            'items' => [
+                [
+                    'catalog_item_id' => 1,
+                    'quantity' => 1,
+                    'unit_price' => 1000,
+                ],
             ],
-        ],
-    ]);
+        ]);
 
-    $validator = Validator::make(
-        $request->all(),
-        $request->rules()
-    );
+        $validator = Validator::make(
+            $request->all(),
+            $request->rules()
+        );
 
-    $this->assertTrue($validator->fails());
+        $this->assertTrue($validator->fails());
 
-    $this->assertArrayHasKey(
-        'branch_id',
-        $validator->errors()->toArray()
-    );
-}
+        $this->assertArrayHasKey(
+            'branch_id',
+            $validator->errors()->toArray()
+        );
+    }
 
 public function test_invoice_item_quantity_must_be_greater_than_zero(): void
 {
@@ -112,18 +132,18 @@ public function test_invoice_item_quantity_must_be_greater_than_zero(): void
         'tenant_id' => $tenant->id,
     ]);
 
-    $request = StoreInvoiceRequest::create('/api/invoices', 'POST', [
-        'tenant_id' => $tenant->id,
-        'branch_id' => $branch->id,
-        'invoice_number' => 'INV-001',
-        'items' => [
-            [
-                'catalog_item_id' => 1,
-                'quantity' => 0,
-                'unit_price' => 1000,
-            ],
+    $request = $this->makeRequestForTenant($tenant, [
+    'tenant_id' => $tenant->id,
+    'branch_id' => $branch->id,
+    'invoice_number' => 'INV-001',
+    'items' => [
+        [
+            'catalog_item_id' => 1,
+            'quantity' => 0,
+            'unit_price' => 1000,
         ],
-    ]);
+    ],
+]);
 
     $validator = Validator::make(
         $request->all(),
@@ -146,20 +166,20 @@ public function test_invoice_item_money_values_cannot_be_negative(): void
         'tenant_id' => $tenant->id,
     ]);
 
-    $request = StoreInvoiceRequest::create('/api/invoices', 'POST', [
-        'tenant_id' => $tenant->id,
-        'branch_id' => $branch->id,
-        'invoice_number' => 'INV-001',
-        'items' => [
-            [
-                'catalog_item_id' => 1,
-                'quantity' => 1,
-                'unit_price' => -100,
-                'discount' => -50,
-                'tax' => -20,
-            ],
+   $request = $this->makeRequestForTenant($tenant, [
+    'tenant_id' => $tenant->id,
+    'branch_id' => $branch->id,
+    'invoice_number' => 'INV-001',
+    'items' => [
+        [
+            'catalog_item_id' => 1,
+            'quantity' => 1,
+            'unit_price' => -100,
+            'discount' => -50,
+            'tax' => -20,
         ],
-    ]);
+    ],
+]);
 
     $validator = Validator::make(
         $request->all(),
@@ -175,9 +195,14 @@ public function test_invoice_item_money_values_cannot_be_negative(): void
     $this->assertArrayHasKey('items.0.tax', $errors);
 }
 
+
 public function test_invoice_optional_fields_can_be_omitted(): void
 {
     $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -200,6 +225,9 @@ public function test_invoice_optional_fields_can_be_omitted(): void
         ],
     ]);
 
+    // Simulate the authenticated user for this manually created request.
+    $request->setUserResolver(fn () => $user);
+
     $validator = Validator::make(
         $request->all(),
         $request->rules()
@@ -210,4 +238,5 @@ public function test_invoice_optional_fields_can_be_omitted(): void
         $validator->errors()->toJson()
     );
 }
+
 }

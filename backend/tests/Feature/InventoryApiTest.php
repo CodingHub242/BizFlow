@@ -8,6 +8,8 @@ use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Tenant;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use App\InventoryMovementType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,17 +20,53 @@ use Tests\TestCase;
 class InventoryApiTest extends TestCase
 {
     use RefreshDatabase;
+// 'inventory.view',
+//         'inventory.receive',
+//         'inventory.adjust',
+//         'inventory.transfer',
+//         'inventory.import',
+    protected function setUp(): void
+{
+    parent::setUp();
 
-    private function assignRole(
+    $registrar = app(PermissionRegistrar::class);
+    $registrar->forgetCachedPermissions();
+    $registrar->setPermissionsTeamId(null);
+
+    foreach (['invoices.create', 'invoices.cancel'] as $name) {
+        Permission::firstOrCreate([
+            'name' => $name,
+            'guard_name' => 'web',
+        ]);
+    }
+
+    $registrar->forgetCachedPermissions();
+}
+   
+private function assignRole(
     User $user,
     string $roleName = 'Inventory Officer'
 ): void {
     setPermissionsTeamId($user->tenant_id);
 
-    $role = Role::query()
-        ->where('tenant_id', $user->tenant_id)
-        ->where('name', $roleName)
-        ->firstOrFail();
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $user->tenant_id,
+        'name' => $roleName,
+        'guard_name' => 'web',
+    ]);
+
+    $permissions = collect([
+       'inventory.view',
+        'inventory.receive',
+        'inventory.adjust',
+        'inventory.transfer',
+        'inventory.import',
+    ])->map(fn ($name) => Permission::firstOrCreate([
+        'name' => $name,
+        'guard_name' => 'web',
+    ]));
+
+    $role->givePermissionTo($permissions->all());
 
     $user->assignRole($role);
 }
@@ -427,6 +465,8 @@ public function test_inventory_catalog_item_filter_cannot_access_another_tenants
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]); $this->assignRole($user);
+
+    
 
     $otherBranch = Branch::factory()->create([
         'tenant_id' => $otherTenant->id,

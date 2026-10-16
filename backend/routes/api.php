@@ -10,9 +10,12 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\QuickBooksCreditMemosImportController;
 use App\Http\Controllers\InventoryExportController;
+use App\Http\Controllers\QuickBooksCreditMemoApplicationsReconcileController;
 use App\Http\Controllers\QuickBooksCustomerImportController;
 use App\Http\Controllers\QuickBooksMigrationCatalogController;
+use App\Http\Controllers\QuickBooksExpensesImportController;
 use App\Http\Controllers\QuickBooksCatalogItemsImportController;
 use App\Http\Controllers\QuickBooksChartOfAccountsImportController;
 use App\Http\Controllers\QuickBooksInvoicesImportController;
@@ -85,7 +88,7 @@ Route::prefix('integrations/quickbooks')->name('quickbooks.')->group(function ()
 
         Route::get('/connections/{connection}/migration-catalog/{entityType}', [QuickBooksMigrationCatalogController::class, 'show'])
             ->whereNumber('connection')
-            ->where('entityType', 'customers|suppliers|catalog_items|invoices|bills|estimates|chart_of_accounts|expenses|payments')
+            ->where('entityType', 'customers|suppliers|catalog_items|invoices|bills|estimates|chart_of_accounts|expenses|payments|credit_memos')
             ->middleware('throttle:30,1')
             ->name('migration-catalog.preview');
 
@@ -152,6 +155,30 @@ Route::prefix('integrations/quickbooks')->name('quickbooks.')->group(function ()
             ->whereNumber('connection')
             ->middleware('throttle:5,1')
             ->name('migration-catalog.payments.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/expenses/import',
+            [QuickBooksExpensesImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.expenses.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/credit_memos/import',
+            [QuickBooksCreditMemosImportController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.credit-memos.import');
+
+        Route::post(
+            '/connections/{connection}/migration-catalog/credit_memos/reconcile-applications',
+            [QuickBooksCreditMemoApplicationsReconcileController::class, 'store']
+        )
+            ->whereNumber('connection')
+            ->middleware('throttle:5,1')
+            ->name('migration-catalog.credit-memos.reconcile-applications');
 
         Route::delete('/connections/{connection}', [QuickBooksOAuthController::class, 'disconnect'])
             ->whereNumber('connection')

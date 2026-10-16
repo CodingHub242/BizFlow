@@ -223,6 +223,66 @@
         }
       </div>
 
+      <section class="import-result-panel reconciliation-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Credit Memo Reconciliation</h2>
+            <p>
+              Match QuickBooks credit applications to imported BizFlow invoices.
+              Import invoices and credit memos first for the best results.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="primary-button"
+            (click)="reconcileCreditMemoApplications()"
+            [disabled]="
+              selectedConnection?.connection_status !== 'connected' ||
+              reconcilingCreditMemoApplications ||
+              importingEntity !== null ||
+              loadingPreview !== null
+            "
+          >
+            {{
+              reconcilingCreditMemoApplications
+                ? 'Reconciling...'
+                : 'Reconcile Credit Applications'
+            }}
+          </button>
+        </div>
+
+        <p class="muted">
+          BizFlow validates the source transaction links, tenant, customer and
+          available balances before recording an application. Unresolved or
+          ambiguous applications are skipped rather than guessed.
+        </p>
+
+        @if (creditMemoReconciliationResult; as result) {
+          <div class="result-grid">
+            <div class="result-stat">
+              <span>QuickBooks payments checked</span>
+              <strong>{{ result.fetched_payment_count }}</strong>
+            </div>
+
+            <div class="result-stat">
+              <span>Applications created</span>
+              <strong>{{ result.created_count }}</strong>
+            </div>
+
+            <div class="result-stat">
+              <span>Already applied</span>
+              <strong>{{ result.already_applied_count }}</strong>
+            </div>
+
+            <div class="result-stat">
+              <span>Skipped for review</span>
+              <strong>{{ result.skipped_count }}</strong>
+            </div>
+          </div>
+        }
+      </section>
+
       @if (pendingImportEntity) {
         <div class="branch-selection-panel">
           <h3>Choose the destination branch</h3>

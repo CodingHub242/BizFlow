@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\CatalogItem;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +18,32 @@ class InvoiceTest extends TestCase
 {
     use RefreshDatabase;
 
+     private function assignRole(
+    User $user,
+    string $roleName = 'Accountant'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $user->tenant_id,
+        'name' => $roleName,
+        'guard_name' => 'web',
+    ]);
+
+   foreach ([
+    'migration.create',
+    'migration.import',
+    'migration.view',
+    'invoice.create',
+] as $permissionName) {
+    $permission = Permission::query()
+        ->where('name', $permissionName)
+        ->where('guard_name', 'web')
+        ->firstOrFail();
+
+    $role->givePermissionTo($permission);
+}
+}
     public function test_tenant_can_create_an_invoice(): void
     {
         $tenant = Tenant::factory()->create();
@@ -459,12 +487,19 @@ class InvoiceTest extends TestCase
 
     setPermissionsTeamId($tenantA->id);
 
-    $role = \Spatie\Permission\Models\Role::query()
-        ->where('tenant_id', $tenantA->id)
-        ->where('name', 'Accountant')
-        ->firstOrFail();
+$permission = Permission::firstOrCreate([
+    'name' => 'invoices.create',
+    'guard_name' => 'web',
+]);
 
-    $userA->assignRole($role);
+$role = Role::query()->firstOrCreate([
+    'tenant_id' => $tenantA->id,
+    'name' => 'Accountant',
+    'guard_name' => 'web',
+]);
+
+$role->givePermissionTo($permission);
+$userA->assignRole($role);
 
     $branchB = Branch::factory()
         ->for($tenantB)

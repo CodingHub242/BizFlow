@@ -9,7 +9,9 @@ use App\Models\Tenant;
 use App\Models\Order;
 use App\Models\Invoice;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use App\InvoiceStatus;
+use Spatie\Permission\PermissionRegistrar;
 use App\PaymentStatus;
 use App\InvoicePaymentMethod;
 use App\Models\Customer;
@@ -21,19 +23,52 @@ class InvoiceApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function assignRole(
+    protected function setUp(): void
+{
+    parent::setUp();
+
+    $registrar = app(PermissionRegistrar::class);
+    $registrar->forgetCachedPermissions();
+    $registrar->setPermissionsTeamId(null);
+
+    foreach (['invoices.create', 'invoices.cancel'] as $name) {
+        Permission::firstOrCreate([
+            'name' => $name,
+            'guard_name' => 'web',
+        ]);
+    }
+
+    $registrar->forgetCachedPermissions();
+}
+   
+private function assignRole(
     User $user,
     string $roleName = 'Accountant'
 ): void {
     setPermissionsTeamId($user->tenant_id);
 
-    $role = Role::query()
-        ->where('tenant_id', $user->tenant_id)
-        ->where('name', $roleName)
-        ->firstOrFail();
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $user->tenant_id,
+        'name' => $roleName,
+        'guard_name' => 'web',
+    ]);
+
+    $permissions = collect([
+        'invoices.create',
+        'invoices.cancel',
+        'invoices.update',
+        'invoices.view',
+        'invoices.record_payment',
+    ])->map(fn ($name) => Permission::firstOrCreate([
+        'name' => $name,
+        'guard_name' => 'web',
+    ]));
+
+    $role->givePermissionTo($permissions->all());
 
     $user->assignRole($role);
 }
+
 
     public function test_authenticated_user_can_create_invoice(): void
     {
@@ -46,6 +81,8 @@ class InvoiceApiTest extends TestCase
         $user = User::factory()->create([
             'tenant_id' => $tenant->id,
         ]);$this->assignRole($user);
+
+        
 
         $catalogItem = CatalogItem::factory()->create([
             'tenant_id' => $tenant->id,

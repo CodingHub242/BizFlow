@@ -13,46 +13,62 @@ class TenantPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_roles_are_isolated_between_tenants(): void
-    {
-        $tenantA = Tenant::create([
-            'name' => 'Business A',
-            'slug' => 'business-a',
-        ]);
+  
+public function test_roles_are_isolated_between_tenants(): void
+{
+    $tenantA = Tenant::create([
+        'name' => 'Business A',
+        'slug' => 'business-a',
+    ]);
 
-        $tenantB = Tenant::create([
-            'name' => 'Business B',
-            'slug' => 'business-b',
-        ]);
+    $tenantB = Tenant::create([
+        'name' => 'Business B',
+        'slug' => 'business-b',
+    ]);
 
-        $userA = User::create([
-            'tenant_id' => $tenantA->id,
-            'name' => 'User A',
-            'email' => 'usera@example.com',
-            'password' => bcrypt('password'),
-        ]);
+    $userA = User::create([
+        'tenant_id' => $tenantA->id,
+        'name' => 'User A',
+        'email' => 'usera@example.com',
+        'password' => bcrypt('password'),
+    ]);
 
-        $userB = User::create([
-            'tenant_id' => $tenantB->id,
-            'name' => 'User B',
-            'email' => 'userb@example.com',
-            'password' => bcrypt('password'),
-        ]);
+    $userB = User::create([
+        'tenant_id' => $tenantB->id,
+        'name' => 'User B',
+        'email' => 'userb@example.com',
+        'password' => bcrypt('password'),
+    ]);
 
-        app(PermissionRegistrar::class)->setPermissionsTeamId($tenantA->id);
+    $registrar = app(PermissionRegistrar::class);
 
-        $roleA = Role::query()
-            ->where('tenant_id', $tenantA->id)
-            ->where('name', 'Manager')
-            ->where('guard_name', 'web')
-            ->firstOrFail();
+    // Create the Accountant role for tenant A.
+    $registrar->setPermissionsTeamId($tenantA->id);
 
-        $userA->assignRole($roleA);
+    $roleA = Role::query()->firstOrCreate([
+        'tenant_id' => $tenantA->id,
+        'name' => 'Accountant',
+        'guard_name' => 'web',
+    ]);
 
-        $this->assertTrue($userA->hasRole('Manager'));
+    $userA->assignRole($roleA);
 
-        app(PermissionRegistrar::class)->setPermissionsTeamId($tenantB->id);
+    $this->assertTrue($userA->fresh()->hasRole('Accountant'));
 
-        $this->assertFalse($userB->hasRole('Manager'));
-    }
+    // Create the same role name for tenant B.
+    $registrar->setPermissionsTeamId($tenantB->id);
+
+    Role::query()->firstOrCreate([
+        'tenant_id' => $tenantB->id,
+        'name' => 'Accountant',
+        'guard_name' => 'web',
+    ]);
+
+    // Tenant B's user must not inherit tenant A's role assignment.
+    $this->assertFalse($userB->fresh()->hasRole('Accountant'));
+
+    // Clear the team context to avoid affecting subsequent tests.
+    $registrar->setPermissionsTeamId(null);
+}
+
 }

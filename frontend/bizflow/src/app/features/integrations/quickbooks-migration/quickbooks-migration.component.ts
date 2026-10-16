@@ -1,7 +1,7 @@
 import {Component,ChangeDetectorRef,OnDestroy,OnInit,inject} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import {QuickBooksApi,QuickBooksConnection,QuickBooksCompanyInfoData,QuickBooksEntityPreview,QuickBooksImportEntityType,QuickBooksImportResult,QuickBooksMigrationCatalog,QuickBooksMigrationEntityType,QuickBooksPreviewSample} from '../../../core/services/quickbooks-api';
+import {QuickBooksApi,QuickBooksConnection,QuickBooksCompanyInfoData,QuickBooksEntityPreview,QuickBooksImportEntityType,QuickBooksImportResult,QuickBooksMigrationCatalog,QuickBooksMigrationEntityType,QuickBooksPreviewSample,QuickBooksCreditMemoReconciliationResult} from '../../../core/services/quickbooks-api';
 import { EMPTY, Subscription } from 'rxjs';
 import { expand, reduce } from 'rxjs/operators';
 import {Branch,BranchApi} from '../../../core/services/branch-api';
@@ -45,6 +45,10 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
   pendingImportEntity: QuickBooksImportEntityType | null = null;
   branchId: number | null = null;
 
+  reconcilingCreditMemoApplications = false;
+
+  creditMemoReconciliationResult: QuickBooksCreditMemoReconciliationResult | null = null;
+
   successMessage = '';
   errorMessage = '';
 
@@ -61,6 +65,8 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
     'invoices',
     'bills',
     'estimates',
+    'expenses',
+    'credit_memos',
     'chart_of_accounts',
     'payments',
   ];
@@ -162,6 +168,7 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
     this.companyInfo = null;
     this.preview = null;
     this.importResult = null;
+    this.creditMemoReconciliationResult = null;
     this.successMessage = '';
     this.errorMessage = '';
 
@@ -556,6 +563,84 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
               error,
               'Unable to load BizFlow branches.',
             );
+            this.changeDetector.detectChanges();
+          },
+        }),
+    );
+  }
+
+  reconcileCreditMemoApplications(): void {
+    const connectionId = this.selectedConnectionId;
+
+    if (connectionId === null) {
+      this.errorMessage = 'Select a QuickBooks company first.';
+      return;
+    }
+
+    if (this.selectedConnection?.connection_status !== 'connected') {
+      this.errorMessage =
+        'Connect the QuickBooks company before reconciling credit applications.';
+      return;
+    }
+
+    if (
+      this.importingEntity !== null ||
+      this.loadingPreview !== null ||
+      this.reconcilingCreditMemoApplications
+    ) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Reconcile QuickBooks credit memo applications with BizFlow invoices? ' +
+      'Only validated source applications will be recorded. ' +
+      'This will not create cash payments or modify invoice totals.',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.creditMemoReconciliationResult = null;
+    this.reconcilingCreditMemoApplications = true;
+
+    this.subscriptions.push(
+      this.quickBooksApi
+        .reconcileCreditMemoApplications(connectionId)
+        .subscribe({
+          next: (response) => {
+            this.reconcilingCreditMemoApplications = false;
+
+            if (!response.success) {
+              this.errorMessage =
+                response.message ??
+                'Credit memo application reconciliation failed.';
+
+              this.changeDetector.detectChanges();
+              return;
+            }
+
+            this.creditMemoReconciliationResult = response.data;
+
+            this.successMessage =
+              'Credit memo reconciliation completed. ' +
+              `${response.data.created_count} applications created, ` +
+              `${response.data.already_applied_count} already applied, ` +
+              `${response.data.skipped_count} skipped.`;
+
+            this.changeDetector.detectChanges();
+          },
+
+          error: (error: unknown) => {
+            this.reconcilingCreditMemoApplications = false;
+
+            this.errorMessage = this.getErrorMessage(
+              error,
+              'Unable to reconcile QuickBooks credit memo applications.',
+            );
+
             this.changeDetector.detectChanges();
           },
         }),

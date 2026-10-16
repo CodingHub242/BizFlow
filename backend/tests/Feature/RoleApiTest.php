@@ -6,12 +6,34 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Database\Seeders\BizFlowRolePermissionSeeder;
 use Tests\TestCase;
 
 class RoleApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function assignRole(
+    User $user,
+    string $roleName = 'Administrator'
+): void {
+    setPermissionsTeamId($user->tenant_id);
+
+    $permission = Permission::firstOrCreate([
+        'name' => 'reports.view',
+        'guard_name' => 'web',
+    ]);
+
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $user->tenant_id,
+        'name' => $roleName,
+        'guard_name' => 'web',
+    ]);
+
+    $role->givePermissionTo($permission);
+    $user->assignRole($role);
+}
 
     public function test_user_with_role_creation_permission_can_create_custom_role(): void
     {
@@ -24,14 +46,20 @@ class RoleApiTest extends TestCase
 
         setPermissionsTeamId($tenant->id);
 
-        $role = Role::query()
-            ->where('tenant_id', $tenant->id)
-            ->where('name', 'Administrator')
-            ->firstOrFail();
+    $permission = Permission::firstOrCreate([
+        'name' => 'roles.create',
+        'guard_name' => 'web',
+    ]);
 
-        $role->givePermissionTo('roles.create');
+    $role = Role::query()->firstOrCreate([
+        'tenant_id' => $tenant->id,
+        'name' => 'Administrator',
+        'guard_name' => 'web',
+    ]);
 
-        $user->assignRole($role);
+    $role->givePermissionTo($permission);
+
+    $user->assignRole($role);
 
         $response = $this
             ->actingAs($user)

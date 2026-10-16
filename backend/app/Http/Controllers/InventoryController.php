@@ -46,8 +46,8 @@ class InventoryController extends Controller
 
             $query->whereHas('catalogItem', function ($catalogQuery) use ($search) {
                 $catalogQuery
-                    ->where('name', 'iLIKE', "%{$search}%")
-                    ->orWhere('sku', 'iLIKE', "%{$search}%");
+                    ->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('sku', 'LIKE', "%{$search}%");
             });
         }
 
