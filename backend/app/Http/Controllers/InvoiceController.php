@@ -64,6 +64,8 @@ class InvoiceController extends Controller
             'customer',
             'branch',
             'payments',
+            'payments.reversal',
+            'creditMemoApplications',
         ]);
 
         return response()->json([
@@ -80,6 +82,8 @@ class InvoiceController extends Controller
                 'items',
                 'customer',
                 'branch',
+                'payments.reversal',
+                'creditMemoApplications',
             ])
             ->latest()
             ->paginate(15);

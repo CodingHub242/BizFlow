@@ -1,3 +1,224 @@
-<p>
-  invoices works!
-</p>
+
+<div class="invoices-page">
+  <header class="page-header">
+    <div>
+      <h1>Invoices</h1>
+      <p>Manage customer invoices, payments, and outstanding balances.</p>
+    </div>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="refresh()"
+        [disabled]="loading"
+      >
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <div class="summary-grid">
+    <article class="summary-card">
+      <span class="summary-label">Invoices loaded</span>
+      <strong>{{ filteredInvoices.length }}</strong>
+      <span class="summary-description">Matching invoices</span>
+    </article>
+
+    <article class="summary-card">
+      <span class="summary-label">Invoice value</span>
+      <strong>{{ formatMoney(invoiceTotal) }}</strong>
+      <span class="summary-description">Filtered invoice total</span>
+    </article>
+
+    <article class="summary-card">
+      <span class="summary-label">Outstanding balance</span>
+      <strong>{{ formatMoney(outstandingTotal) }}</strong>
+      <span class="summary-description">Balance remaining</span>
+    </article>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <span class="search-icon">⌕</span>
+      <input
+        type="search"
+        [(ngModel)]="search"
+        (ngModelChange)="currentPage = 1"
+        placeholder="Search invoice number or customer..."
+        aria-label="Search invoices"
+      />
+    </div>
+
+    <div class="filter-group">
+      <select
+        [(ngModel)]="selectedStatus"
+        (ngModelChange)="currentPage = 1"
+        aria-label="Filter invoice status"
+      >
+        <option value="">All invoice statuses</option>
+        <option value="draft">Draft</option>
+        <option value="issued">Issued</option>
+        <option value="paid">Paid</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+
+      <select
+        [(ngModel)]="selectedPaymentStatus"
+        (ngModelChange)="currentPage = 1"
+        aria-label="Filter payment status"
+      >
+        <option value="">All payment statuses</option>
+        <option value="unpaid">Unpaid</option>
+        <option value="partially-paid">Partially paid</option>
+        <option value="paid">Paid</option>
+        <option value="overpaid">Overpaid</option>
+      </select>
+    </div>
+  </div>
+
+  @if (error) {
+    <div class="error-banner" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" (click)="error = ''" aria-label="Dismiss error">
+        ×
+      </button>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading invoices...</p>
+    </div>
+  } @else if (invoices.length === 0 && !error) {
+    <div class="state-card">
+      <div class="empty-icon">↗</div>
+      <h3>No invoices yet</h3>
+      <p>Invoices will appear here when they have been created.</p>
+    </div>
+  } @else if (filteredInvoices.length === 0) {
+    <div class="state-card">
+      <div class="empty-icon">⌕</div>
+      <h3>No matching invoices</h3>
+      <p>Try changing your search or status filters.</p>
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="search = ''; selectedStatus = ''; selectedPaymentStatus = ''"
+      >
+        Clear filters
+      </button>
+    </div>
+  } @else {
+    <section class="table-card">
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <th>Customer</th>
+              <th>Branch</th>
+              <th>Due date</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Total</th>
+              <th>Paid</th>
+              <th>Balance</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (invoice of displayedInvoices; track invoice.id) {
+              <tr>
+                <td>
+                  <div class="invoice-cell">
+                    <strong>{{ invoice.invoice_number }}</strong>
+                    <small>#{{ invoice.id }}</small>
+                  </div>
+                </td>
+
+                <td>
+                  {{ invoice.customer?.company_name || invoice.customer?.name || 'Walk-in customer' }}
+                </td>
+
+                <td>
+                  {{ invoice.branch?.name || '—' }}
+                </td>
+
+                <td>
+                  {{ invoice.due_at ? (invoice.due_at | date:'mediumDate') : '—' }}
+                </td>
+
+                <td>
+                  <span class="status-badge" [ngClass]="statusClass(invoice.status)">
+                    {{ statusLabel(invoice.status) }}
+                  </span>
+                </td>
+
+                <td>
+                  <span class="status-badge payment-badge" [ngClass]="statusClass(invoice.payment_status)">
+                    {{ statusLabel(invoice.payment_status) }}
+                  </span>
+                </td>
+
+                <td class="money">{{ formatMoney(invoice.total) }}</td>
+                <td class="money">{{ formatMoney(amountPaid(invoice)) }}</td>
+                <td class="money balance">{{ formatMoney(balanceDue(invoice)) }}</td>
+
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="view-button" (click)="viewInvoice(invoice)">
+                      View
+                    </button>
+
+                    @if (normalizeStatus(invoice.status) === 'draft') {
+                      <button type="button" class="action-button" (click)="issueInvoice(invoice)">
+                        Issue
+                      </button>
+                    }
+
+                    @if (normalizeStatus(invoice.status) !== 'cancelled' && normalizeStatus(invoice.status) !== 'paid') {
+                      <button type="button" class="cancel-button" (click)="cancelInvoice(invoice)">
+                        Cancel
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="pagination">
+        <span class="pagination-info">
+          Showing {{ displayedInvoices.length }} of {{ filteredInvoices.length }} matching invoices
+        </span>
+
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="pagination-button"
+            (click)="loadPage(currentPage - 1)"
+            [disabled]="currentPage <= 1"
+          >
+            Previous
+          </button>
+
+          <span class="page-number">Page {{ currentPage }} of {{ displayLastPage }}</span>
+
+          <button
+            type="button"
+            class="pagination-button"
+            (click)="loadPage(currentPage + 1)"
+            [disabled]="currentPage >= displayLastPage"
+          >
+            Next
+          </button>
+        </div>
+      </footer>
+    </section>
+  }
+</div>

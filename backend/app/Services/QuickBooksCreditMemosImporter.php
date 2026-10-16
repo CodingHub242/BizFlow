@@ -124,10 +124,15 @@ class QuickBooksCreditMemosImporter
                 if (! $customerMapping || $customerMapping->local_type !== Customer::class) {
                     $skipped++;
                     $skippedDiagnostics[] = [
-                        'quickbooks_credit_memo_id' => $quickBooksId,
-                        'source_customer_id' => $customerSourceId,
-                        'reason' => $customerMapping ? 'customer_mapping_destination_type_mismatch' : 'customer_mapping_not_found',
-                    ];
+                            'quickbooks_credit_memo_id' => $quickBooksId,
+                            'source_customer_id' => $customerSourceId,
+                            'customer_mapping_found' => $customerMapping !== null,
+                            'customer_mapping_local_type' => $customerMapping?->local_type,
+                            'customer_mapping_local_id' => $customerMapping?->local_id,
+                            'reason' => $customerMapping
+                                ? 'customer_mapping_destination_type_mismatch'
+                                : 'customer_mapping_not_found',
+                        ];
                     continue;
                 }
 

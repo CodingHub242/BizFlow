@@ -56,6 +56,7 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
     'invoices',
     'bills',
     'estimates',
+    'credit_memos',
   ];
 
   readonly importableEntities: QuickBooksImportEntityType[] = [

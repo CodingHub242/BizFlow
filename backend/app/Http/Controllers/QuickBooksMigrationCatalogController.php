@@ -26,6 +26,7 @@ class QuickBooksMigrationCatalogController extends Controller
         'chart_of_accounts' => ['label' => 'Chart of Accounts', 'qbo_entity' => 'Account', 'response_key' => 'Account'],
         'expenses' => ['label' => 'Expenses', 'qbo_entity' => 'Purchase', 'response_key' => 'Purchase'],
         'payments' => ['label' => 'Customer payments', 'qbo_entity' => 'Payment', 'response_key' => 'Payment'],
+        'credit_memos' => ['label' => 'Credit Memos','qbo_entity' => 'CreditMemo','response_key' => 'CreditMemo'],
     ];
 
     /** Return record counts for all supported entity types. */
@@ -228,6 +229,13 @@ class QuickBooksMigrationCatalogController extends Controller
                 'reference' => $row['PaymentRefNum'] ?? null,
                 'customer' => data_get($row, 'CustomerRef.name'),
                 'total' => $row['TotalAmt'] ?? null,
+            ],
+            'credit_memos' => $base + [
+                'number' => $row['DocNumber'] ?? null,
+                'date' => $row['TxnDate'] ?? null,
+                'customer' => data_get($row, 'CustomerRef.name'),
+                'total' => $row['TotalAmt'] ?? null,
+                'remaining_credit' => $row['RemainingCredit'] ?? null,
             ],
             default => $base,
         };
