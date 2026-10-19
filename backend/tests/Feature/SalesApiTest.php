@@ -810,4 +810,311 @@ public function test_user_without_sales_update_permission_cannot_fulfill(): void
 
     $registrar->setPermissionsTeamId(null);
 }
+
+public function test_authorized_user_can_update_draft_order(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'selling_price' => 150,
+        'is_active' => true,
+    ]);
+
+    $order = Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => OrderStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    OrderItem::create([
+        'tenant_id' => $tenant->id,
+        'order_id' => $order->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 2,
+        'unit_price' => 150,
+        'discount' => 0,
+        'tax' => 0,
+        'line_total' => 300,
+    ]);
+
+    $this->grantPermission($user, 'sales.update', $tenant->id);
+
+    $response = $this->actingAs($user)->putJson(
+        "/api/sales/{$order->id}",
+        [
+            'branch_id' => $branch->id,
+            'order_number' => $order->order_number,
+            'items' => [
+                [
+                    'catalog_item_id' => $product->id,
+                    'quantity' => 3,
+                    'discount' => 10,
+                    'tax' => 5,
+                ],
+            ],
+            'discount' => 0,
+            'tax' => 0,
+            'notes' => 'Updated order',
+        ]
+    );
+
+    $response->assertOk()
+        ->assertJsonPath('data.notes', 'Updated order')
+        ->assertJsonPath('data.subtotal', '445.00')
+        ->assertJsonPath('data.total', '445.00');
+
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'tenant_id' => $tenant->id,
+        'total' => 445,
+    ]);
+
+    $this->assertDatabaseHas('order_items', [
+        'order_id' => $order->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 3,
+        'line_total' => 445,
+    ]);
+}
+
+
+public function test_user_cannot_update_another_tenants_order_via_api(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $userA = User::factory()->create(['tenant_id' => $tenantA->id]);
+    $userB = User::factory()->create(['tenant_id' => $tenantB->id]);
+
+    $branchA = Branch::factory()->create(['tenant_id' => $tenantA->id]);
+    $branchB = Branch::factory()->create(['tenant_id' => $tenantB->id]);
+
+    $productB = CatalogItem::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'is_active' => true,
+    ]);
+
+    $order = Order::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'branch_id' => $branchA->id,
+        'created_by' => $userA->id,
+        'status' => OrderStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    $this->grantPermission($userB, 'sales.update', $tenantB->id);
+
+    $this->actingAs($userB)->putJson("/api/sales/{$order->id}", [
+        'branch_id' => $branchB->id,
+        'order_number' => $order->order_number,
+        'items' => [
+            [
+                'catalog_item_id' => $productB->id,
+                'quantity' => 1,
+            ],
+        ],
+    ])->assertNotFound();
+
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'tenant_id' => $tenantA->id,
+    ]);
+}
+
+public function test_authorized_user_can_delete_eligible_draft_order(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $order = Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => OrderStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    $this->grantPermission($user, 'sales.delete', $tenant->id);
+
+    $this->actingAs($user)
+        ->deleteJson("/api/sales/{$order->id}")
+        ->assertOk()
+        ->assertJsonPath('message', 'Sales order deleted successfully.');
+
+    $this->assertSoftDeleted('orders', ['id' => $order->id]);
+}
+
+public function test_user_without_sales_delete_permission_cannot_delete_order(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $order = Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => OrderStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    $registrar = app(PermissionRegistrar::class);
+    $registrar->setPermissionsTeamId($tenant->id);
+
+    Permission::firstOrCreate([
+        'name' => 'sales.delete',
+        'guard_name' => 'web',
+    ]);
+
+    $this->actingAs($user)
+        ->deleteJson("/api/sales/{$order->id}")
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('orders', ['id' => $order->id]);
+    $registrar->setPermissionsTeamId(null);
+}
+
+public function test_order_with_payments_cannot_be_deleted(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $order = Order::factory()->create([
+    'tenant_id' => $tenant->id,
+    'branch_id' => $branch->id,
+    'created_by' => $user->id,
+    'status' => OrderStatus::DRAFT,
+    'payment_status' => PaymentStatus::UNPAID,
+    'subtotal' => 100,
+    'discount' => 0,
+    'tax' => 0,
+    'total' => 100,
+]);
+
+    $this->grantPermission($user, 'sales.delete', $tenant->id);
+
+    // Create a payment through the existing payment API.
+    $this->grantPermission($user, 'sales.update', $tenant->id);
+
+    $this->actingAs($user)->postJson(
+        "/api/sales/{$order->id}/payments",
+        [
+            'amount' => 10,
+            'method' => OrderPaymentMethod::CASH->value,
+            'reference' => 'DELETE-GUARD-PAYMENT',
+            'paid_at' => now()->toDateTimeString(),
+        ]
+    )->assertCreated();
+
+    // Restore the draft/unpaid status to isolate the deletion guard
+    // that checks for existing payment records.
+    $order->refresh()->update([
+        'status' => OrderStatus::DRAFT,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    $this->actingAs($user)
+        ->deleteJson("/api/sales/{$order->id}")
+        ->assertUnprocessable();
+
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+    ]);
+
+    $this->assertDatabaseHas('order_payments', [
+        'order_id' => $order->id,
+        'reference' => 'DELETE-GUARD-PAYMENT',
+    ]);
+}
+
+public function test_fulfilled_order_cannot_be_edited(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'is_active' => true,
+    ]);
+
+    $order = Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => OrderStatus::FULFILLED,
+        'payment_status' => PaymentStatus::UNPAID,
+    ]);
+
+    OrderItem::create([
+        'tenant_id' => $tenant->id,
+        'order_id' => $order->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 1,
+        'unit_price' => $product->selling_price,
+        'discount' => 0,
+        'tax' => 0,
+        'line_total' => $product->selling_price,
+    ]);
+
+    $this->grantPermission($user, 'sales.update', $tenant->id);
+
+    $this->actingAs($user)->putJson(
+        "/api/sales/{$order->id}",
+        [
+            'branch_id' => $branch->id,
+            'order_number' => $order->order_number,
+            'items' => [
+                [
+                    'catalog_item_id' => $product->id,
+                    'quantity' => 2,
+                ],
+            ],
+        ]
+    )->assertUnprocessable();
+
+    $this->assertDatabaseHas('orders', [
+        'id' => $order->id,
+        'status' => OrderStatus::FULFILLED->value,
+    ]);
+}
+
+
 }

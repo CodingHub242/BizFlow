@@ -5,6 +5,7 @@ namespace App\Services;
 use App\FulfillmentStatus;
 use App\OrderStatus;
 use App\Models\FulfillmentRequest;
+use App\Models\Inventory;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -67,8 +68,7 @@ class OrderFulfillmentService
                     );
                 }
 
-                // The order row is locked above, serializing fulfillment
-                // attempts for this order.
+                // Lock and reuse the existing fulfillment request on retries.
                 $request = FulfillmentRequest::query()
                     ->where('tenant_id', $order->tenant_id)
                     ->where('order_id', $order->id)
@@ -76,12 +76,29 @@ class OrderFulfillmentService
                     ->lockForUpdate()
                     ->first();
 
-                if (! $request) {
+                if ($request) {
+                    if ((int) $request->catalog_item_id !== (int) $catalogItem->id) {
+                        throw new RuntimeException(
+                            "Fulfillment request {$request->id} references a different catalog item."
+                        );
+                    }
+
+                    // Keep the branch previously used for this fulfillment.
+                    $branchId = (int) $request->branch_id;
+                } else {
+                    $branchId = $this->resolveBranchId(
+                        tenantId: (int) $order->tenant_id,
+                        catalogItemId: (int) $catalogItem->id,
+                        orderBranchId: $order->branch_id !== null
+                            ? (int) $order->branch_id
+                            : null,
+                    );
+
                     $request = FulfillmentRequest::create([
                         'tenant_id' => $order->tenant_id,
                         'order_id' => $order->id,
                         'order_item_id' => $item->id,
-                        'branch_id' => $order->branch_id,
+                        'branch_id' => $branchId,
                         'catalog_item_id' => $catalogItem->id,
                         'requested_quantity' => $requestedQuantity,
                         'available_quantity' => 0,
@@ -99,8 +116,7 @@ class OrderFulfillmentService
 
                 $previouslyFulfilled = (float) $request->fulfilled_quantity;
 
-                // The order item is the source of truth for the total
-                // requested quantity.
+                // The order item is the source of truth for total quantity.
                 $remainingQuantity = max(
                     0,
                     $requestedQuantity - $previouslyFulfilled
@@ -119,7 +135,7 @@ class OrderFulfillmentService
 
                 $result = $this->inventoryService->sellStock(
                     tenantId: (int) $order->tenant_id,
-                    branchId: (int) $order->branch_id,
+                    branchId: $branchId,
                     catalogItemId: (int) $catalogItem->id,
                     requestedQuantity: $remainingQuantity,
                     referenceType: Order::class,
@@ -174,5 +190,42 @@ class OrderFulfillmentService
                 'fulfillmentRequests',
             ]);
         });
+    }
+
+    /**
+     * Resolve the branch for an inventory-tracked catalog item.
+     *
+     * An explicitly selected order branch takes precedence. Otherwise,
+     * infer the branch only when inventory records identify exactly one
+     * branch for this tenant and catalog item.
+     */
+    private function resolveBranchId(int $tenantId,int $catalogItemId,?int $orderBranchId): int 
+    {
+        if ($orderBranchId !== null) {
+            return $orderBranchId;
+        }
+
+        $branchIds = Inventory::query()
+            ->where('tenant_id', $tenantId)
+            ->where('catalog_item_id', $catalogItemId)
+            ->select('branch_id')
+            ->distinct()
+            ->orderBy('branch_id')
+            ->limit(2)
+            ->pluck('branch_id');
+
+        if ($branchIds->isEmpty()) {
+            throw new RuntimeException(
+                "No inventory record exists for catalog item {$catalogItemId}. Select a branch or receive stock first."
+            );
+        }
+
+        if ($branchIds->count() > 1) {
+            throw new RuntimeException(
+                "Catalog item {$catalogItemId} has inventory at multiple branches. Select a branch before fulfilling this order."
+            );
+        }
+
+        return (int) $branchIds->first();
     }
 }

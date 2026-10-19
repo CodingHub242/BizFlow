@@ -31,7 +31,7 @@ class OrderController extends Controller
                 'nullable',
                 Rule::enum(\App\PaymentStatus::class),
             ],
-            'branch_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'branch_id' => ['nullable', 'integer', 'min:1'],
             'customer_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
@@ -95,7 +95,7 @@ class OrderController extends Controller
         OrderService $orderService
     ): JsonResponse {
         $validated = $request->validate([
-            'branch_id' => ['required', 'integer', 'min:1'],
+            'branch_id' => ['nullable', 'integer', 'min:1'],
             'customer_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'order_number' => [
                 'required',
@@ -155,11 +155,7 @@ class OrderController extends Controller
     }
 
 
-    public function storePayment(
-        Request $request,
-        int $order,
-        OrderPaymentService $paymentService
-    ): JsonResponse {
+    public function storePayment(Request $request,int $order,OrderPaymentService $paymentService): JsonResponse {
         $user = $request->user();
 
         $validated = $request->validate([
@@ -197,10 +193,7 @@ class OrderController extends Controller
     }
 
 
-    public function fulfill(
-        Request $request,
-        int $order,
-        \App\Services\OrderFulfillmentService $fulfillmentService
+    public function fulfill(Request $request,int $order,\App\Services\OrderFulfillmentService $fulfillmentService
     ): JsonResponse {
         $record = Order::query()
             ->where('tenant_id', $request->user()->tenant_id)
@@ -214,5 +207,62 @@ class OrderController extends Controller
         ]);
     }
 
+    public function update(Request $request,int $order,OrderService $orderService): JsonResponse {
+        $tenantId = $request->user()->tenant_id;
+
+        $record = Order::query()
+            ->where('tenant_id', $tenantId)
+            ->findOrFail($order);
+
+        $validated = $request->validate([
+            'branch_id' => ['nullable', 'integer'],
+            'customer_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'order_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('orders', 'order_number')
+                    ->where('tenant_id', $tenantId)
+                    ->ignore($record->id),
+            ],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.catalog_item_id' => [
+                'required',
+                'integer',
+                'distinct',
+                'min:1',
+            ],
+            'items.*.quantity' => [
+                'required',
+                'numeric',
+                'gt:0',
+                'decimal:0,3',
+            ],
+            'items.*.discount' => ['sometimes', 'numeric', 'min:0'],
+            'items.*.tax' => ['sometimes', 'numeric', 'min:0'],
+            'discount' => ['sometimes', 'numeric', 'min:0'],
+            'tax' => ['sometimes', 'numeric', 'min:0'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+        ]);
+
+        $updatedOrder = $orderService->update($record, $validated);
+
+        return response()->json([
+            'message' => 'Sales order updated successfully.',
+            'data' => $updatedOrder,
+        ]);
+    }
+
+    public function destroy(Request $request,int $order,OrderService $orderService): JsonResponse {
+        $record = Order::query()
+            ->where('tenant_id', $request->user()->tenant_id)
+            ->findOrFail($order);
+
+        $orderService->delete($record);
+
+        return response()->json([
+            'message' => 'Sales order deleted successfully.',
+        ]);
+    }
 
 }

@@ -307,6 +307,12 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/sales/{order}/fulfill', [OrderController::class,'fulfill',
     ])->middleware('permission:sales.update');
 
+    Route::put('/sales/{order}', [OrderController::class, 'update'])
+    ->middleware('permission:sales.update');
+
+    Route::delete('/sales/{order}', [OrderController::class, 'destroy'])
+        ->middleware('permission:sales.delete');
+
     
     //EXPENSES
     Route::post('/expenses', [ExpenseController::class, 'store'])

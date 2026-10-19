@@ -19,7 +19,6 @@
   </div>
 
   <section class="toolbar">
-    <!-- <form class="search-form" (ngSubmit)="searchOrders()"> -->
       <div class="sales-search">
         <input
           type="search"
@@ -28,29 +27,269 @@
           (input)=" searchOrders($any($event.target).value)"
           aria-label="Search sales orders"
         />
-
-        <!-- <span class="search-count">
-          {{ total }} orders
-        </span> -->
       </div>
-    <!-- </form> -->
 
     <span class="record-count">{{ total }} orders</span>
   </section>
 
-  <section *ngIf="showCreateForm" class="form-card">
+  <section
+    *ngIf="detailsLoading"
+    class="state-message"
+    aria-live="polite">
+    Loading order details...
+  </section>
+
+  <section *ngIf="selectedOrder as order" class="form-card order-details">
     <div class="section-heading">
-      <h2>Create sales order</h2>
+      <div>
+        <h2>{{ order.order_number }}</h2>
+        <p>
+          {{ order.customer?.name || 'Walk-in customer' }}
+          · {{ order.branch?.name || '—' }}
+        </p>
+      </div>
+
       <button
         type="button"
         class="text-button"
-        (click)="showCreateForm = false"
+        (click)="closeOrderDetails()"
+      >
+        Close details
+      </button>
+    </div>
+
+    <div class="details-summary">
+      <div>
+        <span>Order status</span>
+        <strong>{{ statusLabel(order.status) }}</strong>
+      </div>
+
+      <div>
+        <span>Payment status</span>
+        <strong>{{ pstatusLabel(order.payment_status) }}</strong>
+      </div>
+
+      <div>
+        <span>Order total</span>
+        <strong>GHS {{ formatAmount(order.total) }}</strong>
+      </div>
+
+      <div>
+        <span>Outstanding balance</span>
+        <strong>GHS {{ formatAmount(outstandingBalance) }}</strong>
+      </div>
+    </div>
+
+    <h3>Order items</h3>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th class="numeric">Unit price</th>
+            <th class="numeric">Total</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let item of order.items">
+            <td>{{ item.catalog_item?.name || 'Catalog item' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td class="numeric">
+              {{ formatAmount(item.unit_price) }}
+            </td>
+            <td class="numeric">
+              {{ formatAmount(item.line_total) }}
+            </td>
+          </tr>
+
+          <tr *ngIf="!order.items?.length">
+            <td colspan="4">No order items were returned.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    
+
+    <section class="details-section">
+      <h3>Payment history</h3>
+      <div class="payment-summary">
+      <div>
+        <span>Order total</span>
+        <strong>GHS {{ formatAmount(selectedOrder?.total) }}</strong>
+      </div>
+
+      <div>
+        <span>Amount paid</span>
+        <strong>
+          GHS {{ formatAmount(totalpaid ?? 0) }}
+        </strong>
+      </div>
+
+      <div>
+        <span>Balance due</span>
+        <strong>GHS {{ formatAmount(outstandingBalance) }}</strong>
+      </div>
+    </div>
+
+    <div
+      *ngIf="!selectedOrder?.payments?.length"
+      class="state-message"
+    >
+      No payments have been recorded for this order.
+    </div>
+
+    <div
+      *ngIf="selectedOrder?.payments?.length"
+      class="table-wrapper"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Notes</th>
+            <th class="numeric">Amount (GHS)</th>
+          </tr>
+        </thead>
+
+          <tbody>
+            <tr *ngFor="let payment of selectedOrder?.payments">
+              <td>{{ payment.paid_at | date:'medium' }}</td>
+              <td>{{ payment.method.replace('_', ' ') }}</td>
+              <td>{{ payment.reference || '—' }}</td>
+              <td>{{ payment.notes || '—' }}</td>
+              <td class="numeric">
+                {{ formatAmount(payment.amount) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Record payment</h3>
+
+      <p *ngIf="outstandingBalance <= 0">
+        This order has no outstanding balance.
+      </p>
+
+      <form
+        *ngIf="outstandingBalance > 0"
+        (ngSubmit)="recordPayment()"
+      >
+        <div class="form-grid">
+          <label>
+            Amount (GHS)
+            <input
+              type="number"
+              name="payment_amount"
+              [(ngModel)]="paymentForm.amount"
+              min="0.01"
+              [max]="outstandingBalance"
+              step="0.01"
+              required
+            />
+          </label>
+
+          <label>
+            Payment method
+            <select
+              name="payment_method"
+              [(ngModel)]="paymentForm.method"
+              required
+            >
+              <option value="cash">Cash</option>
+              <option value="bank_transfer">Bank transfer</option>
+              <option value="mobile_money">Mobile money</option>
+              <option value="card">Card</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+
+          <label>
+            Payment date
+            <input
+              type="datetime-local"
+              name="paid_at"
+              [(ngModel)]="paymentForm.paid_at"
+              required
+            />
+          </label>
+
+          <label>
+            Reference (optional)
+            <input
+              name="payment_reference"
+              [(ngModel)]="paymentForm.reference"
+              placeholder="Transaction reference"
+            />
+          </label>
+        </div>
+
+        <label class="notes-field">
+          Notes
+          <textarea
+            name="payment_notes"
+            [(ngModel)]="paymentForm.notes"
+            rows="2"
+          ></textarea>
+        </label>
+
+        <button style="margin-top:10px;"
+          type="submit"
+          class="primary-button"
+          [disabled]="recordingPayment"
+        >
+          {{ recordingPayment ? 'Recording...' : 'Record payment' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="details-section">
+      <h3>Fulfillment</h3>
+
+      <p>
+        Process this order's fulfillment through the inventory service.
+        Product availability and any stock shortages will be determined
+        by the backend.
+      </p>
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="fulfillOrder()"
+        [disabled]="
+          processingFulfillment ||
+          order.status === 'cancelled' ||
+          order.status === 'fulfilled'
+        "
+      >
+        {{
+          processingFulfillment
+            ? 'Processing...'
+            : 'Process fulfillment'
+        }}
+      </button>
+    </section>
+  </section>
+
+  <section *ngIf="showCreateForm" class="form-card">
+    <div class="section-heading">
+     <h2>{{ editingOrderId !== null ? 'Edit sales order' : 'Create sales order' }}</h2>
+      <button
+        type="button"
+        class="text-button"
+        (click)="showCreateForm = false; editingOrderId = null"
       >
         Close
       </button>
     </div>
 
-    <form (ngSubmit)="createOrder()">
+    <form  (ngSubmit)="editingOrderId !== null ? updateOrder() : createOrder()">
       <div class="form-grid">
         <label>
           Order number
@@ -61,18 +300,17 @@
           />
         </label>
 
-       <div class="form-field">
-          <label for="sale-branch">Branch *</label>
+      <div class="form-field">
+          <label for="sale-branch">Branch (optional)</label>
 
           <app-searchable-select
             inputId="sale-branch"
             name="branch_id"
             [options]="branchOptions"
-            placeholder="Select a branch"
+            placeholder="No branch selected"
             searchPlaceholder="Search branches..."
             noResultsText="No branches found."
             [(ngModel)]="orderForm.branch_id"
-            [required]="true"
             [clearable]="true"
           />
         </div>
@@ -211,14 +449,18 @@
         <button
           type="button"
           class="secondary-button"
-          (click)="showCreateForm = false"
+         (click)="showCreateForm = false; editingOrderId = null"
           [disabled]="saving"
         >
           Cancel
         </button>
 
         <button type="submit" class="primary-button" [disabled]="saving">
-          {{ saving ? 'Creating...' : 'Create order' }}
+         {{
+            saving
+              ? (editingOrderId !== null ? 'Saving changes...' : 'Creating...')
+              : (editingOrderId !== null ? 'Save changes' : 'Create order')
+          }}
         </button>
       </div>
     </form>
@@ -241,11 +483,18 @@
             <th>Status</th>
             <th>Payment</th>
             <th class="numeric">Total (GHS)</th>
+            <th>Actions</th>
           </tr>
         </thead>
 
         <tbody>
-          <tr *ngFor="let order of orders">
+        <tr
+            *ngFor="let order of orders"
+            class="clickable-row"
+            tabindex="0"
+            (click)="openOrderDetails(order)"
+            (keydown.enter)="openOrderDetails(order)"
+          >
             <td>
               <strong>{{ order.order_number }}</strong>
               <small>#{{ order.id }}</small>
@@ -263,6 +512,36 @@
               </span>
             </td>
             <td class="numeric">{{ formatAmount(order.total) }}</td>
+            <td>
+              <div class="action-buttons">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  (click)="openOrderDetails(order); $event.stopPropagation()"
+                >
+                  View details
+                </button>
+
+                <button
+                  *ngIf="canEditOrder(order)"
+                  type="button"
+                  class="secondary-button"
+                  (click)="openEditForm(order); $event.stopPropagation()"
+                >
+                  Edit
+                </button>
+
+                <button
+                  *ngIf="canDeleteOrder(order)"
+                  type="button"
+                  class="remove-button"
+                  [disabled]="deletingOrderId === order.id"
+                  (click)="deleteOrder(order); $event.stopPropagation()"
+                >
+                  {{ deletingOrderId === order.id ? 'Deleting...' : 'Delete' }}
+                </button>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>

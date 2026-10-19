@@ -278,4 +278,120 @@ class OrderServiceTest extends TestCase
             ],
         ]);
     }
+
+    public function test_order_service_can_update_draft_order_and_recalculate_totals(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $customer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+        'selling_price' => 150,
+        'track_inventory' => true,
+    ]);
+
+    $service = app(OrderService::class);
+
+    $order = $service->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'order_number' => 'ORD-UPDATE-001',
+        'items' => [
+            [
+                'catalog_item_id' => $product->id,
+                'quantity' => 2,
+            ],
+        ],
+    ]);
+
+    $updated = $service->update($order, [
+        'branch_id' => $branch->id,
+        'customer_id' => $customer->id,
+        'order_number' => 'ORD-UPDATE-001',
+        'discount' => 10,
+        'tax' => 5,
+        'notes' => 'Updated order',
+        'items' => [
+            [
+                'catalog_item_id' => $product->id,
+                'quantity' => 3,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $this->assertEquals($customer->id, $updated->customer_id);
+    $this->assertEquals('Updated order', $updated->notes);
+    $this->assertEquals(450.00, (float) $updated->subtotal);
+    $this->assertEquals(10.00, (float) $updated->discount);
+    $this->assertEquals(5.00, (float) $updated->tax);
+    $this->assertEquals(445.00, (float) $updated->total);
+    $this->assertCount(1, $updated->items);
+    $this->assertEquals(3.0, (float) $updated->items->first()->quantity);
+}
+
+public function test_order_service_rejects_updating_order_from_another_tenant(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $branchB = Branch::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $userB = User::factory()->create([
+        'tenant_id' => $tenantB->id,
+    ]);
+
+    $orderB = app(OrderService::class)->create([
+        'tenant_id' => $tenantB->id,
+        'branch_id' => $branchB->id,
+        'created_by' => $userB->id,
+        'order_number' => 'ORD-TENANT-B-001',
+    ]);
+
+    $branchA = Branch::factory()->create([
+        'tenant_id' => $tenantA->id,
+    ]);
+
+    try {
+        app(OrderService::class)->update($orderB, [
+            'branch_id' => $branchA->id,
+            'customer_id' => null,
+            'order_number' => 'ORD-TENANT-B-001',
+            'discount' => 0,
+            'tax' => 0,
+            'notes' => null,
+            'items' => [
+                [
+                    'catalog_item_id' => CatalogItem::factory()
+                        ->product()
+                        ->create(['tenant_id' => $tenantA->id])
+                        ->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ]);
+
+        $this->fail('Expected the update to reject a cross-tenant branch.');
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+        $this->assertDatabaseHas('orders', [
+            'id' => $orderB->id,
+            'tenant_id' => $tenantB->id,
+        ]);
+    }
+}
 }

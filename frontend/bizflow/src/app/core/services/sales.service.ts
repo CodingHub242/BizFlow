@@ -75,7 +75,7 @@ export interface SalesPayment {
 export interface SalesOrder {
   id: number;
   tenant_id: number;
-  branch_id: number;
+  branch_id: number | null;
   customer_id?: number | null;
   created_by: number;
   order_number: string;
@@ -88,10 +88,12 @@ export interface SalesOrder {
   notes?: string | null;
   branch?: SalesBranch | null;
   customer?: SalesCustomer | null;
+  amount_paid?: number | null;
   items?: SalesOrderItem[];
   payments?: SalesPayment[];
   created_at?: string;
   updated_at?: string;
+  fulfillmentRequests: [];
 }
 
 export interface SalesPagination {
@@ -131,7 +133,7 @@ export interface CreateSalesOrderItem {
 }
 
 export interface CreateSalesOrderRequest {
-  branch_id: number;
+  branch_id: number | null;
   customer_id?: number | null;
   order_number: string;
   items: CreateSalesOrderItem[];
@@ -240,4 +242,17 @@ export class SalesService {
       {},
     );
   }
+
+  update(id: number,data: CreateSalesOrderRequest): Observable<SalesOrderResponse> {
+    return this.http.put<SalesOrderResponse>(
+        `${this.apiUrl}/sales/${id}`,
+        data,
+    );
+    }
+
+    delete(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+        `${this.apiUrl}/sales/${id}`,
+    );
+    }
 }
