@@ -41,49 +41,105 @@ export class InvoicesComponent implements OnInit, OnDestroy {
   totalItems = 0;
   perPage = 15;
 
+  businessOutstandingTotal = 0;
+
   ngOnInit(): void {
     this.loadInvoices();
   }
 
-  loadInvoices(): void {
-    this.loading = true;
-    this.error = '';
 
-    this.invoicesApi
-      .list()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          const result = response.data;
+loadInvoices(page = 1): void {
+  this.loading = true;
+  this.error = '';
 
-          // Support either a direct array or a nested Laravel paginator.
-          if (Array.isArray(result)) {
-            this.invoices = result;
-            this.currentPage = response.meta?.current_page ?? 1;
-            this.lastPage = response.meta?.last_page ?? 1;
-            this.totalItems = response.meta?.total ?? result.length;
-          } else {
-            this.invoices = result.data ?? [];
-            this.currentPage =
-              result.current_page ?? response.meta?.current_page ?? 1;
-            this.lastPage =
-              result.last_page ?? response.meta?.last_page ?? 1;
-            this.totalItems =
-              result.total ?? response.meta?.total ?? this.invoices.length;
-          }
+  this.invoicesApi
+    .list(page, this.perPage)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (response) => {
+        const result = response.data;
 
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.invoices = [];
-          this.loading = false;
-          this.error =
-            err?.error?.message ?? 'Unable to load invoices. Please try again.';
-          this.cdr.markForCheck();
-        },
-      });
-  }
+        if (Array.isArray(result)) {
+          this.invoices = result;
+          this.currentPage = response.meta?.current_page ?? page;
+          this.lastPage = response.meta?.last_page ?? 1;
+          this.totalItems = response.meta?.total ?? result.length;
+          this.businessOutstandingTotal = Number(
+              response.summary?.outstanding_invoice_total ?? 0,
+            );
+        } else {
+          this.invoices = result.data ?? [];
+          this.currentPage =
+            result.current_page ?? response.meta?.current_page ?? page;
+          this.lastPage =
+            result.last_page ?? response.meta?.last_page ?? 1;
+          this.totalItems =
+            result.total ?? response.meta?.total ?? this.invoices.length;
+
+          this.businessOutstandingTotal = Number(
+              response.summary?.outstanding_invoice_total ?? 0,
+            );
+        }
+
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.invoices = [];
+        this.loading = false;
+        this.error =
+          err?.error?.message ?? 'Unable to load invoices. Please try again.';
+        this.cdr.markForCheck();
+      },
+    });
+}
+
+  // loadInvoices(): void {
+  //   this.loading = true;
+  //   this.error = '';
+
+  //   this.invoicesApi
+  //     .list()
+  //     .pipe(takeUntil(this.destroy$))
+  //     .subscribe({
+  //       next: (response) => {
+  //         const result = response.data;
+
+  //         // Support either a direct array or a nested Laravel paginator.
+  //         if (Array.isArray(result)) {
+  //           this.invoices = result;
+  //           this.currentPage = response.meta?.current_page ?? 1;
+  //           this.lastPage = response.meta?.last_page ?? 1;
+  //           this.totalItems = response.meta?.total ?? result.length;
+  //           this.businessOutstandingTotal = Number(
+  //             response.summary?.outstanding_invoice_total ?? 0,
+  //           );
+  //         } else {
+  //           this.invoices = result.data ?? [];
+  //           this.currentPage =
+  //             result.current_page ?? response.meta?.current_page ?? 1;
+  //           this.lastPage =
+  //             result.last_page ?? response.meta?.last_page ?? 1;
+  //           this.totalItems =
+  //             result.total ?? response.meta?.total ?? this.invoices.length;
+
+  //           this.businessOutstandingTotal = Number(
+  //             response.summary?.outstanding_invoice_total ?? 0,
+  //           );
+  //         }
+
+  //         this.loading = false;
+  //         this.cdr.markForCheck();
+  //       },
+  //       error: (err) => {
+  //         this.invoices = [];
+  //         this.loading = false;
+  //         this.error =
+  //           err?.error?.message ?? 'Unable to load invoices. Please try again.';
+  //         this.cdr.markForCheck();
+  //       },
+  //     });
+  // }
 
   get filteredInvoices(): Invoice[] {
     const query = this.search.trim().toLowerCase();
@@ -173,10 +229,7 @@ export class InvoicesComponent implements OnInit, OnDestroy {
   }
 
   viewInvoice(invoice: Invoice): void {
-    // A details route has not yet been registered in app.routes.ts.
-    // Avoid navigating to a nonexistent route.
-    this.error = `Invoice ${invoice.invoice_number} is listed, but its details page has not been registered yet.`;
-    this.cdr.markForCheck();
+    this.router.navigate(['/invoices', invoice.id]);
   }
 
   issueInvoice(invoice: Invoice): void {
@@ -215,24 +268,27 @@ export class InvoicesComponent implements OnInit, OnDestroy {
       });
   }
 
-  loadPage(page: number): void {
-    // Pagination is currently client-side only for the loaded response.
-    // The list API must accept a page parameter before remote pagination
-    // can be enabled safely.
-    if (page < 1 || page > this.lastPage || page === this.currentPage) {
+ loadPage(page: number): void {
+    if (
+      page < 1 ||
+      page > this.lastPage ||
+      page === this.currentPage ||
+      this.loading
+    ) {
       return;
     }
 
-    this.currentPage = page;
+    this.loadInvoices(page);
   }
 
+ 
+
   get displayedInvoices(): Invoice[] {
-    const start = (this.currentPage - 1) * this.perPage;
-    return this.filteredInvoices.slice(start, start + this.perPage);
+    return this.filteredInvoices;
   }
 
   get displayLastPage(): number {
-    return Math.max(1, Math.ceil(this.filteredInvoices.length / this.perPage));
+   return this.lastPage;
   }
 
   refresh(): void {

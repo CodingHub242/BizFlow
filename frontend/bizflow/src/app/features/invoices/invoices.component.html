@@ -33,7 +33,7 @@
 
     <article class="summary-card">
       <span class="summary-label">Outstanding balance</span>
-      <strong>{{ formatMoney(outstandingTotal) }}</strong>
+     <strong>{{ formatMoney(businessOutstandingTotal) }}</strong>
       <span class="summary-description">Balance remaining</span>
     </article>
   </div>
@@ -193,8 +193,10 @@
       </div>
 
       <footer class="pagination">
-        <span class="pagination-info">
-          Showing {{ displayedInvoices.length }} of {{ filteredInvoices.length }} matching invoices
+       <span class="pagination-info">
+          Showing {{ totalItems === 0 ? 0 : (currentPage - 1) * perPage + 1 }}
+          – {{ (currentPage - 1) * perPage + displayedInvoices.length }}
+          of {{ totalItems }} invoices
         </span>
 
         <div class="pagination-controls">

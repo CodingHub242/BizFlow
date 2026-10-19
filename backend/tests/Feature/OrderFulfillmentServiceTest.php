@@ -101,7 +101,16 @@ class OrderFulfillmentServiceTest extends TestCase
             'reference_id' => $order->id,
         ]);
 
-        $this->assertDatabaseCount('fulfillment_requests', 0);
+       $this->assertDatabaseHas('fulfillment_requests', [
+            'tenant_id' => $tenant->id,
+            'order_id' => $order->id,
+            'order_item_id' => $order->items()->first()->id,
+            'requested_quantity' => 5,
+            'available_quantity' => 5,
+            'fulfilled_quantity' => 5,
+            'shortfall_quantity' => 0,
+            'status' => FulfillmentStatus::FULFILLED->value,
+        ]);
     }
 
     public function test_order_is_partially_fulfilled_when_stock_is_insufficient(): void
@@ -441,8 +450,159 @@ class OrderFulfillmentServiceTest extends TestCase
             'quantity' => 0,
         ]);
 
-        $this->assertDatabaseCount('fulfillment_requests', 0);
+        $this->assertDatabaseCount('fulfillment_requests', 2);
     }
+
+    public function test_repeated_fulfillment_does_not_deduct_stock_twice(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    Inventory::create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 10,
+        'reorder_level' => 2,
+    ]);
+
+    $order = Order::create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'order_number' => 'BF-RETRY-001',
+        'status' => OrderStatus::CONFIRMED,
+        'payment_status' => PaymentStatus::PAID,
+        'subtotal' => 500,
+        'total' => 500,
+    ]);
+
+    $item = $order->items()->create([
+        'tenant_id' => $tenant->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 5,
+        'unit_price' => 100,
+        'discount' => 0,
+        'tax' => 0,
+        'line_total' => 500,
+    ]);
+
+    $this->fulfillmentService->fulfill($order);
+    $this->fulfillmentService->fulfill($order);
+
+    $this->assertDatabaseHas('inventories', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 5,
+    ]);
+
+    $this->assertDatabaseCount('inventory_movements', 1);
+
+    $this->assertDatabaseHas('fulfillment_requests', [
+        'tenant_id' => $tenant->id,
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'fulfilled_quantity' => 5,
+        'shortfall_quantity' => 0,
+        'status' => FulfillmentStatus::FULFILLED->value,
+    ]);
+}
+public function test_partial_fulfillment_only_deducts_remaining_quantity_after_restock(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $inventory = Inventory::create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 5,
+        'reorder_level' => 2,
+    ]);
+
+    $order = Order::create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'order_number' => 'BF-RETRY-002',
+        'status' => OrderStatus::CONFIRMED,
+        'payment_status' => PaymentStatus::PAID,
+        'subtotal' => 800,
+        'total' => 800,
+    ]);
+
+    $item = $order->items()->create([
+        'tenant_id' => $tenant->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 8,
+        'unit_price' => 100,
+        'discount' => 0,
+        'tax' => 0,
+        'line_total' => 800,
+    ]);
+
+    $firstResult = $this->fulfillmentService->fulfill($order);
+
+    $this->assertSame(
+        OrderStatus::PARTIALLY_FULFILLED,
+        $firstResult->status
+    );
+
+    // Simulate receiving the remaining stock.
+    $inventory->refresh();
+    $inventory->quantity = 3;
+    $inventory->save();
+
+    $secondResult = $this->fulfillmentService->fulfill($order);
+
+    $this->assertSame(
+        OrderStatus::FULFILLED,
+        $secondResult->status
+    );
+
+    $this->assertDatabaseHas('inventories', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 0,
+    ]);
+
+    $this->assertDatabaseCount('inventory_movements', 2);
+
+    $this->assertDatabaseHas('fulfillment_requests', [
+        'tenant_id' => $tenant->id,
+        'order_id' => $order->id,
+        'order_item_id' => $item->id,
+        'requested_quantity' => 8,
+        'available_quantity' => 8,
+        'fulfilled_quantity' => 8,
+        'shortfall_quantity' => 0,
+        'status' => FulfillmentStatus::FULFILLED->value,
+    ]);
+}
 
     public function test_fulfillment_respects_tenant_boundaries(): void
     {

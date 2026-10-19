@@ -16,6 +16,48 @@ export interface InvoiceBranch {
   code?: string | null;
 }
 
+export interface InvoiceLine {
+  id: number;
+  name?: string | null;
+  item_name?: string | null;
+  description?: string | null;
+  quantity: number | string;
+  unit_price: number | string;
+  discount?: number | string;
+  tax?: number | string;
+  line_total?: number | string;
+  catalog_item?: { name?: string | null } | null;
+}
+
+
+export type InvoicePaymentMethod =
+  | 'cash'
+  | 'bank_transfer'
+  | 'mobile_money'
+  | 'card'
+  | 'cheque'
+  | 'other';
+
+export interface RecordInvoicePaymentRequest {
+  amount: number;
+  method: InvoicePaymentMethod;
+  reference?: string;
+  notes?: string;
+  paid_at?: string;
+}
+
+export interface InvoicePayment {
+  id: number;
+  invoice_id: number;
+  amount: number | string;
+  method: InvoicePaymentMethod;
+  reference?: string | null;
+  notes?: string | null;
+  paid_at?: string | null;
+  created_at?: string;
+}
+
+
 export interface Invoice {
   id: number;
   invoice_number: string;
@@ -35,6 +77,8 @@ export interface Invoice {
   branch_id?: number | null;
   customer?: InvoiceCustomer | null;
   branch?: InvoiceBranch | null;
+  items?: InvoiceLine[];
+  payments?: InvoicePayment[];
   created_at?: string;
   updated_at?: string;
 }
@@ -54,6 +98,9 @@ export interface InvoiceListResponse {
     total?: number;
     per_page?: number;
   };
+  summary?: {
+    outstanding_invoice_total: number;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -61,9 +108,16 @@ export class InvoicesApi {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = API_URL;
 
-  list(): Observable<InvoiceListResponse> {
+  
+
+  list(page = 1, perPage = 15): Observable<InvoiceListResponse> {
     return this.http.get<InvoiceListResponse>(
-      `${this.apiUrl}/invoices`,
+      `${this.apiUrl}/invoices`,{
+        params: {
+          page: String(page),
+          per_page: String(perPage),
+        },
+      },
     );
   }
 
@@ -72,6 +126,17 @@ export class InvoicesApi {
       `${this.apiUrl}/invoices/${id}`,
     );
   }
+
+
+  recordPayment(id: number,payload: RecordInvoicePaymentRequest,): Observable<{ success: boolean; message?: string; data: InvoicePayment }> 
+  {
+    return this.http.post<{
+      success: boolean;
+      message?: string;
+      data: InvoicePayment;
+    }>(`${this.apiUrl}/invoices/${id}/payments`, payload);
+  }
+
 
   issue(id: number): Observable<unknown> {
     return this.http.post(

@@ -35,3 +35,162 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 @import '@ionic/angular/css/palettes/dark.system.css';
+
+
+
+/* Xavier Media — isolated invoice printing */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide the entire application visually. */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Reveal only the invoice and its contents. */
+  #printable-invoice,
+  #printable-invoice * {
+    visibility: visible !important;
+  }
+
+  #printable-invoice {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #263442 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 10pt !important;
+    line-height: 1.45 !important;
+  }
+
+  #printable-invoice h1,
+  #printable-invoice h2,
+  #printable-invoice h3,
+  #printable-invoice h4,
+  #printable-invoice strong,
+  #printable-invoice span,
+  #printable-invoice p,
+  #printable-invoice td,
+  #printable-invoice th {
+    opacity: 1 !important;
+  }
+
+  #printable-invoice .brand-details p,
+  #printable-invoice .invoice-meta span,
+  #printable-invoice .invoice-notes p,
+  #printable-invoice .invoice-footer {
+    color: #505c68 !important;
+  }
+
+  #printable-invoice .invoice-brand-header {
+    display: grid !important;
+    grid-template-columns: 54px minmax(0, 1fr) auto !important;
+    gap: 14px !important;
+    align-items: center !important;
+  }
+
+  #printable-invoice .invoice-parties {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 20px !important;
+  }
+
+  #printable-invoice .invoice-bottom {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 0.9fr) !important;
+    gap: 24px !important;
+  }
+
+  #printable-invoice .print-items {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+  }
+
+  #printable-invoice .print-items th {
+    background: #102b3f !important;
+    color: #fff !important;
+    font-size: 8pt !important;
+  }
+
+  #printable-invoice .print-items td {
+    color: #263442 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  #printable-invoice .print-items tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #printable-invoice .invoice-bottom,
+  #printable-invoice .invoice-totals,
+  #printable-invoice .invoice-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #printable-invoice .invoice-heading h2 {
+    font-size: 19pt !important;
+  }
+
+  #printable-invoice .invoice-heading > span:first-child {
+    color: #8b642d !important;
+  }
+
+  #printable-invoice .invoice-accent {
+    background: linear-gradient(
+      90deg,
+      #102b3f 0 75%,
+      #c5a16b 75% 100%
+    ) !important;
+  }
+
+  #printable-invoice .invoice-totals .balance-total {
+    background: #102b3f !important;
+  }
+
+  #printable-invoice .invoice-totals .balance-total span,
+  #printable-invoice .invoice-totals .balance-total strong {
+    color: #fff !important;
+  }
+
+  /* Repeat table headings if an invoice spans multiple pages. */
+  #printable-invoice .print-items thead {
+    display: table-header-group !important;
+  }
+
+  /* Prevent the mobile layout from forcing a wide printed page. */
+  #printable-invoice .print-document,
+  #printable-invoice * {
+    max-width: 100%;
+  }
+}

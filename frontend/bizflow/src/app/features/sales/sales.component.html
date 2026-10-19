@@ -1,3 +1,295 @@
-<p>
-  sales works!
-</p>
+<div class="sales-page">
+  <header class="page-header">
+    <div>
+      <h1>Sales</h1>
+      <p>Manage orders, customers, and sales activity.</p>
+    </div>
+
+    <button type="button" class="primary-button" (click)="openCreateForm()">
+      + New sale
+    </button>
+  </header>
+
+  <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success" role="status">
+    {{ successMessage }}
+  </div>
+
+  <section class="toolbar">
+    <!-- <form class="search-form" (ngSubmit)="searchOrders()"> -->
+      <div class="sales-search">
+        <input
+          type="search"
+          placeholder="Search order number..."
+          [value]="search"
+          (input)=" searchOrders($any($event.target).value)"
+          aria-label="Search sales orders"
+        />
+
+        <!-- <span class="search-count">
+          {{ total }} orders
+        </span> -->
+      </div>
+    <!-- </form> -->
+
+    <span class="record-count">{{ total }} orders</span>
+  </section>
+
+  <section *ngIf="showCreateForm" class="form-card">
+    <div class="section-heading">
+      <h2>Create sales order</h2>
+      <button
+        type="button"
+        class="text-button"
+        (click)="showCreateForm = false"
+      >
+        Close
+      </button>
+    </div>
+
+    <form (ngSubmit)="createOrder()">
+      <div class="form-grid">
+        <label>
+          Order number
+          <input
+            name="order_number"
+            [(ngModel)]="orderForm.order_number"
+            required
+          />
+        </label>
+
+       <div class="form-field">
+          <label for="sale-branch">Branch *</label>
+
+          <app-searchable-select
+            inputId="sale-branch"
+            name="branch_id"
+            [options]="branchOptions"
+            placeholder="Select a branch"
+            searchPlaceholder="Search branches..."
+            noResultsText="No branches found."
+            [(ngModel)]="orderForm.branch_id"
+            [required]="true"
+            [clearable]="true"
+          />
+        </div>
+
+       <div class="form-field">
+          <label for="sale-customer">Customer</label>
+
+          <app-searchable-select
+            inputId="sale-customer"
+            name="customer_id"
+            [options]="customerOptions"
+            placeholder="Select a customer"
+            searchPlaceholder="Search customers..."
+            noResultsText="No customers found."
+            [(ngModel)]="orderForm.customer_id"
+            [clearable]="true"
+          />
+        </div>
+
+        <label>
+          Order discount
+          <input
+            type="number"
+            name="discount"
+            [(ngModel)]="orderForm.discount"
+            min="0"
+            step="0.01"
+          />
+        </label>
+
+        <label>
+          Order tax
+          <input
+            type="number"
+            name="tax"
+            [(ngModel)]="orderForm.tax"
+            min="0"
+            step="0.01"
+          />
+        </label>
+      </div>
+
+      <div class="section-heading items-heading">
+        <h3>Items</h3>
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="addOrderItem()"
+        >
+          Add item
+        </button>
+      </div>
+
+      <div class="order-item" *ngFor="let item of orderItems; let i = index">
+       <div class="form-field">
+            <label [for]="'sale-item-' + i">Product / Service *</label>
+
+            <app-searchable-select
+              [inputId]="'sale-item-' + i"
+              [name]="'catalog_item_id_' + i"
+              [options]="catalogOptions"
+              placeholder="Select a product or service"
+              searchPlaceholder="Search products and services..."
+              noResultsText="No products or services found."
+              [(ngModel)]="item.catalog_item_id"
+              [required]="true"
+              [clearable]="true"
+            />
+          </div>
+
+        <label>
+          Quantity
+          <input
+            type="number"
+            [name]="'quantity_' + i"
+            [(ngModel)]="item.quantity"
+            min="0.001"
+            step="0.001"
+            required
+          />
+        </label>
+
+        <label>
+          Line discount
+          <input
+            type="number"
+            [name]="'item_discount_' + i"
+            [(ngModel)]="item.discount"
+            min="0"
+            step="0.01"
+          />
+        </label>
+
+        <label>
+          Line tax
+          <input
+            type="number"
+            [name]="'item_tax_' + i"
+            [(ngModel)]="item.tax"
+            min="0"
+            step="0.01"
+          />
+        </label>
+
+        <div class="line-total">
+          <span>Line total</span>
+          <strong>{{ formatAmount(getLineTotal(item)) }}</strong>
+        </div>
+
+        <button
+          type="button"
+          class="remove-button"
+          (click)="removeOrderItem(i)"
+          [disabled]="orderItems.length === 1"
+          aria-label="Remove item"
+        >
+          Remove
+        </button>
+      </div>
+
+      <label class="notes-field">
+        Notes
+        <textarea
+          name="notes"
+          [(ngModel)]="orderForm.notes"
+          rows="3"
+        ></textarea>
+      </label>
+
+      <div class="total-row">
+        <span>Estimated total</span>
+        <strong>GHS {{ formatAmount(estimatedTotal) }}</strong>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="showCreateForm = false"
+          [disabled]="saving"
+        >
+          Cancel
+        </button>
+
+        <button type="submit" class="primary-button" [disabled]="saving">
+          {{ saving ? 'Creating...' : 'Create order' }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="table-card">
+    <div *ngIf="loading" class="state-message">Loading sales orders...</div>
+
+    <div *ngIf="!loading && orders.length === 0" class="state-message">
+      No sales orders found.
+    </div>
+
+    <div class="table-wrapper" *ngIf="!loading && orders.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Customer</th>
+            <th>Branch</th>
+            <th>Status</th>
+            <th>Payment</th>
+            <th class="numeric">Total (GHS)</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let order of orders">
+            <td>
+              <strong>{{ order.order_number }}</strong>
+              <small>#{{ order.id }}</small>
+            </td>
+            <td>{{ order.customer?.name || 'Walk-in customer' }}</td>
+            <td>{{ order.branch?.name || '—' }}</td>
+            <td>
+              <span class="status-pill">
+                {{ statusLabel(order.status) }}
+              </span>
+            </td>
+            <td>
+              <span class="status-pill">
+                {{ pstatusLabel(order.payment_status) }}
+              </span>
+            </td>
+            <td class="numeric">{{ formatAmount(order.total) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="pagination" *ngIf="total > 0">
+      <span>Page {{ page }} of {{ lastPage }}</span>
+
+      <div>
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="changePage(-1)"
+          [disabled]="page <= 1 || loading"
+        >
+          Previous
+        </button>
+
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="changePage(1)"
+          [disabled]="page >= lastPage || loading"
+        >
+          Next
+        </button>
+      </div>
+    </footer>
+  </section>
+</div>

@@ -60,6 +60,9 @@ class InvoiceResource extends JsonResource
                 'creditMemoApplications',
                 fn () => (float) $this->creditMemoApplications->sum('amount_applied')
             ),
+            'payments' => \App\Http\Resources\InvoicePaymentResource::collection(
+                $this->whenLoaded('payments')
+            ),
 
             'balance_due' => $this->when(
                 $this->relationLoaded('payments')

@@ -1,0 +1,465 @@
+
+<div class="invoice-details-page">
+  <header class="page-header">
+    <div>
+      <div class="invoice-toolbar no-print">
+        <button type="button" class="back-button" (click)="goBack()">
+          ← Back to invoices
+        </button>
+
+        
+
+        <section class="invoice-actions no-print">
+          <button type="button" class="print-button" (click)="printInvoice()" [disabled]="!invoice || loading">
+            <span>↓</span> Download / Print PDF
+          </button>
+
+          <button
+            type="button"
+            class="action-button primary"
+            (click)="openPaymentForm()"
+            [disabled]="!invoice || balanceDue(invoice) <= 0 ||
+                        invoice.status === 'draft' ||
+                        invoice.status === 'cancelled' || actionLoading"
+          >
+            Record payment
+          </button>
+
+          @if (invoice?.status === 'draft') {
+            <button
+              type="button"
+              class="action-button secondary"
+              (click)="issueInvoice()"
+              [disabled]="actionLoading"
+            >
+              Issue invoice
+            </button>
+          }
+
+          @if (invoice?.status !== 'cancelled' && invoice?.status !== 'paid') {
+            <button
+              type="button"
+              class="action-button danger"
+              (click)="cancelInvoice()"
+              [disabled]="actionLoading"
+            >
+              Cancel invoice
+            </button>
+          }
+        </section>
+
+        @if (actionMessage) {
+          <p class="action-success" role="status">{{ actionMessage }}</p>
+        }
+
+        @if (actionError) {
+          <p class="action-error" role="alert">{{ actionError }}</p>
+        }
+
+      </div>
+
+      <!-- <h1>
+        {{ invoice?.invoice_number || 'Invoice details' }}
+      </h1> -->
+      <p>Review invoice information, amounts, and payment status.</p>
+    </div>
+
+
+
+
+  </header>
+
+  @if (loading) {
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading invoice...</p>
+    </div>
+  } @else if (error) {
+    <div class="state-card error-state">
+      <h3>Unable to load invoice</h3>
+      <p>{{ error }}</p>
+      <button type="button" class="secondary-button" (click)="goBack()">
+        Back to invoices
+      </button>
+    </div>
+  } @else if (invoice) {
+    @if (showPaymentForm) {
+      <section class="payment-form-card no-print">
+        <h2>Record payment</h2>
+
+        <form (ngSubmit)="submitPayment()">
+          <label>
+            Amount (GH₵)
+            <input
+              type="number"
+              name="amount"
+              [(ngModel)]="paymentForm.amount"
+              min="0.01"
+              step="0.01"
+              [max]="invoice ? balanceDue(invoice) : 0"
+              required
+            />
+          </label>
+
+          <label>
+            Payment method
+            <select name="method" [(ngModel)]="paymentForm.method" required>
+              @for (method of paymentMethods; track method.value) {
+                <option [value]="method.value">{{ method.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label>
+            Payment date
+            <input
+              type="date"
+              name="paid_at"
+              [(ngModel)]="paymentForm.paid_at"
+              required
+            />
+          </label>
+
+          <label>
+            Reference (optional)
+            <input
+              type="text"
+              name="reference"
+              [(ngModel)]="paymentForm.reference"
+              maxlength="255"
+            />
+          </label>
+
+          <label>
+            Notes (optional)
+            <textarea
+              name="notes"
+              [(ngModel)]="paymentForm.notes"
+              rows="3"
+            ></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button
+              type="button"
+              class="action-button secondary"
+              (click)="showPaymentForm = false"
+              [disabled]="savingPayment"
+            >
+              Close
+            </button>
+
+            <button
+              type="submit"
+              class="action-button primary"
+              [disabled]="savingPayment"
+            >
+              {{ savingPayment ? 'Saving...' : 'Save payment' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+
+    <section id="printable-invoice" class="print-document">
+      <header class="invoice-brand-header">
+        <div class="brand-mark">XM</div>
+
+        <div class="brand-details">
+          <h1>{{ issuer.name }}</h1>
+          <p>{{ issuer.tagline }}</p>
+          @if (issuer.address) {
+            <p>{{ issuer.address }}</p>
+          }
+          @if (issuer.phone || issuer.email) {
+            <p>{{ issuer.phone }}{{ issuer.phone && issuer.email ? ' · ' : '' }}{{ issuer.email }}</p>
+          }
+          @if (issuer.website) {
+            <p>{{ issuer.website }}</p>
+          }
+        </div>
+
+        <div class="invoice-heading">
+          <span>INVOICE</span>
+          <h2>{{ invoice.invoice_number }}</h2>
+          <span class="document-status">
+            {{ statusLabel(invoice.status) }}
+          </span>
+        </div>
+      </header>
+
+      <div class="invoice-accent"></div>
+
+      <section class="invoice-parties">
+        <div>
+          <span class="section-label">BILLED TO</span>
+          <h3>
+            {{ invoice.customer?.company_name ||
+              invoice.customer?.name ||
+              'Walk-in customer' }}
+          </h3>
+        </div>
+
+        <div class="invoice-meta">
+          <div>
+            <span>Invoice date</span>
+            <strong>
+              {{ invoice.issued_at ? (invoice.issued_at | date:'mediumDate') : '—' }}
+            </strong>
+          </div>
+          <div>
+            <span>Due date</span>
+            <strong>
+              {{ invoice.due_at ? (invoice.due_at | date:'mediumDate') : '—' }}
+            </strong>
+          </div>
+          <div>
+            <span>Branch</span>
+            <strong>{{ invoice.branch?.name || '—' }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <table class="print-items">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="number">Qty</th>
+            <th class="number">Unit price</th>
+            <th class="number">Discount</th>
+            <th class="number">Tax</th>
+            <th class="number">Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (item of invoice.items || []; track item.id) {
+            <tr>
+              <td>
+                <strong>{{ itemName(item) }}</strong>
+                @if (item.description && item.description !== itemName(item)) {
+                  <small>{{ item.description }}</small>
+                }
+              </td>
+              <td class="number">{{ item.quantity }}</td>
+              <td class="number">{{ formatMoney(item.unit_price) }}</td>
+              <td class="number">{{ formatMoney(item.discount) }}</td>
+              <td class="number">{{ formatMoney(item.tax) }}</td>
+              <td class="number">{{ formatMoney(lineTotal(item)) }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="no-items">
+                No invoice line items were returned by the API.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <section class="invoice-bottom">
+        <div class="invoice-notes">
+          <h3>Thank you for your business.</h3>
+          @if (invoice.notes) {
+            <p>{{ invoice.notes }}</p>
+          }
+         
+          @if (issuer.paymentInstructions) {
+            <h4>Payment instructions</h4>
+            <p class="payment-instructions">{{ issuer.paymentInstructions }}</p>
+          }
+
+        </div>
+
+        <div class="invoice-totals">
+          <div>
+            <span>Subtotal</span>
+            <strong>{{ formatMoney(invoice.subtotal) }}</strong>
+          </div>
+          <div>
+            <span>Discount</span>
+            <strong>{{ formatMoney(invoice.discount) }}</strong>
+          </div>
+          <div>
+            <span>Tax</span>
+            <strong>{{ formatMoney(invoice.tax) }}</strong>
+          </div>
+          <div class="grand-total">
+            <span>Total due before payments</span>
+            <strong>{{ formatMoney(invoice.total) }}</strong>
+          </div>
+          <div>
+            <span>Payments received (net)</span>
+            <strong>{{ formatMoney(invoice.net_paid) }}</strong>
+          </div>
+          <div>
+            <span>Credit applied</span>
+            <strong>{{ formatMoney(invoice.credit_applied) }}</strong>
+          </div>
+          <div class="balance-total">
+            <span>Balance due</span>
+            <strong>{{ formatMoney(balanceDue(invoice)) }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- @if (invoice.payments?.length) {
+        <section class="print-payment-history">
+          <h3>Payment history</h3>
+          <table class="print-items">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Reference</th>
+                <th class="number">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (payment of invoice.payments; track payment.id) {
+                <tr>
+                  <td>{{ payment.paid_at ? (payment.paid_at | date:'mediumDate') : '—' }}</td>
+                  <td>{{ paymentMethod(payment.method) }}</td>
+                  <td>{{ payment.reference || '—' }}</td>
+                  <td class="number">{{ formatMoney(payment.amount) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
+      } -->
+
+      <footer class="invoice-footer">
+        <strong>Xavier Media</strong>
+        <span>Thank you for choosing us.</span>
+        @if (issuer.taxId) {
+          <span>Tax ID: {{ issuer.taxId }}</span>
+        }
+      </footer>
+    </section>
+
+
+    @if (invoice?.payments?.length) {
+  <section class="detail-card payment-history no-print">
+    <h2>Payment history</h2>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Method</th>
+            <th>Reference</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (payment of invoice?.payments ?? []; track payment.id) {
+            <tr>
+              <td>
+                {{ payment.paid_at ? (payment.paid_at | date:'mediumDate') : '—' }}
+              </td>
+              <td>{{ paymentMethod(payment.method) }}</td>
+              <td>{{ payment.reference || '—' }}</td>
+              <td>{{ formatMoney(payment.amount) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+
+    <section class="details-grid">
+      <article class="detail-card">
+        <span class="detail-label">Customer</span>
+        <strong>
+          {{ invoice.customer?.company_name || invoice.customer?.name || 'Walk-in customer' }}
+        </strong>
+      </article>
+
+      <article class="detail-card">
+        <span class="detail-label">Branch</span>
+        <strong>{{ invoice.branch?.name || '—' }}</strong>
+      </article>
+
+      <article class="detail-card">
+        <span class="detail-label">Invoice status</span>
+        <strong>{{ statusLabel(invoice.status) }}</strong>
+      </article>
+
+      <article class="detail-card">
+        <span class="detail-label">Payment status</span>
+        <strong>{{ statusLabel(invoice.payment_status) }}</strong>
+      </article>
+
+      <article class="detail-card">
+        <span class="detail-label">Issue date</span>
+        <strong>
+          {{ invoice.issued_at ? (invoice.issued_at | date:'mediumDate') : 'Not issued' }}
+        </strong>
+      </article>
+
+      <article class="detail-card">
+        <span class="detail-label">Due date</span>
+        <strong>
+          {{ invoice.due_at ? (invoice.due_at | date:'mediumDate') : '—' }}
+        </strong>
+      </article>
+    </section>
+
+    <section class="detail-card amounts-card">
+      <h2>Invoice summary</h2>
+
+      <div class="amount-row">
+        <span>Subtotal</span>
+        <strong>{{ formatMoney(invoice.subtotal) }}</strong>
+      </div>
+
+      <div class="amount-row">
+        <span>Discount</span>
+        <strong>{{ formatMoney(invoice.discount) }}</strong>
+      </div>
+
+      <div class="amount-row">
+        <span>Tax</span>
+        <strong>{{ formatMoney(invoice.tax) }}</strong>
+      </div>
+
+      <div class="amount-row total-row">
+        <span>Total</span>
+        <strong>{{ formatMoney(invoice.total) }}</strong>
+      </div>
+
+      <div class="amount-row">
+        <span>Net payments</span>
+        <strong>{{ formatMoney(invoice.net_paid) }}</strong>
+      </div>
+
+      <div class="amount-row">
+        <span>Credit applied</span>
+        <strong>{{ formatMoney(invoice.credit_applied) }}</strong>
+      </div>
+
+      <div class="amount-row balance-row">
+        <span>Outstanding balance</span>
+        <strong>{{ formatMoney(balanceDue(invoice)) }}</strong>
+      </div>
+    </section>
+
+    @if (invoice.notes) {
+      <section class="detail-card notes-card">
+        <h2>Notes</h2>
+        <p>{{ invoice.notes }}</p>
+      </section>
+    }
+
+
+
+
+
+    
+
+  }
+</div>

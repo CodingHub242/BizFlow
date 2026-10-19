@@ -15,6 +15,7 @@ use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\QuickBooksCreditMemoApplicationsReconcileController;
 use App\Http\Controllers\QuickBooksCustomerImportController;
 use App\Http\Controllers\QuickBooksMigrationCatalogController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\QuickBooksExpensesImportController;
 use App\Http\Controllers\QuickBooksCatalogItemsImportController;
 use App\Http\Controllers\QuickBooksChartOfAccountsImportController;
@@ -289,6 +290,22 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::post('/inventory/imports/{uuid}/confirm',[InventoryImportController::class, 'confirm']
     )->middleware('permission:inventory.import');
+
+    //SALES/ORDERS
+    Route::get('/sales', [OrderController::class, 'index'])
+    ->middleware('permission:sales.view');
+
+    Route::get('/sales/{order}', [OrderController::class, 'show'])
+        ->middleware('permission:sales.view');
+
+    Route::post('/sales', [OrderController::class, 'store'])
+        ->middleware('permission:sales.create');
+
+    Route::post('/sales/{order}/payments', [OrderController::class,'storePayment',
+    ])->middleware('permission:sales.update');
+
+    Route::post('/sales/{order}/fulfill', [OrderController::class,'fulfill',
+    ])->middleware('permission:sales.update');
 
     
     //EXPENSES
