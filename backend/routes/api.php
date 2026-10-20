@@ -9,6 +9,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MigrationSessionController;
+use App\Http\Controllers\ExpenseReportController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\QuickBooksCreditMemosImportController;
 use App\Http\Controllers\InventoryExportController;
@@ -331,6 +332,16 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::get('/expenses', [ExpenseController::class, 'index'])
         ->middleware('permission:expenses.view');
+
+    Route::prefix('expenses/reports')
+        ->middleware('permission:expenses.view')
+        ->controller(ExpenseReportController::class)
+        ->group(function () {
+            Route::get('/summary', 'summary');
+            Route::get('/categories', 'categories');
+            Route::get('/branches', 'branches');
+            Route::get('/payment-methods', 'paymentMethods');
+        });
 
     Route::get('/expenses/{expense}', [ExpenseController::class, 'show'])
         ->middleware('permission:expenses.view');

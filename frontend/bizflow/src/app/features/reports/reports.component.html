@@ -1,0 +1,266 @@
+
+<div class="reports-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">FINANCIAL OVERVIEW</span>
+      <h1>Expense Reports</h1>
+      <p>Understand where your business money is going.</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn-export"
+      [disabled]="loading || !summary"
+      (click)="exportCsv()"
+    >
+      <span aria-hidden="true">↓</span>
+      Export CSV
+    </button>
+  </header>
+
+  <section class="filter-panel">
+    <div class="filter-heading">
+      <div>
+        <h2>Report filters</h2>
+        <p>Choose a date range to explore your expenses.</p>
+      </div>
+    </div>
+
+    <form class="filters" (ngSubmit)="loadReports()">
+      <div class="filter-field">
+        <label for="report-date-from">From date</label>
+        <input
+          id="report-date-from"
+          type="date"
+          name="dateFrom"
+          [(ngModel)]="dateFrom"
+        />
+      </div>
+
+      <div class="filter-field">
+        <label for="report-date-to">To date</label>
+        <input
+          id="report-date-to"
+          type="date"
+          name="dateTo"
+          [(ngModel)]="dateTo"
+        />
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn-primary" [disabled]="loading">
+          {{ loading ? 'Loading...' : 'Apply filters' }}
+        </button>
+
+        <button
+          type="button"
+          class="btn-secondary"
+          [disabled]="loading"
+          (click)="dateFrom = ''; dateTo = ''; loadReports()"
+        >
+          Reset
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <div *ngIf="errorMessage" class="error-banner" role="alert">
+    {{ errorMessage }}
+    <button type="button" (click)="loadReports()">Try again</button>
+  </div>
+
+  <div *ngIf="loading && !summary" class="loading-state">
+    <span class="spinner"></span>
+    <p>Loading your expense reports...</p>
+  </div>
+
+  <ng-container *ngIf="summary as report">
+    <section class="summary-grid">
+      <article class="summary-card">
+        <div class="card-top">
+          <span class="card-label">Total expenses</span>
+          <span class="metric-icon">₵</span>
+        </div>
+        <div class="metric-value">{{ money(report.total_expenses) }}</div>
+        <p class="metric-note">For the selected reporting period</p>
+      </article>
+
+      <article class="summary-card">
+        <div class="card-top">
+          <span class="card-label">This month</span>
+          <span class="metric-icon">↗</span>
+        </div>
+        <div class="metric-value">{{ money(report.current_month) }}</div>
+        <p class="metric-note">Current calendar month</p>
+      </article>
+
+      <article class="summary-card">
+        <div class="card-top">
+          <span class="card-label">Previous month</span>
+          <span class="metric-icon">◷</span>
+        </div>
+        <div class="metric-value">{{ money(report.previous_month) }}</div>
+        <p class="metric-note">Previous calendar month</p>
+      </article>
+
+      <article class="summary-card comparison-card">
+        <div class="card-top">
+          <span class="card-label">Monthly change</span>
+          <span
+            class="change-icon"
+            [class.negative]="report.comparison === 'decreased'"
+          >
+            {{ report.comparison === 'decreased' ? '↓' : '↑' }}
+          </span>
+        </div>
+
+        <div class="metric-value">
+          {{
+            report.change_percentage === null
+              ? '—'
+              : (report.change_percentage > 0 ? '+' : '')
+                + report.change_percentage.toFixed(2) + '%'
+          }}
+        </div>
+        <p class="metric-note">{{ comparisonLabel }}</p>
+      </article>
+    </section>
+
+    <p class="report-disclaimer">
+      Monthly comparisons use calendar-month totals. The total expenses card
+      respects the selected date filters.
+    </p>
+  </ng-container>
+
+  <section class="report-grid">
+    <article class="report-panel">
+      <header class="panel-header">
+        <div>
+          <h2>Spending by category</h2>
+          <p>Which categories account for the most spending?</p>
+        </div>
+        <span class="panel-icon">◉</span>
+      </header>
+
+      <div *ngIf="categories.length === 0" class="empty-state">
+        No expense categories found for this period.
+      </div>
+
+      <div class="category-scroll" *ngIf="categories.length > 0">
+        <div class="category-track">
+          <article
+            class="category-card"
+            *ngFor="let item of categories"
+          >
+            <span class="category-name">{{ item.category_name }}</span>
+
+            <strong class="category-total">
+              {{ money(item.total) }}
+            </strong>
+
+            <div class="bar-track">
+              <div
+                class="bar-fill category-fill"
+                [style.width.%]="barWidth(item.total, categoryMax)"
+              ></div>
+            </div>
+
+            <span class="bar-caption">
+              {{ item.expense_count }}
+              {{ item.expense_count === 1 ? 'expense' : 'expenses' }}
+            </span>
+          </article>
+        </div>
+      </div>
+    </article>
+
+    <article class="report-panel">
+      <header class="panel-header">
+        <div>
+          <h2>Spending by branch</h2>
+          <p>Compare expenses across your business locations.</p>
+        </div>
+        <span class="panel-icon">⌖</span>
+      </header>
+
+      <div *ngIf="branches.length === 0" class="empty-state">
+        No branch expenses found for this period.
+      </div>
+
+      
+      <div class="branch-scroll" *ngIf="branches.length > 0">
+        <div class="branch-track">
+          <article
+            class="branch-card"
+            *ngFor="let item of branches"
+          >
+            <span class="branch-name">{{ item.branch_name }}</span>
+
+            <strong class="branch-total">
+              {{ money(item.total) }}
+            </strong>
+
+            <div class="bar-track">
+              <div
+                class="bar-fill branch-fill"
+                [style.width.%]="barWidth(item.total, branchMax)"
+              ></div>
+            </div>
+
+            <span class="bar-caption">
+              {{ item.expense_count }}
+              {{ item.expense_count === 1 ? 'expense' : 'expenses' }}
+            </span>
+          </article>
+        </div>
+      </div>
+
+      <div *ngIf="branches.length === 0" class="empty-state">
+        No branch expenses found for this period.
+      </div>
+
+    </article>
+
+    <article class="report-panel payment-panel">
+      <header class="panel-header">
+        <div>
+          <h2>Payment methods</h2>
+          <p>How expenses were paid.</p>
+        </div>
+        <span class="panel-icon">₵</span>
+      </header>
+
+      <div *ngIf="paymentMethods.length === 0" class="empty-state">
+        No payment method data found for this period.
+      </div>
+
+      <div class="bar-list" *ngIf="paymentMethods.length > 0">
+        <div class="bar-item" *ngFor="let item of paymentMethods">
+          <div class="bar-labels">
+            <span class="bar-name">
+              {{ paymentLabel(item.payment_method) }}
+            </span>
+            <span class="bar-amount">{{ money(item.total) }}</span>
+          </div>
+
+          <div class="bar-track">
+            <div
+              class="bar-fill payment-fill"
+              [style.width.%]="barWidth(item.total, paymentMax)"
+            ></div>
+          </div>
+
+          <span class="bar-caption">
+            {{ item.expense_count }}
+            {{ item.expense_count === 1 ? 'transaction' : 'transactions' }}
+          </span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <footer class="report-footer">
+    <span>Bizflow Core · Expense Analytics</span>
+    <span>Amounts shown in GHS</span>
+  </footer>
+</div>

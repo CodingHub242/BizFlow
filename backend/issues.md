@@ -101,3 +101,82 @@ $owner->syncPermissions(Permission::where('guard_name', 'web')->get());
 
 app()[\Spatie\Permission\PermissionRegistrar::class]
     ->forgetCachedPermissions();
+
+
+///Test endpoints
+php artisan tinker
+
+use App\Models\Expense;
+
+Expense::where('tenant_id', 2)->sum('amount');
+/////////
+
+use Carbon\Carbon;
+
+$now = Carbon::today();
+
+$currentMonth = Expense::where('tenant_id', 2)
+    ->whereBetween('expense_date', [
+        $now->copy()->startOfMonth(),
+        $now->copy()->endOfMonth(),
+    ])
+    ->sum('amount');
+
+$previousMonth = Expense::where('tenant_id', 2)
+    ->whereBetween('expense_date', [
+        $now->copy()->subMonthNoOverflow()->startOfMonth(),
+        $now->copy()->subMonthNoOverflow()->endOfMonth(),
+    ])
+    ->sum('amount');
+
+[
+    'current_month' => $currentMonth,
+    'previous_month' => $previousMonth,
+    'change_percentage' => (float) $previousMonth > 0
+        ? round(((float) $currentMonth - (float) $previousMonth)
+            / (float) $previousMonth * 100, 2)
+        : null,
+];
+
+///////
+
+Expense::where('expenses.tenant_id', 2)
+    ->leftJoin('categories', function ($join) {
+        $join->on('categories.id', '=', 'expenses.category_id')
+            ->on('categories.tenant_id', '=', 'expenses.tenant_id')
+            ->whereNull('categories.deleted_at');
+    })
+    ->selectRaw("
+        COALESCE(categories.name, 'Uncategorized') AS category_name,
+        COUNT(expenses.id) AS expense_count,
+        SUM(expenses.amount) AS total
+    ")
+    ->groupBy('categories.name', 'expenses.category_id')
+    ->orderByDesc('total')
+    ->get();
+
+
+Expense::where('expenses.tenant_id', 2)
+    ->leftJoin('branches', function ($join) {
+        $join->on('branches.id', '=', 'expenses.branch_id')
+            ->on('branches.tenant_id', '=', 'expenses.tenant_id');
+    })
+    ->selectRaw("
+        COALESCE(branches.name, 'Unknown branch') AS branch_name,
+        COUNT(expenses.id) AS expense_count,
+        SUM(expenses.amount) AS total
+    ")
+    ->groupBy('branches.name', 'expenses.branch_id')
+    ->orderByDesc('total')
+    ->get();
+
+
+Expense::where('tenant_id', 2)
+    ->selectRaw("
+        payment_method,
+        COUNT(id) AS expense_count,
+        SUM(amount) AS total
+    ")
+    ->groupBy('payment_method')
+    ->orderByDesc('total')
+    ->get();

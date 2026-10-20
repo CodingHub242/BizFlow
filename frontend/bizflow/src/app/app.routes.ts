@@ -164,6 +164,12 @@ export const routes: Routes = [
         import('./features/expenses/expenses.component')
           .then(m => m.ExpensesComponent),
     },
+    {
+      path: 'reports',
+      loadComponent: () =>
+        import('./features/reports/reports.component')
+          .then(m => m.ReportsComponent),
+    },
    
       
     ],
