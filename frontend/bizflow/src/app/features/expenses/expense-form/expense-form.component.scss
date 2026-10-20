@@ -1,0 +1,251 @@
+
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  color: #17202a;
+}
+
+.expense-form {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 24px;
+  padding: 26px;
+  border: 1px solid #e5eaf0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(16, 24, 40, 0.045);
+
+  > header {
+    margin-bottom: 24px;
+    padding-bottom: 19px;
+    border-bottom: 1px solid #edf0f4;
+
+    h2 {
+      margin: 0;
+      color: #17202a;
+      font-size: 21px;
+      font-weight: 750;
+      letter-spacing: -0.35px;
+    }
+
+    p {
+      margin: 7px 0 0;
+      color: #77818d;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+  }
+
+  form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 18px;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+
+  > label {
+    color: #344054;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+
+  > input,
+  > select,
+  > textarea {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 43px;
+    padding: 10px 12px;
+    border: 1px solid #dce2e8;
+    border-radius: 9px;
+    background: #fff;
+    color: #17202a;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    outline: none;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease;
+
+    &:focus {
+      border-color: #64748b;
+      box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.12);
+    }
+
+    &:disabled {
+      background: #f3f5f7;
+      color: #8a949e;
+      cursor: not-allowed;
+    }
+
+    &::placeholder {
+      color: #98a2b3;
+    }
+  }
+
+  > textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+
+  > small {
+    color: #667085;
+    font-size: 12px;
+  }
+
+  .field-error {
+    color: #b42318;
+  }
+
+  // Keep the branch selector in the same layout as other form fields.
+  app-searchable-select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.form-group:has(app-searchable-select) {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-top: 20px;
+  border-top: 1px solid #edf0f4;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 10px 17px;
+    border: 1px solid #dce2e8;
+    border-radius: 8px;
+    background: #fff;
+    color: #344054;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    transition:
+      background 0.18s ease,
+      border-color 0.18s ease;
+
+    &:hover:not(:disabled) {
+      background: #f6f8fb;
+      border-color: #c3ccd7;
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.2);
+      outline-offset: 2px;
+    }
+
+    &[type='submit'] {
+      border-color: #24344f;
+      background: #24344f;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        border-color: #18263c;
+        background: #18263c;
+      }
+    }
+  }
+}
+
+.alert {
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border: 1px solid #f1c5c5;
+  border-radius: 9px;
+  background: #fff5f5;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  .expense-form {
+    padding: 18px;
+
+    form {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 17px;
+    }
+
+    > header h2 {
+      font-size: 19px;
+    }
+  }
+
+  .form-group:has(app-searchable-select) {
+    grid-column: auto;
+  }
+
+  .form-actions {
+    grid-column: auto;
+    flex-wrap: wrap;
+
+    button {
+      flex: 1;
+    }
+  }
+}
+.field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.field-heading label {
+  margin-bottom: 0;
+}
+
+.add-category-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #345b91;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    color: #243957;
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

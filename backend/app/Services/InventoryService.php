@@ -420,4 +420,87 @@ class InventoryService
             ];
         });
     }
+
+
+    /**
+     * Record opening stock for a product at a branch.
+     *
+     * This operation is intended for initial inventory setup,
+     * not routine stock receipts.
+     */
+    public function setOpeningStock(int $tenantId,int $branchId,int $catalogItemId,float $quantity,?string $notes = null,?string $referenceType = null,?int $referenceId = null): Inventory 
+    {
+        if ($quantity < 0) {
+            throw new RuntimeException(
+                'Opening stock cannot be negative.'
+            );
+        }
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $branchId,
+            $catalogItemId,
+            $quantity,
+            $notes,
+            $referenceType,
+            $referenceId
+        ) {
+            $branch = Branch::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($branchId)
+                ->firstOrFail();
+
+            $catalogItem = CatalogItem::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($catalogItemId)
+                ->firstOrFail();
+
+            if (! $catalogItem->track_inventory) {
+                throw new RuntimeException(
+                    'This catalog item does not track inventory.'
+                );
+            }
+
+            $inventory = Inventory::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $branchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->lockForUpdate()
+                ->first();
+
+            // Do not overwrite stock that has already been initialized
+            // or received through normal inventory operations.
+            if ($inventory !== null) {
+                throw new RuntimeException(
+                    'Inventory already exists for this product at this branch. '
+                    . 'Use a stock adjustment or receipt instead.'
+                );
+            }
+
+            $inventory = Inventory::create([
+                'tenant_id' => $tenantId,
+                'branch_id' => $branchId,
+                'catalog_item_id' => $catalogItemId,
+                'quantity' => $quantity,
+                'reorder_level' => 0,
+            ]);
+
+            // A zero opening balance does not need a stock movement.
+            if ($quantity > 0) {
+                InventoryMovement::create([
+                    'tenant_id' => $tenantId,
+                    'branch_id' => $branchId,
+                    'catalog_item_id' => $catalogItemId,
+                    'type' => InventoryMovementType::OPENING,
+                    'quantity' => $quantity,
+                    'notes' => $notes,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                ]);
+            }
+
+            return $inventory->fresh();
+        });
+    }
+
 }

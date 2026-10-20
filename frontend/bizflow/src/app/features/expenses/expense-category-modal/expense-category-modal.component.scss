@@ -1,0 +1,150 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 55%);
+  overflow-y: auto;
+}
+
+.category-modal {
+  width: 100%;
+  max-width: 480px;
+  padding: 26px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 22%);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0 0 7px;
+    color: #172033;
+    font-size: 21px;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0;
+    color: #718096;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
+
+.close-button {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+
+  label {
+    color: #344054;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  label span {
+    color: #718096;
+    font-weight: 400;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid #d7dfeb;
+    border-radius: 9px;
+    background: #fff;
+    color: #172033;
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input:focus,
+  textarea:focus {
+    border-color: #526b95;
+    box-shadow: 0 0 0 3px rgb(82 107 149 / 12%);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+.error-message {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff1f0;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 11px 16px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-primary {
+  border: 1px solid #243957;
+  background: #243957;
+  color: #fff;
+}
+
+.btn-secondary {
+  border: 1px solid #d7dfeb;
+  background: #fff;
+  color: #344054;
+}
+
+@media (max-width: 480px) {
+  .category-modal {
+    padding: 20px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+}

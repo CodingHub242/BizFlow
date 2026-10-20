@@ -158,12 +158,12 @@ export const routes: Routes = [
           './features/integrations/quickbooks-migration/quickbooks-migration.component'
         ).then((m) => m.QuickBooksMigrationComponent),
     },
-    // {
-    //   path: 'expenses',
-    //   loadComponent: () =>
-    //     import('./features/expe/branch-details.component')
-    //       .then(m => m.BranchDetailsComponent),
-    // },
+    {
+      path: 'expenses',
+      loadComponent: () =>
+        import('./features/expenses/expenses.component')
+          .then(m => m.ExpensesComponent),
+    },
    
       
     ],

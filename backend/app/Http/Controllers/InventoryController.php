@@ -7,6 +7,8 @@ use App\Http\Resources\InventoryMovementResource;
 use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Services\InventoryService;
+use App\Models\Branch;
+use App\Models\CatalogItem;
 use App\InventoryMovementType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -283,4 +285,101 @@ class InventoryController extends Controller
             ],
         ]);
     }
+
+
+    public function openingStock(Request $request,InventoryService $inventoryService): JsonResponse 
+    {
+        $validated = $request->validate([
+            'branch_id' => ['required', 'integer', 'min:1'],
+            'catalog_item_id' => ['required', 'integer', 'min:1'],
+            'quantity' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
+            'reference_type' => ['nullable', 'string', 'max:255'],
+            'reference_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        try {
+            $inventory = $inventoryService->setOpeningStock(
+                $request->user()->tenant_id,
+                (int) $validated['branch_id'],
+                (int) $validated['catalog_item_id'],
+                (float) $validated['quantity'],
+                $validated['notes'] ?? null,
+                $validated['reference_type'] ?? null,
+                isset($validated['reference_id'])
+                    ? (int) $validated['reference_id']
+                    : null,
+            );
+        } catch (ModelNotFoundException $e) {
+            throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Opening stock initialized successfully.',
+            'data' => new InventoryResource($inventory),
+        ], 201);
+    }
+
+    public function openingStockCandidates(
+    Request $request
+): JsonResponse {
+    $validated = $request->validate([
+        'branch_id' => ['required', 'integer', 'min:1'],
+        'search' => ['nullable', 'string', 'max:255'],
+        'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+    ]);
+
+    $tenantId = (int) $request->user()->tenant_id;
+    $branchId = (int) $validated['branch_id'];
+
+    Branch::query()
+        ->where('tenant_id', $tenantId)
+        ->findOrFail($branchId);
+
+    $products = CatalogItem::query()
+        ->where('tenant_id', $tenantId)
+        ->where('type', 'product')
+        ->where('track_inventory', true)
+        ->where('is_active', true)
+        ->when(
+            ! empty($validated['search']),
+            function ($query) use ($validated) {
+                $search = trim($validated['search']);
+
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery
+                        ->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('sku', 'ilike', "%{$search}%");
+                });
+            }
+        )
+        ->whereDoesntHave('inventories', function ($query) use (
+            $tenantId,
+            $branchId
+        ) {
+            $query
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $branchId);
+        })
+        ->orderBy('name')
+        ->paginate($validated['per_page'] ?? 20);
+
+    return response()->json([
+        'success' => true,
+        'data' => $products->items(),
+        'meta' => [
+            'current_page' => $products->currentPage(),
+            'last_page' => $products->lastPage(),
+            'per_page' => $products->perPage(),
+            'total' => $products->total(),
+        ],
+    ]);
+}
+
 }

@@ -557,3 +557,102 @@
     }
   }
 }
+
+
+.opening-inventory-panel {
+  margin-bottom: 24px;
+  padding: 22px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.opening-stock-controls {
+  display: grid;
+  max-width: 540px;
+  gap: 8px;
+  margin-bottom: 20px;
+
+  label {
+    color: #374151;
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.opening-stock-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 18px;
+}
+
+.opening-stock-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    font-size: 13px;
+  }
+
+  th {
+    background: #f9fafb;
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  input {
+    width: 170px;
+    min-height: 38px;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid #dfe3e8;
+    border-radius: 7px;
+  }
+}
+
+.opening-stock-results {
+  margin-top: 24px;
+
+  h3 {
+    margin-bottom: 14px;
+  }
+}
+
+.opening-stock-result {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 6px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+
+  p {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.result-success {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.result-error {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .opening-inventory-panel {
+    padding: 15px;
+  }
+
+  .opening-stock-result {
+    grid-template-columns: 1fr;
+  }
+}

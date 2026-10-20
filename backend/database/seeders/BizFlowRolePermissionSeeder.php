@@ -84,6 +84,12 @@ class BizFlowRolePermissionSeeder extends Seeder
         'migration.view',
         'migration.create',
         'migration.import',
+
+        // Categories
+        'categories.view',
+        'categories.create',
+        'categories.update',
+        'categories.delete',
     ];
 
     public const ROLE_PERMISSIONS = [
@@ -142,6 +148,12 @@ class BizFlowRolePermissionSeeder extends Seeder
         'migration.view',
         'migration.create',
         'migration.import',
+
+        // Categories
+        'categories.view',
+        'categories.create',
+        'categories.update',
+        'categories.delete',
     ],
 
     'Administrator' => [
@@ -199,6 +211,12 @@ class BizFlowRolePermissionSeeder extends Seeder
         'migration.view',
         'migration.create',
         'migration.import',
+
+        // Categories
+        'categories.view',
+        'categories.create',
+        'categories.update',
+        'categories.delete',
     ],
 
     'Manager' => [
@@ -239,6 +257,11 @@ class BizFlowRolePermissionSeeder extends Seeder
         'employees.view',
         'employees.create',
         'employees.update',
+
+        // Categories
+        'categories.view',
+        'categories.create',
+        'categories.update',
     ],
 
     'Salesperson' => [
@@ -257,6 +280,9 @@ class BizFlowRolePermissionSeeder extends Seeder
         'invoices.view',
         'invoices.create',
         'invoices.record_payment',
+
+        // Categories
+        'categories.view',
     ],
 
     'Cashier' => [
@@ -274,6 +300,9 @@ class BizFlowRolePermissionSeeder extends Seeder
         'invoices.view',
         'invoices.create',
         'invoices.record_payment',
+
+        // Categories
+        'categories.view',
     ],
 
     'Inventory Officer' => [
@@ -294,6 +323,9 @@ class BizFlowRolePermissionSeeder extends Seeder
         'sales.view',
 
         'invoices.view',
+
+        // Categories
+        'categories.view',
     ],
 
     'Accountant' => [
@@ -321,6 +353,9 @@ class BizFlowRolePermissionSeeder extends Seeder
         'migration.view',
         'migration.create',
         'migration.import',
+
+        // Categories
+        'categories.view',
     ],
 ];
 

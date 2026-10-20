@@ -351,6 +351,139 @@
     }
   </section>
 
+  <!--Opening Stock Section-->
+  @if (catalogItemsImportCompleted) {
+  <section class="opening-inventory-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Opening Inventory</h2>
+        <p>
+          Initialize starting stock for products already imported into
+          Bizflow. This is separate from importing QuickBooks records.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="loadTrackedProducts()"
+        [disabled]="loadingTrackedProducts || initializingOpeningStock"
+      >
+        {{ loadingTrackedProducts ? 'Loading...' : 'Refresh products' }}
+      </button>
+    </div>
+
+    @if (openingStockError) {
+      <div class="alert alert-error" role="alert">
+        {{ openingStockError }}
+      </div>
+    }
+
+    <div class="opening-stock-controls">
+      <label for="opening-stock-branch">Destination branch</label>
+
+      <app-searchable-select
+        inputId="opening-stock-branch"
+        name="openingStockBranch"
+        [(ngModel)]="openingStockBranchId"
+        [options]="branchOptions"
+        (ngModelChange) = "onOpeningStockBranchChange()"
+        placeholder="Select a branch"
+        searchPlaceholder="Search branches..."
+        noResultsText="No matching branches found."
+        [disabled]="initializingOpeningStock || loadingBranches"
+        [required]="true"
+      />
+    </div>
+
+    @if (loadingTrackedProducts) {
+      <p class="muted">Loading tracked products...</p>
+    } @else if (trackedProducts.length === 0) {
+      <div class="empty-state">
+        <p>
+          No active inventory-tracked products were found.
+          Import or create products first.
+        </p>
+      </div>
+    } @else {
+      <div class="opening-stock-table-wrap">
+        <table class="opening-stock-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>SKU</th>
+              <th>Opening quantity</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (product of trackedProducts; track product.id) {
+              <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.sku || '—' }}</td>
+                <td>
+                  <input
+                    type="number"
+                    [name]="'openingQuantity_' + product.id"
+                    [(ngModel)]="openingQuantities[product.id]"
+                    min="0"
+                    step="0.001"
+                    placeholder="Leave blank to skip"
+                    [disabled]="initializingOpeningStock"
+                  />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="initializeOpeningStock()"
+        [disabled]="
+          initializingOpeningStock ||
+          loadingBranches ||
+          branchOptions.length === 0
+        "
+      >
+        {{
+          initializingOpeningStock
+            ? 'Initializing stock...'
+            : 'Review and initialize opening stock'
+        }}
+      </button>
+    }
+
+      @if (openingStockResults.length > 0) {
+        <div class="opening-stock-results">
+          <h3>Opening Inventory Results</h3>
+
+          @for (
+            result of openingStockResults;
+            track result.productName
+          ) {
+            <div class="opening-stock-result">
+              <div>
+                <strong>{{ result.productName }}</strong>
+                <p>{{ result.quantity }} units</p>
+              </div>
+
+              <span [class.result-success]="result.success"
+                    [class.result-error]="!result.success">
+                {{ result.success ? 'Initialized' : 'Needs review' }}
+              </span>
+
+              <p>{{ result.message }}</p>
+            </div>
+          }
+        </div>
+      }
+  </section>
+}
+  <!--End-->
+
   @if (preview; as previewData) {
     <section class="preview-panel">
       <div class="section-heading">

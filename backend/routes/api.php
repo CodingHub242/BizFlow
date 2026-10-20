@@ -15,6 +15,7 @@ use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\QuickBooksCreditMemoApplicationsReconcileController;
 use App\Http\Controllers\QuickBooksCustomerImportController;
 use App\Http\Controllers\QuickBooksMigrationCatalogController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\QuickBooksExpensesImportController;
 use App\Http\Controllers\QuickBooksCatalogItemsImportController;
@@ -271,10 +272,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/inventory/export',[InventoryExportController::class, 'export']
     )->middleware('permission:inventory.view');
 
-    Route::get('/inventory/{inventory}', [InventoryController::class, 'show'])
-        ->middleware('permission:inventory.view');
-
-    Route::post('/inventory/receive', [InventoryController::class, 'receive'])
+     Route::post('/inventory/receive', [InventoryController::class, 'receive'])
         ->middleware('permission:inventory.receive');
 
     Route::post('/inventory/adjust', [InventoryController::class, 'adjust'])
@@ -282,6 +280,19 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::post('/inventory/transfer', [InventoryController::class, 'transfer'])
         ->middleware('permission:inventory.transfer');
+
+    
+    Route::post('/inventory/opening-stock', [InventoryController::class,'openingStock',
+    ])->middleware('permission:inventory.receive');
+
+    Route::get('/inventory/opening-stock-candidates',[InventoryController::class, 'openingStockCandidates']
+    )->middleware('permission:inventory.receive');
+
+    Route::get('/inventory/{inventory}', [InventoryController::class, 'show'])
+        ->middleware('permission:inventory.view');
+
+   
+
 
     Route::post('/inventory/imports/preview',[InventoryImportController::class, 'preview']
     )->middleware('permission:inventory.import');
@@ -393,6 +404,22 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/branches/{branch}/restore', [BranchController::class, 'restore'])
         ->middleware('permission:branches.update')
         ->withTrashed();
+
+    // CATEGORIES
+    Route::get('/categories', [CategoryController::class, 'index'])
+        ->middleware('permission:categories.view');
+
+    Route::post('/categories', [CategoryController::class, 'store'])
+        ->middleware('permission:categories.create');
+
+    Route::get('/categories/{category}', [CategoryController::class, 'show'])
+        ->middleware('permission:categories.view');
+
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])
+        ->middleware('permission:categories.update');
+
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
+        ->middleware('permission:categories.delete');
 
     // ROLES
     Route::post('/roles', [RoleController::class, 'store']);

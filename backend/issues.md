@@ -83,3 +83,21 @@ $user = \App\Models\PlatformAdmin::create([
     'email' => 'jonathanattram12@yahoo.com',
     'password' => \Illuminate\Support\Facades\Hash::make('Nhyiraba12'),
 ]);
+
+
+
+
+////////Assigning new permissions to only one role
+php artisan tinker
+
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+
+$owner = Role::where('name', 'Owner')
+    ->where('guard_name', 'web')
+    ->firstOrFail();
+
+$owner->syncPermissions(Permission::where('guard_name', 'web')->get());
+
+app()[\Spatie\Permission\PermissionRegistrar::class]
+    ->forgetCachedPermissions();

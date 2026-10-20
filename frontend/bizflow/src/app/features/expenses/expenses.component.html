@@ -1,3 +1,147 @@
-<p>
-  expenses works!
-</p>
+
+<section class="expenses-page">
+  <header class="page-header">
+    <div>
+      <h1>Expenses</h1>
+      <p>Track and manage your business expenses.</p>
+    </div>
+
+    <button type="button" class="primary-button" (click)="openCreateForm()">
+      + Add expense
+    </button>
+  </header>
+
+  <div *ngIf="successMessage" class="alert alert-success" role="status">
+    {{ successMessage }}
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+    {{ errorMessage }}
+  </div>
+
+  <section class="filters">
+    <label>
+      Search
+      <input
+        type="search"
+        [(ngModel)]="search"
+        placeholder="Search descriptions or references"
+        (keyup.enter)="applyFilters()"
+      />
+    </label>
+
+    <label>
+      Payment method
+      <select [(ngModel)]="paymentMethod" style="height:40px;">
+        <option value="">All methods</option>
+        <option
+          *ngFor="let method of paymentMethods"
+          [value]="method.value"
+        >
+          {{ method.label }}
+        </option>
+      </select>
+    </label>
+
+    <label>
+      From
+      <input type="date" [(ngModel)]="dateFrom" />
+    </label>
+
+    <label>
+      To
+      <input type="date" [(ngModel)]="dateTo" />
+    </label>
+
+    <div class="filter-actions">
+      <button type="button" (click)="applyFilters()">Apply</button>
+      <button type="button" (click)="clearFilters()">Clear</button>
+    </div>
+  </section>
+
+  <app-expense-form
+  *ngIf="showForm"
+  [expense]="editingExpense"
+  (saved)="onExpenseSaved()"
+  (cancelled)="closeExpenseForm()"
+/>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Payment method</th>
+          <th>Reference</th>
+          <th class="amount-column">Amount</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngIf="loading">
+          <td colspan="6">Loading expenses...</td>
+        </tr>
+
+        <tr *ngIf="!loading && expenses.length === 0">
+          <td colspan="6">No expenses found.</td>
+        </tr>
+
+        <tr *ngFor="let expense of expenses">
+          <td>{{ expense.expense_date | date:'mediumDate' }}</td>
+          <td>
+            <strong>{{ expense.description }}</strong>
+            <small *ngIf="expense.notes">{{ expense.notes }}</small>
+          </td>
+          <td>{{ formatPaymentMethod(expense.payment_method) }}</td>
+          <td>{{ expense.reference || '—' }}</td>
+          <td class="amount-column">
+            {{ expense.amount | number:'1.2-2' }}
+          </td>
+         <td class="expense-actions">
+            <button
+              type="button"
+              class="btn-edit"
+              (click)="openEditForm(expense)"
+            >
+              Edit
+            </button>
+
+            <button
+              type="button"
+              class="btn-delete"
+              (click)="deleteExpense(expense)"
+            >
+              Delete
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="pagination">
+    <span>{{ total }} expense(s)</span>
+
+    <div>
+      <button
+        type="button"
+        [disabled]="currentPage <= 1 || loading"
+        (click)="changePage(currentPage - 1)"
+      >
+        Previous
+      </button>
+
+      <span>Page {{ currentPage }} of {{ lastPage }}</span>
+
+      <button
+        type="button"
+        [disabled]="currentPage >= lastPage || loading"
+        (click)="changePage(currentPage + 1)"
+      >
+        Next
+      </button>
+    </div>
+  </footer>
+</section>

@@ -81,6 +81,46 @@ export interface CatalogDeleteResponse {
   message: string;
 }
 
+export interface OpeningStockResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    branch_id: number;
+    catalog_item_id: number;
+    quantity: number | string;
+    reorder_level: number | string;
+    branch?: {
+      id: number;
+      name: string;
+      code: string | null;
+    };
+    catalog_item?: {
+      id: number;
+      name: string;
+      type: 'product' | 'service';
+      sku: string | null;
+      selling_price: number | string;
+      track_inventory: boolean;
+      image_url: string | null;
+      is_active: boolean;
+    };
+    created_at: string | null;
+    updated_at: string | null;
+  };
+}
+
+export interface OpeningStockCandidatesResponse {
+  success: boolean;
+  data: CatalogItem[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -204,6 +244,32 @@ export class CatalogApi {
       data,
     );
   }
+
+ setOpeningStock(data: {branch_id: number;catalog_item_id: number;quantity: number;notes?: string;
+}): Observable<OpeningStockResponse> {
+  return this.http.post<OpeningStockResponse>(
+    `${this.apiUrl}/inventory/opening-stock`,
+    data,
+  );
+}
+
+getOpeningStockCandidates(params: {
+  branch_id: number;
+  search?: string;
+  page?: number;
+  per_page?: number;
+}): Observable<OpeningStockCandidatesResponse> {
+  return this.http.get<OpeningStockCandidatesResponse>(
+    `${this.apiUrl}/inventory/opening-stock-candidates`,
+    { params: {
+        branch_id: String(params.branch_id),
+        ...(params.search ? { search: params.search } : {}),
+        page: String(params.page ?? 1),
+        per_page: String(params.per_page ?? 20),
+      },
+    },
+  );
+}
 
   delete(id: number): Observable<CatalogDeleteResponse> {
     return this.http.delete<CatalogDeleteResponse>(

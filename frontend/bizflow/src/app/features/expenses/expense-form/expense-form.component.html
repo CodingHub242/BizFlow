@@ -1,0 +1,162 @@
+
+<section class="expense-form">
+  <header>
+    <h2>{{ expense ? 'Edit Expense' : 'Create Expense' }}</h2>
+    <p>Record your business expense.</p>
+  </header>
+
+  <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+    {{ errorMessage }}
+  </div>
+
+  <form #form="ngForm" (ngSubmit)="submit()">
+    <div class="form-group">
+      <label for="expense-branch">Branch *</label>
+
+      <app-searchable-select
+        inputId="expense-branch"
+        name="branch_id"
+        [(ngModel)]="branchId"
+        [options]="branchOptions"
+        placeholder="Select a branch"
+        searchPlaceholder="Search branches..."
+        noResultsText="No branches found."
+        [required]="true"
+        [disabled]="loadingBranches || saving"
+        [clearable]="false"
+      />
+
+      <small *ngIf="loadingBranches">Loading branches...</small>
+    </div>
+
+      <div class="form-group">
+        <div class="field-heading">
+          <label for="expense-category">Category</label>
+
+          <button
+            type="button"
+            class="add-category-button"
+            [disabled]="saving"
+            (click)="openCategoryModal()"
+          >
+            <span aria-hidden="true">+</span>
+            Add category
+          </button>
+        </div>
+
+        <app-searchable-select
+          inputId="expense-category"
+          name="category_id"
+          [(ngModel)]="categoryId"
+          [options]="categoryOptions"
+          placeholder="Select a category"
+          searchPlaceholder="Search categories..."
+          noResultsText="No categories found."
+          [disabled]="loadingCategories || saving"
+          [clearable]="true"
+        />
+
+        <small *ngIf="loadingCategories">
+          Loading categories...
+        </small>
+      </div>
+
+      <app-expense-category-modal
+        *ngIf="showCategoryModal"
+        (created)="onCategoryCreated($event)"
+        (cancelled)="closeCategoryModal()"
+      />
+
+    <div class="form-group">
+      <label for="expense-description">Description *</label>
+      <input
+        id="expense-description"
+        name="description"
+        type="text"
+        maxlength="255"
+        [(ngModel)]="description"
+        required
+        [disabled]="saving"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="expense-amount">Amount *</label>
+      <input
+        id="expense-amount"
+        name="amount"
+        type="number"
+        min="0.01"
+        step="0.01"
+        [(ngModel)]="amount"
+        required
+        [disabled]="saving"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="expense-payment-method">Payment method *</label>
+      <select
+        id="expense-payment-method"
+        name="payment_method"
+        [(ngModel)]="paymentMethod"
+        required
+        [disabled]="saving"
+      style="height:40px;">
+        <option *ngFor="let method of paymentMethods" [value]="method.value">
+          {{ method.label }}
+        </option>
+      </select>
+    </div>
+
+
+    <div class="form-group">
+      <label for="expense-date">Expense date *</label>
+      <input
+        id="expense-date"
+        name="expense_date"
+        type="date"
+        [(ngModel)]="expenseDate"
+        required
+        [disabled]="saving"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="expense-reference">Reference</label>
+      <input
+        id="expense-reference"
+        name="reference"
+        type="text"
+        maxlength="255"
+        [(ngModel)]="reference"
+        [disabled]="saving"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="expense-notes">Notes</label>
+      <textarea
+        id="expense-notes"
+        name="notes"
+        rows="3"
+        [(ngModel)]="notes"
+        [disabled]="saving"
+      ></textarea>
+    </div>
+
+    <footer class="form-actions">
+      <button
+        type="button"
+        (click)="cancelled.emit()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+
+      <button type="submit" [disabled]="saving || loadingBranches || form.invalid">
+        {{ saving ? 'Saving...' : expense ? 'Update Expense' : 'Save Expense' }}
+      </button>
+    </footer>
+  </form>
+</section>

@@ -381,4 +381,175 @@ class InventoryServiceTest extends TestCase
             0
         );
     }
+
+
+public function test_set_opening_stock_creates_inventory_and_opening_movement(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+        'track_inventory' => true,
+    ]);
+
+    $inventory = $this->inventoryService->setOpeningStock(
+        $tenant->id,
+        $branch->id,
+        $product->id,
+        25,
+        'Initial stock count',
+        'migration',
+        123
+    );
+
+    $this->assertEquals(25.0, (float) $inventory->quantity);
+
+    $this->assertDatabaseHas('inventories', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 25,
+    ]);
+
+    $this->assertDatabaseHas('inventory_movements', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'type' => InventoryMovementType::OPENING->value,
+        'quantity' => 25,
+        'notes' => 'Initial stock count',
+        'reference_type' => 'migration',
+        'reference_id' => 123,
+    ]);
+}
+
+public function test_set_opening_stock_rejects_negative_quantity(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+        'track_inventory' => true,
+    ]);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'Opening stock cannot be negative.'
+    );
+
+    $this->inventoryService->setOpeningStock(
+        $tenant->id,
+        $branch->id,
+        $product->id,
+        -1
+    );
+}
+
+public function test_set_opening_stock_rejects_non_inventory_items(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $service = CatalogItem::factory()->service()->create([
+        'tenant_id' => $tenant->id,
+        'track_inventory' => false,
+    ]);
+
+    $this->expectException(RuntimeException::class);
+    $this->expectExceptionMessage(
+        'This catalog item does not track inventory.'
+    );
+
+    $this->inventoryService->setOpeningStock(
+        $tenant->id,
+        $branch->id,
+        $service->id,
+        10
+    );
+}
+
+public function test_set_opening_stock_does_not_overwrite_existing_inventory(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+        'track_inventory' => true,
+    ]);
+
+    Inventory::create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 10,
+        'reorder_level' => 2,
+    ]);
+
+    try {
+        $this->inventoryService->setOpeningStock(
+            $tenant->id,
+            $branch->id,
+            $product->id,
+            50
+        );
+
+        $this->fail('Expected opening stock initialization to fail.');
+    } catch (RuntimeException $exception) {
+        $this->assertStringContainsString(
+            'Inventory already exists',
+            $exception->getMessage()
+        );
+    }
+
+    $this->assertDatabaseHas('inventories', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'quantity' => 10,
+    ]);
+
+    $this->assertDatabaseCount('inventory_movements', 0);
+}
+
+public function test_set_opening_stock_allows_zero_without_movement(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = CatalogItem::factory()->product()->create([
+        'tenant_id' => $tenant->id,
+        'track_inventory' => true,
+    ]);
+
+    $inventory = $this->inventoryService->setOpeningStock(
+        $tenant->id,
+        $branch->id,
+        $product->id,
+        0
+    );
+
+    $this->assertEquals(0.0, (float) $inventory->quantity);
+
+    $this->assertDatabaseCount('inventories', 1);
+    $this->assertDatabaseCount('inventory_movements', 0);
+}
+
 }

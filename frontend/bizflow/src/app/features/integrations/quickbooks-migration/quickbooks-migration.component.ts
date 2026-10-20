@@ -5,6 +5,9 @@ import {QuickBooksApi,QuickBooksConnection,QuickBooksCompanyInfoData,QuickBooksE
 import { EMPTY, Subscription } from 'rxjs';
 import { expand, reduce } from 'rxjs/operators';
 import {Branch,BranchApi} from '../../../core/services/branch-api';
+import { CatalogApi, CatalogItem } from '../../../core/services/catalog-api';
+import { from, of } from 'rxjs';
+import { catchError, concatMap, map, toArray } from 'rxjs/operators';
 import {SearchableSelectComponent,SearchableSelectOption} from '../../../shared/components/searchable-select/searchable-select.component';
 
 @Component({
@@ -19,6 +22,7 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly branchApi = inject(BranchApi);
   private readonly branchPageSize = 100;
+  private readonly catalogApi = inject(CatalogApi);
   private readonly subscriptions: Subscription[] = [];
 
   connections: QuickBooksConnection[] = [];
@@ -57,6 +61,7 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
     'bills',
     'estimates',
     'credit_memos',
+    'expenses',
   ];
 
   readonly importableEntities: QuickBooksImportEntityType[] = [
@@ -71,6 +76,32 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
     'chart_of_accounts',
     'payments',
   ];
+
+
+
+  ///Opening Stock
+  trackedProducts: CatalogItem[] = [];
+loadingTrackedProducts = false;
+
+openingStockBranchId: number | null = null;
+openingQuantities: Record<number, number | null> = {};
+
+openingStockResults: {
+  productName: string;
+  quantity: number;
+  success: boolean;
+  message: string;
+}[] = [];
+
+openingStockPage = 1;
+openingStockLastPage = 1;
+openingStockTotal = 0;
+openingStockSearch = '';
+openingStockPageSize = 20;
+catalogItemsImportCompleted = false;
+
+initializingOpeningStock = false;
+openingStockError = '';
 
   constructor(cdr: ChangeDetectorRef) {
   this.changeDetector = cdr;
@@ -447,6 +478,14 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
               `${response.data.already_imported_count} already imported, ` +
               `${response.data.skipped_count} skipped.`;
 
+                if (entity === 'catalog_items') {
+                  this.catalogItemsImportCompleted = true;
+
+                  if (this.openingStockBranchId !== null) {
+                    this.loadTrackedProducts(1);
+                  }
+                }
+
             this.changeDetector.detectChanges();
           },
           error: (error: unknown) => {
@@ -647,6 +686,175 @@ export class QuickBooksMigrationComponent implements OnInit, OnDestroy {
         }),
     );
   }
+
+  ///////opening
+  loadTrackedProducts(page = 1): void {
+  if (this.openingStockBranchId === null) {
+    this.trackedProducts = [];
+    return;
+  }
+
+  this.loadingTrackedProducts = true;
+  this.openingStockError = '';
+  this.openingStockPage = page;
+
+  this.subscriptions.push(
+    this.catalogApi.getOpeningStockCandidates({
+      branch_id: this.openingStockBranchId,
+      search: this.openingStockSearch.trim() || undefined,
+      page,
+      per_page: this.openingStockPageSize,
+    }).subscribe({
+      next: response => {
+        this.trackedProducts = response.data;
+        this.openingStockPage = response.meta.current_page;
+        this.openingStockLastPage = response.meta.last_page;
+        this.openingStockTotal = response.meta.total;
+
+        this.openingQuantities = {};
+        this.trackedProducts.forEach(item => {
+          this.openingQuantities[item.id] = null;
+        });
+
+        this.loadingTrackedProducts = false;
+        this.changeDetector.detectChanges();
+      },
+      error: error => {
+        this.loadingTrackedProducts = false;
+        this.openingStockError = this.getErrorMessage(
+          error,
+          'Unable to load products awaiting opening inventory.',
+        );
+        this.changeDetector.detectChanges();
+      },
+    }),
+  );
+}
+
+onOpeningStockBranchChange(): void {
+  this.openingStockPage = 1;
+  this.openingQuantities = {};
+  this.loadTrackedProducts(1);
+}
+
+initializeOpeningStock(): void {
+  this.openingStockError = '';
+  this.openingStockResults = [];
+
+  if (this.openingStockBranchId === null) {
+    this.openingStockError = 'Select a destination branch.';
+    return;
+  }
+
+  const branchExists = this.branches.some(
+    (branch) =>
+      branch.id === this.openingStockBranchId &&
+      branch.is_active,
+  );
+
+  if (!branchExists) {
+    this.openingStockError =
+      'Select a valid active Bizflow branch.';
+    return;
+  }
+
+  const items = this.trackedProducts
+    .filter((product) => {
+      const quantity = this.openingQuantities[product.id];
+
+      return quantity !== null && quantity !== undefined;
+    })
+    .map((product) => ({
+      product,
+      quantity: this.openingQuantities[product.id] as number,
+    }));
+
+  if (items.length === 0) {
+    this.openingStockError =
+      'Enter an opening quantity for at least one product.';
+    return;
+  }
+
+  if (
+    items.some(
+      (item) =>
+        !Number.isFinite(item.quantity) ||
+        item.quantity < 0,
+    )
+  ) {
+    this.openingStockError =
+      'Quantities must be valid numbers greater than or equal to zero.';
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Initialize opening inventory for ${items.length} product(s) ` +
+    `at the selected branch? Products with existing inventory will ` +
+    `not be overwritten.`,
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  this.initializingOpeningStock = true;
+
+  this.subscriptions.push(
+    from(items)
+      .pipe(
+        concatMap(({ product, quantity }) =>
+          this.catalogApi.setOpeningStock({
+            branch_id: this.openingStockBranchId!,
+            catalog_item_id: product.id,
+            quantity,
+            notes: 'Opening inventory initialized from QuickBooks Migration Center',
+          }).pipe(
+            map((response) => ({
+              productName: product.name,
+              quantity,
+              success: response.success,
+              message: response.message || 'Opening stock initialized.',
+            })),
+            catchError((error: unknown) =>
+              of({
+                productName: product.name,
+                quantity,
+                success: false,
+                message: this.getErrorMessage(
+                  error,
+                  'Unable to initialize opening stock. Inventory may already exist.',
+                ),
+              }),
+            ),
+          ),
+        ),
+        toArray(),
+      )
+      .subscribe({
+        next: (results) => {
+          this.openingStockResults = results;
+          this.initializingOpeningStock = false;
+
+          const succeeded = results.filter(
+            (result) => result.success,
+          ).length;
+
+          this.successMessage =
+            `Opening inventory completed: ${succeeded} of ` +
+            `${results.length} product(s) initialized.`;
+
+          this.changeDetector.detectChanges();
+        },
+        error: () => {
+          this.initializingOpeningStock = false;
+          this.openingStockError =
+            'Opening inventory processing could not be completed.';
+          this.changeDetector.detectChanges();
+        },
+      }),
+  );
+}
+////////////
 
   closePreview(): void {
     this.preview = null;

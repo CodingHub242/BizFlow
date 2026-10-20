@@ -233,11 +233,12 @@
 
       <label class="checkbox-row">
 
-        <input
-          type="checkbox"
-          name="track_inventory"
-          [(ngModel)]="track_inventory"
-        />
+      <input
+        type="checkbox"
+        name="track_inventory"
+        [(ngModel)]="track_inventory"
+        (ngModelChange)="onTrackInventoryChange($event)"
+      />
 
         <span>
           Track inventory
@@ -245,6 +246,67 @@
 
       </label>
 
+    }
+
+    @if (type === 'product' && track_inventory) {
+      <section class="opening-stock-section">
+        <h3>Opening Inventory (Optional)</h3>
+
+        <p class="field-hint">
+          If this product already has stock, initialize its starting
+          quantity at a branch. You can also skip this and add stock later.
+        </p>
+
+        <div class="form-group">
+          <label for="openingBranch">
+            Branch
+          </label>
+
+          <app-searchable-select
+            inputId="openingBranch"
+            name="openingBranch"
+            [options]="branchOptions"
+            placeholder="Select a branch"
+            searchPlaceholder="Search branches..."
+            noResultsText="No matching branches found."
+            [disabled]="submitting || loadingBranches"
+            [clearable]="true"
+            [(ngModel)]="openingBranchId"
+          />
+
+          @if (loadingBranches) {
+            <small class="field-hint">Loading branches...</small>
+          }
+
+          @if (branchError) {
+            <p class="image-error" role="alert">
+              {{ branchError }}
+            </p>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="openingQuantity">Opening Quantity</label>
+
+          <input
+            id="openingQuantity"
+            type="number"
+            name="openingQuantity"
+            [(ngModel)]="openingQuantity"
+            min="0"
+            step="0.001"
+            placeholder="e.g. 25"
+            [disabled]="submitting"
+          />
+        </div>
+
+       
+
+        <small class="field-hint">
+          Leave both fields empty to create the product without initializing
+          stock. If you enter a quantity, select a branch too.
+        </small>
+      </section>
     }
 
 
