@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\DashboardService;
 use Illuminate\Http\JsonResponse;
+use Spatie\Permission\Models\Permission;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -13,6 +14,7 @@ class DashboardController extends Controller
     ) {
     }
 
+   
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -23,16 +25,30 @@ class DashboardController extends Controller
         $user = $request->user();
 
         $result = $this->dashboardService->summary(
-            $user->tenant_id,
+            (int) $user->tenant_id,
             $validated['date_from'] ?? null,
             $validated['date_to'] ?? null,
         );
+
+        // Fail closed: hide profit if the permission is missing or not assigned.
+        $profitPermissionExists = Permission::query()
+            ->where('name', 'reports.view_profit')
+            ->where('guard_name', 'web')
+            ->exists();
+
+        $canViewProfit = $profitPermissionExists
+            && $user->hasPermissionTo('reports.view_profit', 'web');
+
+        if (! $canViewProfit) {
+            unset($result['gross_profit']);
+        }
 
         return response()->json([
             'success' => true,
             'data' => $result,
         ]);
     }
+
 
     public function activity(Request $request): JsonResponse
     {

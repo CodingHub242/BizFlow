@@ -6,9 +6,16 @@
       <p>Track and manage your business expenses.</p>
     </div>
 
-    <button type="button" class="primary-button" (click)="openCreateForm()">
-      + Add expense
-    </button>
+    <div class="actionbtns">
+      <button type="button" class="primary-button" (click)="openCreateForm()">
+        + Add expense
+      </button>
+
+      <button type="button" class="primary-button" (click)="viewExpReport()">
+        View Report
+      </button>
+    </div>
+   
   </header>
 
   <div *ngIf="successMessage" class="alert alert-success" role="status">

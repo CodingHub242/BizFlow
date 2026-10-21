@@ -310,39 +310,24 @@ function ($join) {
 
            ->sum('amount');
 
-           $grossProfit = InvoiceItem::query()
-
-               ->where('invoice_items.tenant_id', $tenantId)
-
-               ->whereHas('invoice', function ($query) use ($tenantId, $dateFrom, $dateTo) {
-
-                   $query->where('tenant_id', $tenantId)
-
-                       ->whereNotIn('status', ['draft', 'cancelled'])
-
-                       ->when($dateFrom, function ($query) use ($dateFrom) {
-
-                           $query->whereDate('issued_at', '>=', $dateFrom);
-
-                       })
-
-                       ->when($dateTo, function ($query) use ($dateTo) {
-
-                           $query->whereDate('issued_at', '<=', $dateTo);
-
-                       });
-
-               })
-
-               ->join('catalog_items', 'catalog_items.id', '=', 'invoice_items.catalog_item_id')
-
-               ->selectRaw(
-
-                   'COALESCE(SUM(invoice_items.line_total - (invoice_items.quantity * catalog_items.cost_price)), 0) as gross_profit'
-
-               )
-
-               ->value('gross_profit');
+          $grossProfit = InvoiceItem::query()
+            ->where('invoice_items.tenant_id', $tenantId)
+            ->whereHas('invoice', function ($query) use ($tenantId, $dateFrom, $dateTo) {
+                $query->where('tenant_id', $tenantId)
+                    ->whereNotIn('status', ['draft', 'cancelled'])
+                    ->when($dateFrom, function ($query) use ($dateFrom) {
+                        $query->whereDate('issued_at', '>=', $dateFrom);
+                    })
+                    ->when($dateTo, function ($query) use ($dateTo) {
+                        $query->whereDate('issued_at', '<=', $dateTo);
+                    });
+            })
+            ->join('catalog_items', 'catalog_items.id', '=', 'invoice_items.catalog_item_id')
+            ->where('catalog_items.tenant_id', $tenantId)
+            ->selectRaw(
+                'COALESCE(SUM(invoice_items.line_total - (invoice_items.quantity * catalog_items.cost_price)), 0) as gross_profit'
+            )
+            ->value('gross_profit');
 
            $inventoryValue = Inventory::query()
 
@@ -464,7 +449,7 @@ function ($join) {
 
                    $dateFrom,
 
-fn($query) => $query->whereDate('invoices.issued_at', '>=', $dateFrom)
+            fn($query) => $query->whereDate('invoices.issued_at', '>=', $dateFrom)
 
                )
 

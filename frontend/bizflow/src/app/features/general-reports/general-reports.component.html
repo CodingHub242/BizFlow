@@ -1,0 +1,411 @@
+
+<section class="reports-page">
+  <header class="reports-header">
+    <div>
+      <p class="eyebrow">Business intelligence</p>
+      <h2>General Reports</h2>
+      <p class="subtitle">
+        Understand your business performance across finances,
+        operations, and inventory.
+      </p>
+    </div>
+
+    <button
+      class="secondary-action"
+      type="button"
+      [disabled]="loading"
+      (click)="loadReport()"
+    >
+      <ion-icon name="refresh-outline"></ion-icon>
+      Refresh
+    </button>
+  </header>
+
+  <section class="filter-panel">
+    <div class="filter-field">
+      <label for="dateFrom">From date</label>
+      <input
+        id="dateFrom"
+        type="date"
+        [(ngModel)]="dateFrom"
+        [max]="dateTo || undefined"
+      />
+    </div>
+
+    <div class="filter-field">
+      <label for="dateTo">To date</label>
+      <input
+        id="dateTo"
+        type="date"
+        [(ngModel)]="dateTo"
+        [min]="dateFrom || undefined"
+      />
+    </div>
+
+    <button
+      class="primary-action"
+      type="button"
+      [disabled]="loading || (!!dateFrom && !!dateTo && dateFrom > dateTo)"
+      (click)="loadReport()"
+    >
+      Apply filters
+    </button>
+
+    <button
+      class="text-action"
+      type="button"
+      [disabled]="loading || (!dateFrom && !dateTo)"
+      (click)="resetDates()"
+    >
+      Clear dates
+    </button>
+  </section>
+
+  @if (loading) {
+    <div class="status-message" role="status">
+      Loading general reports…
+    </div>
+  } @else if (errorMessage) {
+    <div class="error-message" role="alert">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <span>{{ errorMessage }}</span>
+      <button type="button" (click)="loadReport()">Try again</button>
+    </div>
+  } @else if (report) {
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Financial overview</h3>
+          <p>Sales, expenses, and outstanding balances</p>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric-card">
+          <span>Sales revenue</span>
+          <strong>
+            {{ report.financial.sales_total | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+          <small>{{ report.financial.sales_count | number }} sales</small>
+        </article>
+
+        <article class="metric-card">
+          <span>Expenses</span>
+          <strong>
+            {{ report.financial.expense_total | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Outstanding invoices</span>
+          <strong>
+            {{ report.financial.outstanding_invoice_total | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Product sales</span>
+          <strong>
+            {{ report.financial.product_sales | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Services rendered</span>
+          <strong>
+            {{ report.financial.services_rendered | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+        </article>
+
+        @if (hasGrossProfit) {
+          <article class="metric-card">
+            <span>Gross profit</span>
+            <strong>
+              {{ report.financial.gross_profit! | currency:'GHS':'symbol':'1.2-2' }}
+            </strong>
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Business overview</h3>
+          <p>Records currently held in this workspace</p>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric-card">
+          <span>Customers</span>
+          <strong>{{ report.business.customers | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Suppliers</span>
+          <strong>{{ report.business.suppliers | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Branches</span>
+          <strong>{{ report.business.branches | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Products</span>
+          <strong>{{ report.business.products | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Services</span>
+          <strong>{{ report.business.services | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Invoices</span>
+          <strong>{{ report.business.invoices | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Expenses recorded</span>
+          <strong>{{ report.business.expenses | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Purchases</span>
+          <strong>{{ report.business.purchases | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Bills</span>
+          <strong>{{ report.business.bills | number }}</strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Employees</span>
+          <strong>{{ report.business.employees | number }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Inventory and purchasing</h3>
+          <p>Inventory valuation and stock requiring attention</p>
+        </div>
+      </div>
+
+      <div class="metric-grid inventory-metrics">
+        <article class="metric-card">
+          <span>Inventory value</span>
+          <strong>
+            {{ report.inventory.inventory_value | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+        </article>
+
+        <article class="metric-card">
+          <span>Low-stock items</span>
+          <strong>{{ report.inventory.low_stock_count | number }}</strong>
+        </article>
+      </div>
+
+      <div class="table-panel" style="margin-top:10px;">
+        <h4>Items requiring attention</h4>
+
+        @if (report.inventory.low_stock_items.length > 0) {
+          <div class="table-scroll stock-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>SKU</th>
+                  <th>Available</th>
+                  <th>Reorder level</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (
+                  item of report.inventory.low_stock_items;
+                  track item.id
+                ) {
+                  <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.sku || '—' }}</td>
+                    <td>{{ item.quantity | number }}</td>
+                    <td>{{ item.reorder_level | number }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty-state">No low-stock items to display.</p>
+        }
+      </div>
+    </section>
+
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Sales by branch</h3>
+          <p>Compare sales totals across branches</p>
+        </div>
+      </div>
+
+      <div class="table-panel branch-scroll-panel">
+        @if (report.trends.sales_by_branch.length > 0) {
+          @for (
+            branch of report.trends.sales_by_branch;
+            track branch.branch_id
+          ) {
+            <div class="branch-row">
+              <div class="branch-heading">
+                <strong>{{ branch.branch_name }}</strong>
+                <span>
+                  {{ branch.sales | currency:'GHS':'symbol':'1.2-2' }}
+                </span>
+              </div>
+
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  [style.width.%]="getBranchPercentage(branch.sales)"
+                ></div>
+              </div>
+            </div>
+          }
+        } @else {
+          <p class="empty-state">No branch sales available for this period.</p>
+        }
+      </div>
+    </section>
+
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Sales trend</h3>
+          <p>Sales values returned by the reporting API</p>
+        </div>
+      </div>
+
+
+      <div class="table-panel sales-chart-panel">
+        @if (salesChartPoints.length > 0) {
+          <div class="sales-chart">
+            <div class="chart-y-axis">
+              @for (label of salesChartAxisLabels; track $index) {
+                <span>{{ label }}</span>
+              }
+            </div>
+
+            <div class="chart-area">
+              @for (label of salesChartAxisLabels; track $index) {
+                <div
+                  class="chart-grid-line"
+                  [style.top.%]="$index * 100 / 3"
+                ></div>
+              }
+
+              <svg
+                class="sales-line"
+                viewBox="0 0 700 220"
+                preserveAspectRatio="none"
+                role="img"
+                aria-label="Sales revenue trend"
+              >
+                <polyline
+                  [attr.points]="salesChartPoints
+                    .map(point => point.x + ',' + point.y)
+                    .join(' ')"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linejoin="round"
+                  stroke-linecap="round"
+                />
+
+                @for (point of salesChartPoints; track $index) {
+                  <circle
+                    [attr.cx]="point.x"
+                    [attr.cy]="point.y"
+                    r="4"
+                  >
+                    <title>
+                      {{ point.date }}:
+                      {{ point.sales | currency:'GHS':'symbol':'1.2-2' }}
+                    </title>
+                  </circle>
+                }
+              </svg>
+
+              <div class="chart-labels">
+                @for (label of getSalesChartLabels(); track $index) {
+                  <span>{{ label }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          <p class="empty-state">No sales trend data available.</p>
+        }
+      </div>
+
+
+      <div class="table-panel">
+        @if (report.trends.sales_trend.length > 0) {
+          <div class="table-scroll trend-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Sales</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (point of report.trends.sales_trend; track point.date) {
+                  <tr>
+                    <td>{{ point.date | date:'mediumDate' }}</td>
+                    <td>{{ point.sales | currency:'GHS':'symbol':'1.2-2' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty-state">No sales trend data available.</p>
+        }
+      </div>
+    </section>
+
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Payments by method</h3>
+          <p>Recorded payments grouped by payment method</p>
+        </div>
+      </div>
+
+      <div class="table-panel">
+        @if (report.financial.payments_by_method.length > 0) {
+          @for (
+            payment of report.financial.payments_by_method;
+            track payment.payment_method
+          ) {
+            <div class="branch-row">
+              <div class="branch-heading">
+                <strong>{{ payment.payment_method | titlecase }}</strong>
+                <span>
+                  {{ payment.total | currency:'GHS':'symbol':'1.2-2' }}
+                </span>
+              </div>
+            </div>
+          }
+        } @else {
+          <p class="empty-state">No payment data available.</p>
+        }
+      </div>
+    </section>
+  }
+</section>

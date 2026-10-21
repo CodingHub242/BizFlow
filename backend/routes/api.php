@@ -31,6 +31,7 @@ use App\Http\Controllers\QuickBooksOAuthController;
 use App\Http\Controllers\InventoryImportController;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\BusinessOnboardingController;
+use App\Http\Controllers\GeneralReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchController;
@@ -431,6 +432,10 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])
         ->middleware('permission:categories.delete');
+
+    // GENERAL TENANT REPORTS
+    Route::get('/reports/overview', [GeneralReportController::class,'overview',
+    ])->middleware('permission:reports.view');
 
     // ROLES
     Route::post('/roles', [RoleController::class, 'store']);

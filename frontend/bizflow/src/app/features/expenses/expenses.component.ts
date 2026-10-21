@@ -13,6 +13,7 @@ import {
 } from '../../shared/components/searchable-select/searchable-select.component';
 import { BranchApi } from '../../core/services/branch-api';
 import { ExpenseFormComponent } from './expense-form/expense-form.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-expenses',
@@ -55,7 +56,7 @@ export class ExpensesComponent implements OnInit {
     { value: 'other', label: 'Other' },
   ];
 
-  constructor(private readonly expenseApi: ExpenseApi,private readonly branchApi: BranchApi) {}
+  constructor(private readonly expenseApi: ExpenseApi,private readonly branchApi: BranchApi,private router:Router) {}
 
   ngOnInit(): void {
     this.loadExpenses();
@@ -182,6 +183,11 @@ onExpenseSaved(): void {
   this.showForm = false;
   this.editingExpense = null;
   this.loadExpenses(1);
+}
+
+viewExpReport()
+{
+  this.router.navigateByUrl("reports");
 }
 
 closeExpenseForm(): void {

@@ -22,16 +22,39 @@ class DashboardApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+{
+    parent::setUp();
+
+    Permission::firstOrCreate([
+        'name' => 'reports.view',
+        'guard_name' => 'web',
+    ]);
+
+    Permission::firstOrCreate([
+        'name' => 'reports.view_profit',
+        'guard_name' => 'web',
+    ]);
+
+    app(\Spatie\Permission\PermissionRegistrar::class)
+        ->forgetCachedPermissions();
+}
+
  private function assignRole(
     User $user,
     string $roleName = 'Accountant'
 ): void {
     setPermissionsTeamId($user->tenant_id);
 
-    $permission = Permission::firstOrCreate([
-        'name' => 'reports.view',
+    $permissions = collect([
+       'reports.view', 
+       'reports.view_profit'
+    ])->map(fn ($name) => Permission::firstOrCreate([
+        'name' => $name,
         'guard_name' => 'web',
-    ]);
+    ]));
+
+    
 
     $role = Role::query()->firstOrCreate([
         'tenant_id' => $user->tenant_id,
@@ -39,7 +62,7 @@ class DashboardApiTest extends TestCase
         'guard_name' => 'web',
     ]);
 
-    $role->givePermissionTo($permission);
+    $role->givePermissionTo($permissions);
     $user->assignRole($role);
 }
 
@@ -50,6 +73,8 @@ public function test_authenticated_user_can_retrieve_dashboard_summary(): void
     $user = User::factory()->create([
         'tenant_id' => $tenant->id,
     ]);$this->assignRole($user);
+
+   
 
     $branch = Branch::factory()->create([
         'tenant_id' => $tenant->id,
@@ -966,5 +991,184 @@ public function test_activity_feed_filters_by_type_and_paginates(): void
         ->assertJsonPath('meta.current_page', 2)
         ->assertJsonCount(1, 'data');
 }
+
+
+public function test_dashboard_groups_sales_monthly_and_fills_missing_months(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    foreach ([
+        ['2026-08-10 10:00:00', 1000],
+        ['2026-08-20 10:00:00', 500],
+        ['2026-10-05 10:00:00', 250],
+    ] as [$issuedAt, $total]) {
+        Invoice::factory()->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'status' => 'issued',
+            'total' => $total,
+            'issued_at' => $issuedAt,
+        ]);
+    }
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-08-01&date_to=2026-10-31'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.sales_trend.0.date', '2026-08-01')
+        ->assertJsonPath('data.sales_trend.0.sales', 1500)
+        ->assertJsonPath('data.sales_trend.1.date', '2026-09-01')
+        ->assertJsonPath('data.sales_trend.1.sales', 0)
+        ->assertJsonPath('data.sales_trend.2.date', '2026-10-01')
+        ->assertJsonPath('data.sales_trend.2.sales', 250);
+}
+
+public function test_dashboard_sales_trend_excludes_invoices_outside_selected_dates(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    foreach ([
+        ['2026-09-09 23:00:00', 900],
+        ['2026-09-10 10:00:00', 100],
+        ['2026-09-11 14:00:00', 200],
+        ['2026-09-12 00:00:00', 800],
+    ] as [$issuedAt, $total]) {
+        Invoice::factory()->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'status' => 'issued',
+            'total' => $total,
+            'issued_at' => $issuedAt,
+        ]);
+    }
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-10&date_to=2026-09-11'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonCount(2, 'data.sales_trend')
+        ->assertJsonPath('data.sales_trend.0.sales', 100)
+        ->assertJsonPath('data.sales_trend.1.sales', 200);
+}
+
+public function test_dashboard_sales_trend_excludes_draft_and_cancelled_invoices(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    foreach ([
+        ['issued', 1000],
+        ['draft', 5000],
+        ['cancelled', 3000],
+    ] as [$status, $total]) {
+        Invoice::factory()->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'status' => $status,
+            'total' => $total,
+            'issued_at' => '2026-09-10 10:00:00',
+        ]);
+    }
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-10&date_to=2026-09-10'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.sales_trend.0.date', '2026-09-10')
+        ->assertJsonPath('data.sales_trend.0.sales', 1000);
+}
+
+public function test_dashboard_sales_trend_excludes_other_tenants_invoices(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    foreach ([
+        [$tenant->id, $branch->id, $user->id, 400],
+        [$otherTenant->id, $otherBranch->id, $otherUser->id, 9000],
+    ] as [$tenantId, $branchId, $creatorId, $total]) {
+        Invoice::factory()->create([
+            'tenant_id' => $tenantId,
+            'branch_id' => $branchId,
+            'created_by' => $creatorId,
+            'status' => 'issued',
+            'total' => $total,
+            'issued_at' => '2026-09-10 10:00:00',
+        ]);
+    }
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson(
+        '/api/dashboard?date_from=2026-09-10&date_to=2026-09-10'
+    );
+
+    $response
+        ->assertOk()
+        ->assertJsonPath('data.sales_trend.0.sales', 400);
+}
+
 
 }

@@ -1,0 +1,414 @@
+
+:host {
+  display: block;
+}
+
+.reports-page {
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.reports-header,
+.section-heading,
+.branch-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.reports-header {
+  margin-bottom: 24px;
+  align-items: flex-end;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #040f27;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reports-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 28px;
+}
+
+.subtitle,
+.section-heading p {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+}
+
+.filter-panel,
+.metric-card,
+.table-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 3%);
+}
+
+.filter-panel {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-field label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filter-field input {
+  min-height: 39px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #0f172a;
+  font: inherit;
+}
+
+.primary-action,
+.secondary-action {
+  min-height: 39px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-action {
+  background: #040f27;
+  color: #fff;
+}
+
+.secondary-action {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.text-action {
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.report-section {
+  margin-bottom: 28px;
+}
+
+.section-heading {
+  margin-bottom: 14px;
+}
+
+.section-heading h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 17px;
+}
+
+.section-heading p {
+  margin: 5px 0 0;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metric-card {
+  min-width: 0;
+  padding: 18px;
+}
+
+.metric-card > span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.metric-card > strong {
+  display: block;
+  margin-top: 12px;
+  color: #0f172a;
+  font-size: 21px;
+  overflow-wrap: anywhere;
+}
+
+.metric-card > small {
+  display: block;
+  margin-top: 6px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.table-panel {
+  padding: 18px;
+}
+
+.table-panel h4 {
+  margin: 0 0 14px;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+th {
+  color: #64748b;
+  font-weight: 600;
+}
+
+td {
+  color: #334155;
+}
+
+.branch-row + .branch-row {
+  margin-top: 20px;
+}
+
+.branch-heading {
+  margin-bottom: 8px;
+}
+
+.branch-heading strong,
+.branch-heading span {
+  font-size: 12px;
+}
+
+.branch-heading strong {
+  color: #334155;
+}
+
+.branch-heading span {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #040f27;
+  transition: width 0.25s ease;
+}
+
+.empty-state,
+.status-message {
+  padding: 22px 0;
+  color: #64748b;
+  font-size: 13px;
+  text-align: center;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.error-message button {
+  margin-left: auto;
+  padding: 7px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 5px;
+  background: #fff;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .reports-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports-header h2 {
+    font-size: 23px;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-field,
+  .filter-field input,
+  .filter-panel .primary-action {
+    width: 100%;
+  }
+}
+
+.branch-scroll-panel {
+  max-height: 380px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.stock-table-scroll,
+.trend-table-scroll {
+  max-height: 360px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 600px) {
+  .branch-scroll-panel {
+    max-height: 320px;
+  }
+
+  .stock-table-scroll,
+  .trend-table-scroll {
+    max-height: 300px;
+  }
+}
+
+.sales-chart-panel {
+  margin-bottom: 14px;
+}
+
+.sales-chart {
+  display: flex;
+  height: 250px;
+  min-width: 0;
+}
+
+.chart-y-axis {
+  width: 45px;
+  flex: 0 0 45px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px 0 30px;
+  color: #64748b;
+  font-size: 10px;
+  text-align: right;
+}
+
+.chart-area {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  margin-left: 12px;
+  margin-bottom: 5px;
+}
+
+.chart-grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.sales-line {
+  position: absolute;
+  inset: 0 0 30px;
+  width: 100%;
+  height: calc(100% - 30px);
+  overflow: visible;
+  color: #040f27;
+}
+
+.sales-line circle {
+  fill: #fff;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.chart-labels {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.chart-labels span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .sales-chart {
+    height: 210px;
+  }
+
+  .chart-y-axis {
+    width: 38px;
+    flex-basis: 38px;
+  }
+}
