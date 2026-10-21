@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 use App\Models\Expense;
 
+use App\Models\Order;
+use App\InventoryMovementType;
+
 use App\Models\Inventory;
 
 use App\Models\InvoiceItem;
@@ -45,6 +48,57 @@ public function summary(int $tenantId,?string $dateFrom = null,?string $dateTo =
                })
 
                ->sum('total');
+
+            
+        $operationalOrderStatuses = [
+            'confirmed',
+            'partially_fulfilled',
+            'fulfilled',
+        ];
+
+        $operationalOrders = Order::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('status', $operationalOrderStatuses)
+            ->when($dateFrom, function ($query) use ($dateFrom) {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($query) use ($dateTo) {
+                $query->whereDate('created_at', '<=', $dateTo);
+            });
+
+        $operationalSalesTotal = (float) (clone $operationalOrders)
+            ->sum('total');
+
+        $operationalOrderCount = (clone $operationalOrders)
+            ->count();
+
+        $operationalOrdersByStatus = (clone $operationalOrders)
+            ->selectRaw('status, COUNT(*) as order_count, SUM(total) as total')
+            ->groupBy('status')
+            ->orderBy('status')
+            ->get()
+            ->map(fn ($row) => [
+                'status' => $row->status,
+                'order_count' => (int) $row->order_count,
+                'total' => (float) $row->total,
+            ])
+            ->values()
+            ->all();
+
+            $fulfilledStockMovements = InventoryMovement::query()
+                ->where('tenant_id', $tenantId)
+                ->where('type', InventoryMovementType::SALE->value)
+                ->where('reference_type', Order::class)
+                ->when($dateFrom, function ($query) use ($dateFrom) {
+                    $query->whereDate('created_at', '>=', $dateFrom);
+                })
+                ->when($dateTo, function ($query) use ($dateTo) {
+                    $query->whereDate('created_at', '<=', $dateTo);
+                });
+
+            $fulfilledStockQuantity = (float) (clone $fulfilledStockMovements)
+                ->sum('quantity');
+
 
            $productSales = InvoiceItem::query()
 
@@ -932,6 +986,14 @@ fn ($row) => \Carbon\Carbon::parse($row->period)
                'product_sales' => (float) $productSales,
 
                'sales_count' => $salesCount,
+
+               'operational_sales_total' => $operationalSalesTotal,
+
+                'operational_order_count' => $operationalOrderCount,
+
+                'operational_orders_by_status' => $operationalOrdersByStatus,
+                
+                'fulfilled_stock_quantity' => $fulfilledStockQuantity,
 
                'sales_count_previous_period' => $salesCountPreviousPeriod,
 

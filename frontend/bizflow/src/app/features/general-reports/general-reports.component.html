@@ -82,7 +82,8 @@
 
       <div class="metric-grid">
         <article class="metric-card">
-          <span>Sales revenue</span>
+          <span>Invoices revenue</span>
+          <p style="font-size:12px;opacity:0.4;">Revenue recorded on qualifying invoices</p>
           <strong>
             {{ report.financial.sales_total | currency:'GHS':'symbol':'1.2-2' }}
           </strong>
@@ -105,13 +106,15 @@
 
         <article class="metric-card">
           <span>Product sales</span>
+          <p style="font-size: 12px;opacity:0.4;">The product portion of qualifying invoice line items</p>
           <strong>
             {{ report.financial.product_sales | currency:'GHS':'symbol':'1.2-2' }}
           </strong>
         </article>
 
         <article class="metric-card">
-          <span>Services rendered</span>
+          <span>Services Rendered Revenue</span>
+          <p style="font-size:12px;opacity:0.4;">Revenue from services on qualifying invoice line items.</p>
           <strong>
             {{ report.financial.services_rendered | currency:'GHS':'symbol':'1.2-2' }}
           </strong>
@@ -127,6 +130,77 @@
         }
       </div>
     </section>
+
+
+    <section class="report-section">
+      <div class="section-heading">
+        <div>
+          <h3>Operational sales</h3>
+          <p>Sales from recognized orders and fulfilled stock movements</p>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric-card">
+          <span>Operational sales total</span>
+          <strong>
+            {{ report.operational_sales.sales_total | currency:'GHS':'symbol':'1.2-2' }}
+          </strong>
+          <small>Value of confirmed and fulfilled orders</small>
+        </article>
+
+        <article class="metric-card">
+          <span>Recognized orders</span>
+          <strong>
+            {{ report.operational_sales.order_count | number }}
+          </strong>
+          <small>Confirmed, partially fulfilled, or fulfilled</small>
+        </article>
+
+        <article class="metric-card">
+          <span>Stock quantity sold</span>
+          <strong>
+            {{ report.operational_sales.fulfilled_stock_quantity | number:'1.0-3' }}
+          </strong>
+          <small>Recorded sale movements; returns are not netted</small>
+        </article>
+      </div>
+
+      <div class="table-panel" style="margin-top: 14px;">
+        <h4>Orders by status</h4>
+
+        @if (report.operational_sales.orders_by_status.length > 0) {
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Order status</th>
+                  <th>Order count</th>
+                  <th>Total value</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (
+                  item of report.operational_sales.orders_by_status;
+                  track item.status
+                ) {
+                  <tr>
+                    <td>{{ item.status.replace('_', ' ') | titlecase }}</td>
+                    <td>{{ item.order_count | number }}</td>
+                    <td>
+                      {{ item.total | currency:'GHS':'symbol':'1.2-2' }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty-state">No recognized orders for this period.</p>
+        }
+      </div>
+    </section>
+
 
     <section class="report-section">
       <div class="section-heading">

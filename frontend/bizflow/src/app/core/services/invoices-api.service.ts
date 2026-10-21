@@ -84,7 +84,7 @@ export interface Invoice {
 }
 
 export interface InvoiceListResponse {
-  success: boolean;
+  success?: boolean;
   data: Invoice[] | {
     data: Invoice[];
     current_page?: number;
@@ -92,15 +92,25 @@ export interface InvoiceListResponse {
     total?: number;
     per_page?: number;
   };
+  links?: {
+    first?: string | null;
+    last?: string | null;
+    prev?: string | null;
+    next?: string | null;
+  };
   meta?: {
     current_page?: number;
     last_page?: number;
     total?: number;
     per_page?: number;
+    from?: number | null;
+    to?: number | null;
   };
-  summary?: {
-    outstanding_invoice_total: number;
-  };
+ summary?: {
+  matching_invoice_count?: number;
+  matching_invoice_total?: number;
+  outstanding_invoice_total: number;
+};
 }
 
 @Injectable({ providedIn: 'root' })
@@ -110,16 +120,39 @@ export class InvoicesApi {
 
   
 
-  list(page = 1, perPage = 15): Observable<InvoiceListResponse> {
-    return this.http.get<InvoiceListResponse>(
-      `${this.apiUrl}/invoices`,{
-        params: {
-          page: String(page),
-          per_page: String(perPage),
-        },
-      },
-    );
+  
+list(
+  page = 1,
+  perPage = 15,
+  filters: {
+    search?: string;
+    status?: string;
+    payment_status?: string;
+  } = {},
+): Observable<InvoiceListResponse> {
+  let params: Record<string, string> = {
+    page: String(page),
+    per_page: String(perPage),
+  };
+
+  if (filters.search?.trim()) {
+    params['search'] = filters.search.trim();
   }
+
+  if (filters.status) {
+    params['status'] = filters.status;
+  }
+
+  if (filters.payment_status) {
+    params['payment_status'] = filters.payment_status;
+  }
+
+  return this.http.get<InvoiceListResponse>(
+    `${this.apiUrl}/invoices`,
+    { params },
+  );
+}
+
 
   get(id: number): Observable<{ success: boolean; data: Invoice }> {
     return this.http.get<{ success: boolean; data: Invoice }>(

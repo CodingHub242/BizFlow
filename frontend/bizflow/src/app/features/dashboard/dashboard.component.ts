@@ -76,6 +76,10 @@ displayedPaymentsByMethod: DashboardPaymentSummary[] = [];
     customer_change_percentage: 0,
     sales_count_previous_period: 0,
     sales_count_change_percentage: 0,
+    operational_sales_total: 0,
+    operational_order_count: 0,
+    operational_orders_by_status: [],
+    fulfilled_stock_quantity: 0,
   };
   constructor() { 
      addIcons({

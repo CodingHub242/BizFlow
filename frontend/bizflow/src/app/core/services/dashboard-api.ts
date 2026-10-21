@@ -100,6 +100,16 @@ export interface DashboardData {
   customer_change_percentage: number;
   sales_count_previous_period: number;
   sales_count_change_percentage: number;
+  operational_sales_total: number;
+  operational_order_count: number;
+
+  operational_orders_by_status: {
+    status: string;
+    order_count: number;
+    total: number;
+  }[];
+
+  fulfilled_stock_quantity: number;
 }
 
 export interface DashboardResponse {
@@ -114,6 +124,8 @@ export interface DashboardResponse {
 })
 export class DashboardApiService {
   private readonly http = inject(HttpClient);
+
+  
 
   getDashboard(dateFrom?: string,dateTo?: string,): Observable<DashboardResponse> 
   {

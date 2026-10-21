@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\Tenant;
 use Spatie\Permission\PermissionRegistrar;
 use App\Models\User;
+use App\Models\Order;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
@@ -270,4 +271,69 @@ class GeneralReportApiTest extends TestCase
             ])
             ->assertJsonPath('data.financial.gross_profit', 0);
     }
+
+    public function test_general_report_includes_operational_sales_metrics(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignReportPermissions($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'confirmed',
+        'total' => 100,
+    ]);
+
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'partially_fulfilled',
+        'total' => 150,
+    ]);
+
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'fulfilled',
+        'total' => 200,
+    ]);
+
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'draft',
+        'total' => 500,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/reports/overview')
+        ->assertOk()
+        ->assertJsonPath('data.operational_sales.sales_total', 450)
+        ->assertJsonPath('data.operational_sales.order_count', 3)
+        ->assertJsonStructure([
+            'data' => [
+                'operational_sales' => [
+                    'sales_total',
+                    'order_count',
+                    'orders_by_status',
+                    'fulfilled_stock_quantity',
+                ],
+            ],
+        ])
+        ->assertJsonPath('data.financial.sales_total', 0);
+}
 }

@@ -90,6 +90,20 @@ class GeneralReportService
                 'low_stock_items' => $dashboard['low_stock_items'] ?? [],
             ],
 
+            'operational_sales' => [
+                'sales_total' =>
+                    $dashboard['operational_sales_total'] ?? 0,
+
+                'order_count' =>
+                    $dashboard['operational_order_count'] ?? 0,
+
+                'orders_by_status' =>
+                    $dashboard['operational_orders_by_status'] ?? [],
+
+                'fulfilled_stock_quantity' =>
+                    $dashboard['fulfilled_stock_quantity'] ?? 0,
+            ],
+
             'trends' => [
                 'sales_trend' => $dashboard['sales_trend'] ?? [],
                 'sales_by_branch' => $dashboard['sales_by_branch'] ?? [],

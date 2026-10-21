@@ -76,29 +76,110 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function index(\Illuminate\Http\Request $request): JsonResponse 
-    {
-        $invoices = Invoice::query()
-            ->where('tenant_id', $request->user()->tenant_id)
-            ->with([
-                'items',
-                'customer',
-                'branch',
-                'payments.reversal',
-                'creditMemoApplications',
-            ])
-            ->latest()
-            ->paginate(15);
+ 
+public function index(\Illuminate\Http\Request $request): JsonResponse
+{
+    $tenantId = (int) $request->user()->tenant_id;
 
-        return response()->json([
-            'success' => true,
-            'data' => \App\Http\Resources\InvoiceResource::collection($invoices),
-            'summary' => [
-                'outstanding_invoice_total' =>
-                    $this->outstandingTotalForTenant($request->user()->tenant_id),
-            ],
+    $query = Invoice::query()
+        ->where('tenant_id', $tenantId)
+        ->with([
+            'items',
+            'customer',
+            'branch',
+            'payments.reversal',
+            'creditMemoApplications',
         ]);
+
+    // Search across all invoices belonging to this tenant.
+    $search = trim((string) $request->query('search', ''));
+
+    if ($search !== '') {
+        $query->where(function ($q) use ($search) {
+            $q->where('invoice_number', 'ilike', "%{$search}%")
+                ->orWhereRaw(
+                    'CAST(invoices.id AS TEXT) ILIKE ?',
+                    ["%{$search}%"]
+                )
+                ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                    $customerQuery->where(
+                        'name',
+                        'ilike',
+                        "%{$search}%"
+                    )->orWhere(
+                        'company_name',
+                        'ilike',
+                        "%{$search}%"
+                    );
+                });
+        });
     }
+
+    // Map frontend labels to the statuses stored in the database.
+    $status = $request->query('status');
+
+    if ($status !== null && $status !== '') {
+        $status = match ($status) {
+            'issued' => 'sent',
+            default => $status,
+        };
+
+        $query->where('status', $status);
+    }
+
+    $paymentStatus = $request->query('payment_status');
+
+    if ($paymentStatus !== null && $paymentStatus !== '') {
+        $paymentStatus = str_replace('-', '_', $paymentStatus);
+
+        $query->where('payment_status', $paymentStatus);
+    }
+
+    // Calculate summary values across every matching invoice,
+    // not just the current page.
+    $matchingCount = (clone $query)->count();
+
+    $matchingTotal = (clone $query)->sum('total');
+
+    $invoices = (clone $query)
+        ->latest()
+        ->paginate(15)
+        ->appends($request->query());
+
+    return response()->json([
+        'success' => true,
+
+        'data' => \App\Http\Resources\InvoiceResource::collection(
+            $invoices->items()
+        ),
+
+        'meta' => [
+            'current_page' => $invoices->currentPage(),
+            'last_page' => $invoices->lastPage(),
+            'per_page' => $invoices->perPage(),
+            'total' => $invoices->total(),
+            'from' => $invoices->firstItem(),
+            'to' => $invoices->lastItem(),
+        ],
+
+        'links' => [
+            'first' => $invoices->url(1),
+            'last' => $invoices->url($invoices->lastPage()),
+            'prev' => $invoices->previousPageUrl(),
+            'next' => $invoices->nextPageUrl(),
+        ],
+
+        'summary' => [
+            'matching_invoice_count' => $matchingCount,
+            'matching_invoice_total' => (float) $matchingTotal,
+
+            // This remains the business-wide outstanding balance.
+            'outstanding_invoice_total' =>
+                $this->outstandingTotalForTenant($tenantId),
+        ],
+    ]);
+}
+
 
     public function issue(Invoice $invoice,InvoiceService $invoiceService): JsonResponse 
     {

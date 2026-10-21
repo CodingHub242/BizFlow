@@ -756,3 +756,81 @@
 .invoice-due-status:not(.overdue) {
   color: #94a3b8;
 }
+
+
+.operational-sales-panel {
+  margin-bottom: 24px;
+}
+
+.operational-sales-panel .metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.operational-sales-panel .metric-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.operational-sales-panel .metric-card > span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.operational-sales-panel .metric-card > strong {
+  display: block;
+  margin-top: 10px;
+  color: #0f172a;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.operational-status-list {
+  margin-top: 20px;
+}
+
+.operational-status-list h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.operational-status-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+
+.operational-status-row > span {
+  color: #64748b;
+}
+
+.operational-status-row strong {
+  color: #0f172a;
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .operational-sales-panel .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operational-status-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .operational-status-row strong {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}

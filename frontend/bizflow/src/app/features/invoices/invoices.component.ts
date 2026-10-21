@@ -40,12 +40,18 @@ export class InvoicesComponent implements OnInit, OnDestroy {
   lastPage = 1;
   totalItems = 0;
   perPage = 15;
+  invoiceTotal = 0;
 
   businessOutstandingTotal = 0;
+
+  
+
 
   ngOnInit(): void {
     this.loadInvoices();
   }
+
+
 
 
 loadInvoices(page = 1): void {
@@ -53,46 +59,73 @@ loadInvoices(page = 1): void {
   this.error = '';
 
   this.invoicesApi
-    .list(page, this.perPage)
+    .list(page, this.perPage, {
+      search: this.search,
+      status: this.selectedStatus,
+      payment_status: this.selectedPaymentStatus,
+    })
     .pipe(takeUntil(this.destroy$))
     .subscribe({
       next: (response) => {
         const result = response.data;
 
-        if (Array.isArray(result)) {
-          this.invoices = result;
-          this.currentPage = response.meta?.current_page ?? page;
-          this.lastPage = response.meta?.last_page ?? 1;
-          this.totalItems = response.meta?.total ?? result.length;
-          this.businessOutstandingTotal = Number(
-              response.summary?.outstanding_invoice_total ?? 0,
-            );
-        } else {
-          this.invoices = result.data ?? [];
-          this.currentPage =
-            result.current_page ?? response.meta?.current_page ?? page;
-          this.lastPage =
-            result.last_page ?? response.meta?.last_page ?? 1;
-          this.totalItems =
-            result.total ?? response.meta?.total ?? this.invoices.length;
+        this.invoices = Array.isArray(result)
+          ? result
+          : result.data ?? [];
 
-          this.businessOutstandingTotal = Number(
-              response.summary?.outstanding_invoice_total ?? 0,
-            );
-        }
+        const nestedMeta = Array.isArray(result)
+          ? undefined
+          : result;
+
+        this.currentPage =
+          response.meta?.current_page ??
+          nestedMeta?.current_page ??
+          page;
+
+        this.lastPage =
+          response.meta?.last_page ??
+          nestedMeta?.last_page ??
+          1;
+
+        this.totalItems =
+          response.meta?.total ??
+          nestedMeta?.total ??
+          this.invoices.length;
+
+        this.perPage =
+          response.meta?.per_page ??
+          nestedMeta?.per_page ??
+          this.perPage;
+
+        this.invoiceTotal = Number(
+          response.summary?.matching_invoice_total ?? 0,
+        );
+
+        this.businessOutstandingTotal = Number(
+          response.summary?.outstanding_invoice_total ?? 0,
+        );
 
         this.loading = false;
         this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.invoices = [];
+        this.totalItems = 0;
+        this.invoiceTotal = 0;
+        this.lastPage = 1;
         this.loading = false;
         this.error =
-          err?.error?.message ?? 'Unable to load invoices. Please try again.';
+          err?.error?.message ??
+          'Unable to load invoices. Please try again.';
+
         this.cdr.markForCheck();
+        this.cdr.detectChanges();
       },
     });
 }
+
+
 
   // loadInvoices(): void {
   //   this.loading = true;
@@ -141,6 +174,11 @@ loadInvoices(page = 1): void {
   //     });
   // }
 
+  onFiltersChanged(): void {
+  this.currentPage = 1;
+  this.loadInvoices(1);
+}
+
   get filteredInvoices(): Invoice[] {
     const query = this.search.trim().toLowerCase();
 
@@ -176,13 +214,12 @@ loadInvoices(page = 1): void {
     );
   }
 
-  get invoiceTotal(): number {
-    return this.filteredInvoices.reduce(
-      (sum, invoice) => sum + Number(invoice.total || 0),
-      0,
-    );
-  }
-
+//   get invoiceTotal(): number {
+//   return this.filteredInvoices.reduce(
+//     (sum, invoice) => sum + Number(invoice.total || 0),
+//     0,
+//   );
+// }
   balanceDue(invoice: Invoice): number {
     if (invoice.balance_due !== undefined && invoice.balance_due !== null) {
       return Math.max(0, Number(invoice.balance_due));

@@ -18,6 +18,17 @@ export interface GeneralReportFinancial {
   gross_profit?: number;
 }
 
+export interface GeneralReportOperationalSales {
+  sales_total: number;
+  order_count: number;
+  orders_by_status: {
+    status: string;
+    order_count: number;
+    total: number;
+  }[];
+  fulfilled_stock_quantity: number;
+}
+
 export interface GeneralReportBusiness {
   customers: number;
   suppliers: number;
@@ -60,6 +71,7 @@ export interface GeneralReportData {
   business: GeneralReportBusiness;
   inventory: GeneralReportInventory;
   trends: GeneralReportTrends;
+  operational_sales: GeneralReportOperationalSales;
 }
 
 export interface GeneralReportResponse {

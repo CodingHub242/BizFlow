@@ -9,6 +9,9 @@ use App\Models\Inventory;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\InvoiceStatus;
+use App\Models\Order;
+use App\Models\InventoryMovement;
+use App\InventoryMovementType;
 use App\Models\InvoicePayment;
 use Spatie\Permission\Models\Permission;
 use App\Models\Tenant;
@@ -1170,5 +1173,185 @@ public function test_dashboard_sales_trend_excludes_other_tenants_invoices(): vo
         ->assertJsonPath('data.sales_trend.0.sales', 400);
 }
 
+public function test_operational_sales_exclude_unrecognized_statuses_and_other_tenants(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
 
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    foreach ([
+        ['confirmed', 100],
+        ['partially_fulfilled', 150],
+        ['fulfilled', 200],
+        ['draft', 300],
+        ['pending', 400],
+        ['cancelled', 500],
+    ] as [$status, $total]) {
+        Order::factory()->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'status' => $status,
+            'total' => $total,
+        ]);
+    }
+
+    Order::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'created_by' => $otherUser->id,
+        'status' => 'fulfilled',
+        'total' => 9000,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/dashboard')
+        ->assertOk()
+        ->assertJsonPath('data.operational_sales_total', 450)
+        ->assertJsonPath('data.operational_order_count', 3);
+}public function test_fulfilled_stock_quantity_counts_only_tenant_order_sale_movements(): void
+{
+    $tenant = Tenant::factory()->create();
+    $otherTenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $otherUser = User::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $otherBranch = Branch::factory()->create([
+        'tenant_id' => $otherTenant->id,
+    ]);
+
+    $order = Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'partially_fulfilled',
+        'total' => 100,
+    ]);
+
+    $otherOrder = Order::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'created_by' => $otherUser->id,
+        'status' => 'fulfilled',
+        'total' => 500,
+    ]);
+
+    $item = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+    ]);
+
+    $otherItem = CatalogItem::factory()->create([
+        'tenant_id' => $otherTenant->id,
+        'type' => 'product',
+    ]);
+
+    InventoryMovement::query()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $item->id,
+        'type' => InventoryMovementType::SALE->value,
+        'quantity' => 2.500,
+        'reference_type' => Order::class,
+        'reference_id' => $order->id,
+    ]);
+
+    // A non-sale movement must not contribute.
+    InventoryMovement::query()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $item->id,
+        'type' => InventoryMovementType::PURCHASE->value,
+        'quantity' => 10,
+        'reference_type' => Order::class,
+        'reference_id' => $order->id,
+    ]);
+
+    // A sale belonging to another tenant must not contribute.
+    InventoryMovement::query()->create([
+        'tenant_id' => $otherTenant->id,
+        'branch_id' => $otherBranch->id,
+        'catalog_item_id' => $otherItem->id,
+        'type' => InventoryMovementType::SALE->value,
+        'quantity' => 50,
+        'reference_type' => Order::class,
+        'reference_id' => $otherOrder->id,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/dashboard')
+        ->assertOk()
+        ->assertJsonPath('data.fulfilled_stock_quantity', 2.5);
+}public function test_operational_sales_respect_selected_date_range(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $this->assignRole($user);
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'confirmed',
+        'total' => 250,
+        'created_at' => '2026-09-15 10:00:00',
+    ]);
+
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'status' => 'fulfilled',
+        'total' => 750,
+        'created_at' => '2026-10-05 10:00:00',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson(
+        '/api/dashboard?date_from=2026-09-01&date_to=2026-09-30'
+    )
+        ->assertOk()
+        ->assertJsonPath('data.operational_sales_total', 250)
+        ->assertJsonPath('data.operational_order_count', 1);
+}
 }

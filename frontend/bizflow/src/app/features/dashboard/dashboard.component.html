@@ -17,12 +17,13 @@
   <div class="metric-grid">
     <article class="metric-card">
       <div class="metric-header">
-        <span>Revenue</span>
-
+        <span>Invoice Revenue</span>
         <span class="metric-icon revenue">
           <ion-icon name="wallet-outline"></ion-icon>
         </span>
+
       </div>
+      <p class="metric-description" style="font-size: 12px;opacity: 0.3;">Revenue recorded on qualifying invoices</p>
 
       <strong class="metric-value">GH₵ {{ dashboardData.sales_total | number: '1.2-2' }}</strong>
 
@@ -44,7 +45,7 @@
 
     <article class="metric-card">
       <div class="metric-header">
-        <span>Sales</span>
+        <span>Invoices</span>
 
         <span class="metric-icon sales">
           <ion-icon name="cart-outline"></ion-icon>
@@ -126,6 +127,58 @@
       </div>
     </article>
   </div>
+
+
+  <section class="panel operational-sales-panel">
+    <div class="panel-header">
+      <div>
+        <h3>Operational sales</h3>
+        <p>Business orders and stock fulfillment</p>
+      </div>
+      <ion-icon name="cart-outline"></ion-icon>
+    </div>
+
+    <div class="metric-grid">
+      <article class="metric-card">
+        <span>Operational sales</span>
+        <strong class="metric-value">
+          GH₵ {{ dashboardData.operational_sales_total | number:'1.2-2' }}
+        </strong>
+      </article>
+
+      <article class="metric-card">
+        <span>Recognized orders</span>
+        <strong class="metric-value">
+          {{ dashboardData.operational_order_count | number }}
+        </strong>
+      </article>
+
+      <article class="metric-card">
+        <span>Stock quantity sold</span>
+        <strong class="metric-value">
+          {{ dashboardData.fulfilled_stock_quantity | number:'1.0-3' }}
+        </strong>
+      </article>
+    </div>
+
+    <div class="operational-status-list">
+      <h4>Orders by status</h4>
+
+      @for (
+        item of dashboardData.operational_orders_by_status;
+        track item.status
+      ) {
+        <div class="operational-status-row">
+          <span>{{ item.status.replace('_', ' ') | titlecase }}</span>
+          <span>{{ item.order_count | number }} orders</span>
+          <strong>GH₵ {{ item.total | number:'1.2-2' }}</strong>
+        </div>
+      } @empty {
+        <p class="empty-state">No recognized orders available.</p>
+      }
+    </div>
+  </section>
+
 
   <div class="dashboard-grid">
     <section class="panel sales-panel">

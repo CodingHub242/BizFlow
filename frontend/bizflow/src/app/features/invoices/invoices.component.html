@@ -21,7 +21,7 @@
   <div class="summary-grid">
     <article class="summary-card">
       <span class="summary-label">Invoices loaded</span>
-      <strong>{{ filteredInvoices.length }}</strong>
+      <strong>{{ totalItems | number }}</strong>
       <span class="summary-description">Matching invoices</span>
     </article>
 
@@ -41,19 +41,19 @@
   <div class="toolbar">
     <div class="search-box">
       <span class="search-icon">⌕</span>
-      <input
+     <input
         type="search"
         [(ngModel)]="search"
-        (ngModelChange)="currentPage = 1"
+        (ngModelChange)="onFiltersChanged()"
         placeholder="Search invoice number or customer..."
         aria-label="Search invoices"
       />
     </div>
 
     <div class="filter-group">
-      <select
+     <select
         [(ngModel)]="selectedStatus"
-        (ngModelChange)="currentPage = 1"
+        (ngModelChange)="onFiltersChanged()"
         aria-label="Filter invoice status"
       >
         <option value="">All invoice statuses</option>
@@ -63,9 +63,9 @@
         <option value="cancelled">Cancelled</option>
       </select>
 
-      <select
+     <select
         [(ngModel)]="selectedPaymentStatus"
-        (ngModelChange)="currentPage = 1"
+        (ngModelChange)="onFiltersChanged()"
         aria-label="Filter payment status"
       >
         <option value="">All payment statuses</option>
@@ -103,12 +103,12 @@
       <h3>No matching invoices</h3>
       <p>Try changing your search or status filters.</p>
       <button
-        type="button"
-        class="secondary-button"
-        (click)="search = ''; selectedStatus = ''; selectedPaymentStatus = ''"
-      >
-        Clear filters
-      </button>
+          type="button"
+          class="secondary-button"
+          (click)="search = ''; selectedStatus = ''; selectedPaymentStatus = ''; onFiltersChanged()"
+        >
+          Clear filters
+        </button>
     </div>
   } @else {
     <section class="table-card">
