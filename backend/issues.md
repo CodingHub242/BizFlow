@@ -180,3 +180,15 @@ Expense::where('tenant_id', 2)
     ->groupBy('payment_method')
     ->orderByDesc('total')
     ->get();
+
+
+
+    SALE-1792681520459
+
+use App\Models\Order;
+use App\Models\Inventory;
+use App\Models\FulfillmentRequest;
+
+$order = Order::with('items.catalogItem')->where('order_number', 'SALE-1792601520459')->first();
+
+$order;

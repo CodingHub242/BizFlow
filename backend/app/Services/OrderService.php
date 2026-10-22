@@ -354,6 +354,15 @@ private function assertOrdinaryModificationAllowed(Order $order): void
             ],
         ]);
     }
+
+    if ($order->fulfillmentRequests()->exists()) {
+        throw ValidationException::withMessages([
+            'order' => [
+                'An order with fulfillment records cannot be edited. '
+                . 'Cancel or resolve its fulfillment workflow first.',
+            ],
+        ]);
+    }
 }
 
 }

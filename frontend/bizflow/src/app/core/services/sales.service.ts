@@ -93,9 +93,17 @@ export interface SalesOrder {
   payments?: SalesPayment[];
   created_at?: string;
   updated_at?: string;
-  fulfillmentRequests: [];
+  fulfillmentRequests?: FulfillmentRequest[];
+  fulfillment_requests?:FulfillmentRequest[];
 }
-
+export interface PrepareFulfillmentResponse {
+  message: string;
+  data: SalesOrder;
+  fulfillment: {
+    status: OrderStatus;
+    requests: FulfillmentRequest[];
+  };
+}
 export interface SalesPagination {
   current_page: number;
   last_page: number;
@@ -161,9 +169,33 @@ export interface SalesPaymentResponse {
   payment_status: PaymentStatus;
 }
 
+export interface SalesFulfillmentSummary {
+  status: OrderStatus;
+  is_complete: boolean;
+  requests: FulfillmentRequest[];
+}
+export interface FulfillmentRequest {
+  id: number;
+  order_id: number;
+  order_item_id: number;
+  branch_id: number;
+  catalog_item_id: number;
+  requested_quantity: string | number;
+  available_quantity: string | number;
+  fulfilled_quantity: string | number;
+  shortfall_quantity: string | number;
+  status:
+    | 'pending'
+    | 'sourcing'
+    | 'partially_fulfilled'
+    | 'fulfilled'
+    | 'cancelled';
+}
+
 export interface SalesFulfillmentResponse {
   message: string;
   data: SalesOrder;
+  fulfillment: SalesFulfillmentSummary;
 }
 
 @Injectable({
@@ -235,6 +267,15 @@ export class SalesService {
       data,
     );
   }
+
+  prepareFulfillment(
+  orderId: number,
+): Observable<PrepareFulfillmentResponse> {
+  return this.http.post<PrepareFulfillmentResponse>(
+    `${this.apiUrl}/sales/${orderId}/fulfillment-requests`,
+    {},
+  );
+}
 
   fulfill(orderId: number): Observable<SalesFulfillmentResponse> {
     return this.http.post<SalesFulfillmentResponse>(

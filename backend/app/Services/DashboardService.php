@@ -493,17 +493,19 @@ function ($join) {
 
                ->all();
 
-          $salesByBranch = Invoice::query()
+          $salesByBranch = Order::query()
 
-               ->where('invoices.tenant_id', $tenantId)
+               ->where('orders.tenant_id', $tenantId)
 
-               ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+               ->whereNotIn('orders.payment_status', ['unpaid'])
+
+               ->whereNotNull('orders.branch_id')
 
                ->when(
 
                    $dateFrom,
 
-            fn($query) => $query->whereDate('invoices.issued_at', '>=', $dateFrom)
+            fn($query) => $query->whereDate('orders.updated_at', '>=', $dateFrom)
 
                )
 
@@ -511,25 +513,25 @@ function ($join) {
 
                    $dateTo,
 
-fn($query) => $query->whereDate('invoices.issued_at', '<=', $dateTo)
+                    fn($query) => $query->whereDate('orders.updated_at', '<=', $dateTo)
 
                )
 
-               ->join('branches', 'branches.id', '=', 'invoices.branch_id')
+               ->join('branches', 'branches.id', '=', 'orders.branch_id')
 
                ->selectRaw('
 
-                   invoices.branch_id,
+                   orders.branch_id,
 
                    branches.name as branch_name,
 
-                   SUM(invoices.total) as sales
+                   SUM(orders.total) as sales
 
                ')
 
-               ->groupBy('invoices.branch_id', 'branches.name')
+               ->groupBy('orders.branch_id', 'branches.name')
 
-               ->orderBy('invoices.branch_id')
+               ->orderBy('orders.branch_id')
 
                ->get()
 
@@ -555,7 +557,7 @@ fn($query) => $query->whereDate('invoices.issued_at', '<=', $dateTo)
 
                    $dateFrom,
 
-fn($query) => $query->whereDate('paid_at', '>=', $dateFrom)
+                    fn($query) => $query->whereDate('paid_at', '>=', $dateFrom)
 
                )
 
@@ -563,7 +565,7 @@ fn($query) => $query->whereDate('paid_at', '>=', $dateFrom)
 
                    $dateTo,
 
-fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
+                    fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
 
                )
 

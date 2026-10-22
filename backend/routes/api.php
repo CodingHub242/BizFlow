@@ -317,6 +317,11 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/sales/{order}/payments', [OrderController::class,'storePayment',
     ])->middleware('permission:sales.update');
 
+    Route::post(
+        '/sales/{order}/fulfillment-requests',
+        [OrderController::class, 'prepareFulfillment']
+    )->middleware('permission:sales.update');
+
     Route::post('/sales/{order}/fulfill', [OrderController::class,'fulfill',
     ])->middleware('permission:sales.update');
 

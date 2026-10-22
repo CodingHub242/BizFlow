@@ -249,32 +249,161 @@
       </form>
     </section>
 
-    <section class="details-section">
-      <h3>Fulfillment</h3>
+    
+    <section class="details-section fulfillment-panel">
+      <div class="section-heading">
+        <div>
+          <h3>Fulfillment</h3>
+          <p>
+            Prepare the items for fulfillment, review stock availability,
+            then process fulfillment to update inventory.
+          </p>
+        </div>
+      </div>
 
-      <p>
-        Process this order's fulfillment through the inventory service.
-        Product availability and any stock shortages will be determined
-        by the backend.
-      </p>
+      <!-- Preparation progress -->
+      <div *ngIf="preparingFulfillment" class="fulfillment-notice" role="status">
+        <span class="fulfillment-spinner"></span>
+        <div>
+          <strong>Preparing fulfillment requests...</strong>
+          <p>Checking the order items and recording their stock requirements.</p>
+        </div>
+      </div>
 
-      <button
-        type="button"
-        class="primary-button"
-        (click)="fulfillOrder()"
-        [disabled]="
-          processingFulfillment ||
-          order.status === 'cancelled' ||
-          order.status === 'fulfilled'
+      <!-- Processing progress -->
+      <div *ngIf="processingFulfillment" class="fulfillment-notice" role="status">
+        <span class="fulfillment-spinner"></span>
+        <div>
+          <strong>Processing fulfillment...</strong>
+          <p>Updating fulfillment quantities and inventory. Please wait.</p>
+        </div>
+      </div>
+
+      <!-- Requests have not yet been prepared -->
+      <div
+        *ngIf="
+          !preparingFulfillment &&
+          !processingFulfillment &&
+          !selectedOrder?.fulfillment_requests?.length
         "
+        class="fulfillment-empty"
       >
-        {{
-          processingFulfillment
-            ? 'Processing...'
-            : 'Process fulfillment'
-        }}
-      </button>
+        <div class="fulfillment-empty__icon" aria-hidden="true">
+          <ion-icon name="cube-outline"></ion-icon>
+        </div>
+
+        <div class="fulfillment-empty__content">
+          <h4>No fulfillment requests</h4>
+          <p>
+            Prepare this order to review product stock before fulfillment.
+          </p>
+        </div>
+      </div>
+
+
+      <!-- Fulfillment request cards -->
+      <div
+        *ngIf="selectedOrder?.fulfillment_requests?.length"
+        class="fulfillment-requests"
+      >
+        <h4>Fulfillment progress</h4>
+
+        <article
+          *ngFor="let request of selectedOrder?.fulfillment_requests"
+          class="fulfillment-request"
+        >
+          <div class="fulfillment-request__heading">
+            <strong>{{ getFulfillmentItemName(request.order_item_id) }}</strong>
+
+            <span
+              class="fulfillment-status"
+              [class.fulfillment-status--complete]="request.status === 'fulfilled'"
+              [class.fulfillment-status--partial]="
+                request.status === 'partially_fulfilled'
+              "
+              [class.fulfillment-status--cancelled]="request.status === 'cancelled'"
+            >
+              {{ fulfillmentStatusLabel(request.status) }}
+            </span>
+          </div>
+
+          <div class="fulfillment-metrics">
+            <div>
+              <span>Requested</span>
+              <strong>{{ formatQuantity(request.requested_quantity) }}</strong>
+            </div>
+
+            <div>
+              <span>Available at preparation</span>
+              <strong>{{ formatQuantity(request.available_quantity) }}</strong>
+            </div>
+
+            <div>
+              <span>Fulfilled</span>
+              <strong>{{ formatQuantity(request.fulfilled_quantity) }}</strong>
+            </div>
+
+            <div>
+              <span>Outstanding</span>
+              <strong>{{ formatQuantity(fulfillmentOutstanding(request)) }}</strong>
+            </div>
+          </div>
+
+          <div class="fulfillment-progress-track">
+            <div
+              class="fulfillment-progress-bar"
+              [style.width.%]="fulfillmentProgress(request)"
+            ></div>
+          </div>
+
+          <p class="fulfillment-help">
+            Stock availability is a snapshot from preparation; the backend
+            checks current inventory again during fulfillment.
+          </p>
+        </article>
+      </div>
+
+      <div class="fulfillment-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="prepareFulfillmentRequests()"
+          [disabled]="
+            preparingFulfillment ||
+            processingFulfillment ||
+            !selectedOrder ||
+            selectedOrder.status === 'cancelled' ||
+            selectedOrder.status === 'fulfilled'
+          "
+        >
+          {{
+            preparingFulfillment
+              ? 'Preparing requests...'
+              : 'Prepare fulfillment requests'
+          }}
+        </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          (click)="fulfillOrder()"
+          [disabled]="
+            preparingFulfillment ||
+            processingFulfillment ||
+            !selectedOrder ||
+            selectedOrder.status === 'cancelled' ||
+            selectedOrder.status === 'fulfilled'
+          "
+        >
+          {{
+            processingFulfillment
+              ? 'Processing...'
+              : 'Process fulfillment'
+          }}
+        </button>
+      </div>
     </section>
+
   </section>
 
   <section *ngIf="showCreateForm" class="form-card">
@@ -311,6 +440,7 @@
             searchPlaceholder="Search branches..."
             noResultsText="No branches found."
             [(ngModel)]="orderForm.branch_id"
+            (ngModelChange)="onBranchChanged()"
             [clearable]="true"
           />
         </div>
@@ -376,6 +506,7 @@
               searchPlaceholder="Search products and services..."
               noResultsText="No products or services found."
               [(ngModel)]="item.catalog_item_id"
+              (ngModelChange)="onCatalogItemChanged(i)"
               [required]="true"
               [clearable]="true"
             />
@@ -389,6 +520,7 @@
             [(ngModel)]="item.quantity"
             min="0.001"
             step="0.001"
+            (ngModelChange)="onQuantityChanged(i)"
             required
           />
         </label>
@@ -429,6 +561,291 @@
         >
           Remove
         </button>
+        <div
+            class="line-availability"
+            *ngIf="lineAvailability[i] as availability">
+        <p *ngIf="availability.loading" class="stock-loading">
+          Checking stock availability…
+        </p>
+
+        <p *ngIf="availability.error" class="stock-error">
+          {{ availability.error }}
+          <button
+            type="button"
+            class="text-button"
+            (click)="checkLineAvailability(i)"
+          >
+            Retry
+          </button>
+        </p>
+
+      <ng-container *ngIf="availability.result as stock">
+        <div *ngIf="!stock.tracks_inventory" class="stock-status stock-status--service">
+          <span class="stock-status__icon">✓</span>
+          <div>
+        <strong>Service item</strong>
+        <p>No inventory tracking required.</p>
+      </div>
+    </div>
+
+    <div
+      *ngIf="stock.tracks_inventory && stock.can_fulfill"
+      class="stock-status stock-status--available"
+    >
+      <span class="stock-status__icon">✓</span>
+      <div>
+        <strong>Stock available</strong>
+        <p>
+          {{ formatQuantity(stock.available_quantity) }} units available
+          at the selected branch.
+        </p>
+      </div>
+    </div>
+
+    <div
+      *ngIf="stock.tracks_inventory && !stock.can_fulfill"
+      class="stock-shortage"
+    >
+      <div class="stock-shortage__header">
+        <span class="stock-shortage__icon">!</span>
+        <div>
+          <strong>Not enough stock at this branch</strong>
+          <p>
+            Choose an action below to resolve the shortage or continue
+            with outstanding fulfillment.
+          </p>
+        </div>
+      </div>
+
+      <div class="stock-shortage__metrics">
+        <div>
+          <span>Requested</span>
+          <strong>{{ formatQuantity(item.quantity) }}</strong>
+        </div>
+        <div>
+          <span>Available</span>
+          <strong>{{ formatQuantity(stock.available_quantity) }}</strong>
+        </div>
+        <div class="shortage-metric">
+          <span>Short by</span>
+          <strong>{{ formatQuantity(stock.shortfall_quantity) }}</strong>
+        </div>
+      </div>
+
+      <div class="stock-shortage__actions">
+        <button
+          type="button"
+          class="secondary-button"
+          *ngIf="hasAvailableStock(stock.available_quantity)"
+          (click)="useAvailableQuantity(i)"
+          [disabled]="saving"
+        >
+          Reduce to available
+        </button>
+
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="showAlternativeBranchesFor(i)"
+          [disabled]="saving || !orderForm.branch_id"
+        >
+          {{ alternativeBranchLineIndex === i
+            ? 'Hide other branches'
+            : 'Check other branches' }}
+        </button>
+      </div>
+
+      <div class="stock-action-buttons">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="openStockAction('receive', i)"
+          [disabled]="saving || stockActionLoading || !orderForm.branch_id"
+        >
+          Receive stock
+        </button>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="openStockAction('transfer', i)"
+            [disabled]="
+              saving ||
+              stockActionLoading ||
+              !orderForm.branch_id ||
+              !alternativeBranchResults.length
+            "
+          >
+            Transfer stock
+          </button>
+      </div>
+
+      <section
+        class="stock-action-form"
+        *ngIf="stockActionLineIndex === i && stockActionMode as actionMode"
+      >
+        <h4>
+          {{ actionMode === 'receive' ? 'Receive stock' : 'Transfer stock to this branch' }}
+        </h4>
+
+          <p class="stock-action-help">
+            Destination: {{ selectedSalesBranchName }}
+          </p>
+
+        <ng-container *ngIf="actionMode === 'transfer'">
+          <label>
+            Source branch
+            <select
+              name="stock_source_branch_{{ i }}"
+              [(ngModel)]="stockActionSourceBranchId"
+              required
+
+              style="height:40px;"
+            >
+              <option [ngValue]="null">Select source branch</option>
+              <option
+                *ngFor="let branch of alternativeBranchResults"
+                [ngValue]="branch.branchId"
+                [disabled]="branch.availableQuantity <= 0"
+              >
+                {{ branch.branchName }} — {{ formatQuantity(branch.availableQuantity) }} available
+              </option>
+            </select>
+          </label>
+        </ng-container>
+
+        <label>
+          Quantity
+          <input
+            type="number"
+            name="stock_action_quantity_{{ i }}"
+            [(ngModel)]="stockActionQuantity"
+            min="0.001"
+            step="0.001"
+            required
+          />
+        </label>
+
+        <label>
+          Notes (optional)
+          <textarea
+            name="stock_action_notes_{{ i }}"
+            [(ngModel)]="stockActionNotes"
+            rows="2"
+          ></textarea>
+        </label>
+
+        <p *ngIf="stockActionError" class="stock-error" role="alert">
+          {{ stockActionError }}
+        </p>
+
+        <div class="stock-action-form__buttons">
+          <button
+            type="button"
+            class="primary-button"
+            (click)="submitStockAction()"
+            [disabled]="stockActionLoading"
+          >
+            {{
+              stockActionLoading
+                ? 'Processing...'
+                : actionMode === 'receive'
+                  ? 'Confirm receipt'
+                  : 'Confirm transfer'
+            }}
+          </button>
+
+          <button
+            type="button"
+            class="text-button"
+            (click)="cancelStockAction()"
+            [disabled]="stockActionLoading"
+          >
+            Cancel
+          </button>
+        </div>
+      </section>
+
+      <div
+        class="alternative-branch-panel"
+        *ngIf="alternativeBranchLineIndex === i"
+      >
+        <div class="alternative-branch-panel__heading">
+          <strong>Compare branch availability</strong>
+          <p>Check this product at other branches before changing the sale branch.</p>
+        </div>
+
+        <div *ngIf="alternativeBranchesLoading" class="stock-loading">
+          Checking other branches…
+        </div>
+
+        <p *ngIf="alternativeBranchesError" class="stock-error">
+          {{ alternativeBranchesError }}
+        </p>
+
+        <div
+          class="branch-stock-list"
+          *ngIf="!alternativeBranchesLoading"
+        >
+          <div
+            class="branch-stock-row"
+            *ngFor="let alternative of alternativeBranchResults"
+          >
+            <div>
+              <strong>{{ alternative.branchName }}</strong>
+              <span>
+                {{ formatQuantity(alternative.availableQuantity) }} units available
+              </span>
+            </div>
+
+            <span
+              class="branch-stock-badge"
+              [class.branch-stock-badge--enough]="
+                alternative.availableQuantity >= item.quantity
+              "
+              [class.branch-stock-badge--partial]="
+                alternative.availableQuantity > 0 &&
+                alternative.availableQuantity < item.quantity
+              "
+              [class.branch-stock-badge--empty]="
+                alternative.availableQuantity <= 0
+              "
+            >
+              {{
+                alternative.availableQuantity <= 0
+                  ? 'Out of stock'
+                  : alternative.availableQuantity >= item.quantity
+                    ? 'Enough stock'
+                    : 'Partial stock'
+              }}
+            </span>
+
+            <button
+              type="button"
+              class="text-button"
+              (click)="useBranch(alternative.branchId)"
+              [disabled]="saving"
+            >
+               Switch sale to this branch
+            </button>
+          </div>
+
+          <p
+            *ngIf="alternativeBranchResults.length === 0"
+            class="empty-branches"
+          >
+            No other branches are available to compare.
+          </p>
+        </div>
+      </div>
+
+      <p class="stock-shortage__footnote">
+        Comparing branches does not reserve or transfer stock. Availability
+        is checked again during fulfillment.
+      </p>
+    </div>
+  </ng-container>
+        </div>
       </div>
 
       <label class="notes-field">

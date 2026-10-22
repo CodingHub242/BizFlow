@@ -154,7 +154,7 @@ class OrderFulfillmentService
                 );
 
                 $request->requested_quantity = $requestedQuantity;
-                $request->available_quantity = $cumulativeFulfilled;
+               // $request->available_quantity = $cumulativeFulfilled;
                 $request->fulfilled_quantity = $cumulativeFulfilled;
                 $request->shortfall_quantity = $shortfall;
 
@@ -228,4 +228,117 @@ class OrderFulfillmentService
 
         return (int) $branchIds->first();
     }
+
+    /**
+ * Prepare fulfillment requests without deducting inventory.
+ */
+public function prepareRequests(Order $order): Order
+{
+    return DB::transaction(function () use ($order) {
+        $order = Order::query()
+            ->where('tenant_id', $order->tenant_id)
+            ->whereKey($order->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($order->status === OrderStatus::CANCELLED) {
+            throw new RuntimeException(
+                'A cancelled order cannot be prepared for fulfillment.'
+            );
+        }
+
+        $order->load('items.catalogItem');
+
+        foreach ($order->items as $item) {
+            $catalogItem = $item->catalogItem;
+
+            if (! $catalogItem) {
+                throw new RuntimeException(
+                    "Catalog item for order item {$item->id} was not found."
+                );
+            }
+
+            if ((int) $catalogItem->tenant_id !== (int) $order->tenant_id) {
+                throw new RuntimeException(
+                    'Order and catalog item belong to different tenants.'
+                );
+            }
+
+            // Services do not require inventory fulfillment requests.
+            if (! $catalogItem->track_inventory) {
+                continue;
+            }
+
+            $requestedQuantity = (float) $item->quantity;
+
+            if ($requestedQuantity <= 0) {
+                throw new RuntimeException(
+                    "Order item {$item->id} has an invalid quantity."
+                );
+            }
+
+            $request = FulfillmentRequest::query()
+                ->where('tenant_id', $order->tenant_id)
+                ->where('order_id', $order->id)
+                ->where('order_item_id', $item->id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($request) {
+                if ((int) $request->catalog_item_id !== (int) $catalogItem->id) {
+                    throw new RuntimeException(
+                        "Fulfillment request {$request->id} references a different catalog item."
+                    );
+                }
+
+                if ($request->status === FulfillmentStatus::CANCELLED) {
+                    throw new RuntimeException(
+                        "Fulfillment request {$request->id} is cancelled."
+                    );
+                }
+
+                // Do not reset progress or recreate an existing request.
+                continue;
+            }
+
+            $branchId = $this->resolveBranchId(
+                tenantId: (int) $order->tenant_id,
+                catalogItemId: (int) $catalogItem->id,
+                orderBranchId: $order->branch_id !== null
+                    ? (int) $order->branch_id
+                    : null,
+            );
+
+            // Read availability for display only; do not reserve or sell stock.
+            $availableQuantity = (float) Inventory::query()
+                ->where('tenant_id', $order->tenant_id)
+                ->where('branch_id', $branchId)
+                ->where('catalog_item_id', $catalogItem->id)
+                ->value('quantity');
+
+            $fulfilledQuantity = 0.0;
+
+            FulfillmentRequest::create([
+                'tenant_id' => $order->tenant_id,
+                'order_id' => $order->id,
+                'order_item_id' => $item->id,
+                'branch_id' => $branchId,
+                'catalog_item_id' => $catalogItem->id,
+                'requested_quantity' => $requestedQuantity,
+                'available_quantity' => $availableQuantity,
+                'fulfilled_quantity' => $fulfilledQuantity,
+                'shortfall_quantity' => max(
+                    0,
+                    $requestedQuantity - $availableQuantity
+                ),
+                'status' => FulfillmentStatus::PENDING,
+            ]);
+        }
+
+        return $order->fresh([
+            'items.catalogItem',
+            'fulfillmentRequests',
+        ]);
+    });
+}
 }

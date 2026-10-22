@@ -193,7 +193,10 @@ class OrderController extends Controller
     }
 
 
-    public function fulfill(Request $request,int $order,\App\Services\OrderFulfillmentService $fulfillmentService
+  public function fulfill(
+        Request $request,
+        int $order,
+        \App\Services\OrderFulfillmentService $fulfillmentService
     ): JsonResponse {
         $record = Order::query()
             ->where('tenant_id', $request->user()->tenant_id)
@@ -201,11 +204,42 @@ class OrderController extends Controller
 
         $fulfilledOrder = $fulfillmentService->fulfill($record);
 
+        $isComplete = $fulfilledOrder->status === \App\OrderStatus::FULFILLED;
+
         return response()->json([
-            'message' => 'Order fulfillment processed.',
+            'message' => $isComplete
+                ? 'Order fulfilled successfully.'
+                : 'Order partially fulfilled. Some items still require stock.',
             'data' => $fulfilledOrder,
+            'fulfillment' => [
+                'status' => $fulfilledOrder->status->value,
+                'is_complete' => $isComplete,
+                'requests' => $fulfilledOrder->fulfillmentRequests,
+            ],
         ]);
     }
+
+    public function prepareFulfillment(
+    Request $request,
+    int $order,
+    \App\Services\OrderFulfillmentService $fulfillmentService
+): JsonResponse {
+    $record = Order::query()
+        ->where('tenant_id', $request->user()->tenant_id)
+        ->with('items.catalogItem')
+        ->findOrFail($order);
+
+    $preparedOrder = $fulfillmentService->prepareRequests($record);
+
+    return response()->json([
+        'message' => 'Fulfillment requests prepared successfully.',
+        'data' => $preparedOrder,
+        'fulfillment' => [
+            'status' => $preparedOrder->status->value,
+            'requests' => $preparedOrder->fulfillmentRequests,
+        ],
+    ]);
+}
 
     public function update(Request $request,int $order,OrderService $orderService): JsonResponse {
         $tenantId = $request->user()->tenant_id;
