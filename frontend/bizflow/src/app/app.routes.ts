@@ -140,11 +140,18 @@ export const routes: Routes = [
           .then(m => m.InvoicesComponent),
     },
     {
+      path: 'invoices/create',
+      loadComponent: () =>
+        import('./features/invoices/create-invoice/create-invoice.component')
+          .then(m => m.CreateInvoiceComponent),
+    },
+    {
       path: 'invoices/:id',
       loadComponent: () =>
         import('./features/invoices/invoice-details/invoice-details.component')
           .then(m => m.InvoiceDetailsComponent),
     },
+
     {
       path: 'activity',
       loadComponent: () =>

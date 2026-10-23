@@ -930,7 +930,7 @@ public function test_invoice_payment_updates_invoice_to_partially_paid(): void
     $this->assertDatabaseHas('invoices', [
         'id' => $invoice->id,
         'payment_status' => PaymentStatus::PARTIALLY_PAID->value,
-        'status' => InvoiceStatus::PARTIALLY_PAID->value,
+        'status' => InvoiceStatus::ISSUED->value,
     ]);
 }
 
@@ -980,7 +980,7 @@ public function test_invoice_payment_updates_invoice_to_paid(): void
     $this->assertDatabaseHas('invoices', [
         'id' => $invoice->id,
         'payment_status' => PaymentStatus::PAID->value,
-        'status' => InvoiceStatus::PAID->value,
+        'status' => InvoiceStatus::ISSUED->value,
     ]);
 }
 
@@ -1331,5 +1331,117 @@ public function test_user_without_invoice_create_permission_cannot_create_invoic
         'tenant_id' => $tenant->id,
         'invoice_number' => 'INV-UNAUTHORIZED-001',
     ]);
+}
+public function test_api_can_create_invoice_with_a_manual_line(): void
+{
+    $tenant = Tenant::factory()->create();
+
+$branch = Branch::factory()->create([
+    'tenant_id' => $tenant->id,
+]);
+
+$user = User::factory()->create([
+    'tenant_id' => $tenant->id,
+]);
+
+$this->assignRole($user);
+
+$response = $this
+    ->actingAs($user)
+    ->postJson('/api/invoices', [
+        'branch_id' => $branch->id,
+        'invoice_number' => 'INV-API-MANUAL-001',
+        'items' => [
+            [
+                'description' => 'Custom installation service',
+                'quantity' => 2,
+                'unit_price' => 250,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $response->assertSuccessful();
+
+    $this->assertDatabaseHas('invoice_items', [
+        'description' => 'Custom installation service',
+        'catalog_item_id' => null,
+        'quantity' => 2,
+        'unit_price' => 250,
+    ]);
+}
+
+public function test_api_rejects_manual_invoice_line_without_description(): void
+{
+     $tenant = Tenant::factory()->create();
+
+$branch = Branch::factory()->create([
+    'tenant_id' => $tenant->id,
+]);
+
+$user = User::factory()->create([
+    'tenant_id' => $tenant->id,
+]);
+
+$this->assignRole($user);
+
+$response = $this
+    ->actingAs($user)
+    ->postJson('/api/invoices', [
+        'branch_id' => $branch->id,
+        'invoice_number' => 'INV-API-MANUAL-001',
+        'items' => [
+            [
+                'quantity' => 2,
+                'unit_price' => 250,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['items.0.description']);
+
+    $this->assertDatabaseMissing('invoices', [
+        'invoice_number' => 'INV-API-MANUAL-INVALID',
+    ]);
+}
+public function test_manual_invoice_line_does_not_create_inventory_movements(): void
+{
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $movementCountBefore = \App\Models\InventoryMovement::query()
+        ->where('tenant_id', $tenant->id)
+        ->count();
+
+    app(\App\Services\InvoiceService::class)->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'branch_id' => $branch->id,
+        'invoice_number' => 'INV-MANUAL-NO-STOCK',
+        'items' => [
+            [
+                'description' => 'One-off professional service',
+                'quantity' => 3,
+                'unit_price' => 200,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $this->assertSame(
+        $movementCountBefore,
+        \App\Models\InventoryMovement::query()
+            ->where('tenant_id', $tenant->id)
+            ->count()
+    );
 }
 }

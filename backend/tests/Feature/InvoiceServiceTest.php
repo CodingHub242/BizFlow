@@ -7,6 +7,7 @@ use App\Models\CatalogItem;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Customer;
+use Illuminate\Validation\ValidationException;
 use App\CatalogItemType;
 use App\InvoicePaymentMethod;
 use App\PaymentStatus;
@@ -598,40 +599,36 @@ class InvoiceServiceTest extends TestCase
         $this->assertDatabaseCount('invoice_items', 0);
     }
 
-    public function test_invoice_creation_rolls_back_when_an_item_fails(): void
-    {
-        $tenantA = Tenant::factory()->create();
-        $tenantB = Tenant::factory()->create();
+    
+public function test_invoice_creation_rolls_back_when_an_item_fails(): void
+{
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
 
-        $branchA = Branch::factory()
-            ->for($tenantA)
-            ->create();
+    $branchA = Branch::factory()
+        ->for($tenantA)
+        ->create();
 
-        $userA = User::factory()
-            ->for($tenantA)
-            ->create();
+    $userA = User::factory()
+        ->for($tenantA)
+        ->create();
 
-        $productA = CatalogItem::factory()
-            ->for($tenantA)
-            ->create([
-                'selling_price' => 500,
-            ]);
+    $productA = CatalogItem::factory()
+        ->for($tenantA)
+        ->create(['selling_price' => 500]);
 
-        $productB = CatalogItem::factory()
-            ->for($tenantB)
-            ->create([
-                'selling_price' => 300,
-            ]);
+    $productB = CatalogItem::factory()
+        ->for($tenantB)
+        ->create(['selling_price' => 300]);
 
-        $service = app(InvoiceService::class);
+    $service = app(InvoiceService::class);
 
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
-
+    try {
         $service->create([
             'tenant_id' => $tenantA->id,
             'branch_id' => $branchA->id,
             'created_by' => $userA->id,
-            'invoice_number' => 'INV-ROLLBACK-001',
+            'invoice_number' => 'INV-ROLLBACK-005',
             'items' => [
                 [
                     'catalog_item_id' => $productA->id,
@@ -650,15 +647,20 @@ class InvoiceServiceTest extends TestCase
             ],
         ]);
 
-        $this->assertDatabaseMissing('invoices', [
-            'tenant_id' => $tenantA->id,
-            'invoice_number' => 'INV-ROLLBACK-001',
-        ]);
-
-        $this->assertDatabaseMissing('invoice_items', [
-            'tenant_id' => $tenantA->id,
-        ]);
+        $this->fail('Expected validation exception for cross-tenant catalog item.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // Expected: the second item must be rejected.
     }
+
+    $this->assertDatabaseMissing('invoices', [
+        'tenant_id' => $tenantA->id,
+        'invoice_number' => 'INV-ROLLBACK-005',
+    ]);
+
+    $this->assertDatabaseMissing('invoice_items', [
+        'tenant_id' => $tenantA->id,
+    ]);
+}
 
     public function test_invoice_item_unit_price_cannot_be_negative(): void
     {
@@ -1158,15 +1160,15 @@ class InvoiceServiceTest extends TestCase
 
         $invoice->refresh();
 
-        $this->assertSame(
-            PaymentStatus::PAID,
-            $invoice->payment_status
-        );
+       $this->assertSame(
+    InvoiceStatus::ISSUED,
+    $invoice->status
+);
 
-        $this->assertSame(
-            InvoiceStatus::PAID,
-            $invoice->status
-        );
+$this->assertSame(
+    PaymentStatus::PAID,
+    $invoice->payment_status
+);
 
         $this->assertEquals(
             2,
@@ -1507,15 +1509,15 @@ class InvoiceServiceTest extends TestCase
             (float) $invoice->payments()->sum('amount')
         );
 
-        $this->assertSame(
-            PaymentStatus::PARTIALLY_PAID,
-            $invoice->payment_status
-        );
+       $this->assertSame(
+    InvoiceStatus::ISSUED,
+    $invoice->status
+);
 
-        $this->assertSame(
-            InvoiceStatus::PARTIALLY_PAID,
-            $invoice->status
-        );
+$this->assertSame(
+    PaymentStatus::PARTIALLY_PAID,
+    $invoice->payment_status
+);
     }
 
     public function test_fully_paid_invoice_cannot_receive_another_payment(): void
@@ -1686,7 +1688,7 @@ class InvoiceServiceTest extends TestCase
         $invoice = $invoice->fresh();
 
         $this->assertSame(
-            InvoiceStatus::PAID,
+            InvoiceStatus::ISSUED,
             $invoice->status
         );
 
@@ -1695,12 +1697,12 @@ class InvoiceServiceTest extends TestCase
         $invoice->refresh();
 
         $this->assertSame(
-            InvoiceStatus::PAID,
+            InvoiceStatus::ISSUED,
             $invoice->status
         );
 
         $this->assertSame(
-            PaymentStatus::PAID,
+            PaymentStatus::PAID, 
             $invoice->payment_status
         );
     }
@@ -2532,7 +2534,7 @@ class InvoiceServiceTest extends TestCase
         );
 
         $this->assertEquals(
-            \App\InvoiceStatus::PARTIALLY_PAID,
+            \App\InvoiceStatus::ISSUED,
             $invoice->status
         );
 
@@ -3252,7 +3254,7 @@ public function test_reversing_only_payment_changes_paid_invoice_back_to_issued(
 
     $paidInvoice = $invoice->fresh();
 
-    $this->assertSame(\App\InvoiceStatus::PAID, $paidInvoice->status);
+    $this->assertSame(\App\InvoiceStatus::ISSUED, $paidInvoice->status);
     $this->assertSame(\App\PaymentStatus::PAID, $paidInvoice->payment_status);
 
     $invoiceService->reversePayment(
@@ -3265,5 +3267,128 @@ public function test_reversing_only_payment_changes_paid_invoice_back_to_issued(
 
     $this->assertSame(\App\InvoiceStatus::ISSUED, $invoice->status);
     $this->assertSame(\App\PaymentStatus::UNPAID, $invoice->payment_status);
+}
+public function test_it_creates_an_invoice_with_a_manual_line(): void
+{
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $invoice = app(\App\Services\InvoiceService::class)->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'branch_id' => $branch->id,
+        'invoice_number' => 'INV-MANUAL-001',
+        'items' => [
+            [
+                'description' => 'Custom consulting service',
+                'quantity' => 2,
+                'unit_price' => 150,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $this->assertDatabaseHas('invoice_items', [
+        'invoice_id' => $invoice->id,
+        'catalog_item_id' => null,
+        'description' => 'Custom consulting service',
+        'quantity' => 2,
+        'unit_price' => 150,
+    ]);
+
+    $this->assertEquals(300, (float) $invoice->fresh()->total);
+}
+
+public function test_it_uses_catalog_item_name_when_description_is_omitted(): void
+{
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Website Design',
+    ]);
+
+    $invoice = app(\App\Services\InvoiceService::class)->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'branch_id' => $branch->id,
+        'invoice_number' => 'INV-CATALOG-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 500,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $this->assertDatabaseHas('invoice_items', [
+        'invoice_id' => $invoice->id,
+        'catalog_item_id' => $catalogItem->id,
+        'description' => 'Website Design',
+    ]);
+}
+
+public function test_it_rejects_a_manual_line_without_a_description(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()
+        ->for($tenant)
+        ->create();
+
+    $user = User::factory()
+        ->for($tenant)
+        ->create();
+
+    $service = app(InvoiceService::class);
+
+    try {
+        $service->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-MANUAL-INVALID',
+            'items' => [
+                [
+                    'quantity' => 1,
+                    'unit_price' => 100,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $this->fail(
+            'Expected a validation exception for a missing description.'
+        );
+    } catch (ValidationException $exception) {
+        $this->assertNotEmpty($exception->errors());
+
+        $this->assertStringContainsString(
+            'description',
+            strtolower(implode(' ', array_merge(
+                ...array_values($exception->errors())
+            )))
+        );
+    }
+
+    $this->assertDatabaseMissing('invoices', [
+        'tenant_id' => $tenant->id,
+        'invoice_number' => 'INV-MANUAL-INVALID',
+    ]);
 }
 }

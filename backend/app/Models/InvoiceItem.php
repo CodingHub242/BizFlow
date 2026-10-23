@@ -14,6 +14,7 @@ class InvoiceItem extends Model
         'tenant_id',
         'invoice_id',
         'catalog_item_id',
+        'description',
         'quantity',
         'unit_price',
         'discount',

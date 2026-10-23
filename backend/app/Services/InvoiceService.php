@@ -8,6 +8,8 @@ use App\Models\Branch;
 use App\Models\User;
 use App\Models\Order;
 use App\Models\Customer;
+use App\Models\OrderItem;
+use Illuminate\Database\QueryException;
 use App\Models\InvoicePaymentReversal;
 use App\Models\InvoicePayment;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -96,14 +98,32 @@ class InvoiceService
             $tax = 0;
 
             foreach ($data['items'] as $itemData) {
+                $catalogItemId = $itemData['catalog_item_id'] ?? null;
+                $catalogItem = null;
+                if ($catalogItemId !== null && $catalogItemId !== '') {
                 $catalogItem = CatalogItem::query()
                     ->where('tenant_id', $data['tenant_id'])
-                    ->whereKey($itemData['catalog_item_id'])
+                    ->whereKey($catalogItemId)
                     ->first();
 
-                if (! $catalogItem) {
+                 if (! $catalogItem) {
+                        throw ValidationException::withMessages([
+                            'items.catalog_item_id' => [
+                                'The selected catalog item does not belong to this tenant.',
+                            ],
+                        ]);
+                    }
+                }
+
+               $description = trim((string) ($itemData['description'] ?? ''));
+
+                if ($description === '' && $catalogItem !== null) {
+                    $description = $catalogItem->name;
+                }
+
+                if ($description === '') {
                     throw ValidationException::withMessages([
-                        'items' => 'The catalog item does not belong to this tenant.',
+                        'items' => 'Every invoice line must have a catalog item or a description.',
                     ]);
                 }
 
@@ -141,7 +161,8 @@ class InvoiceService
 
                 $invoice->items()->create([
                     'tenant_id' => $data['tenant_id'],
-                    'catalog_item_id' => $catalogItem->id,
+                    'catalog_item_id' => $catalogItem?->id,
+                    'description' => $description,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'discount' => $itemDiscount,
@@ -166,6 +187,229 @@ class InvoiceService
             return $invoice->fresh();
         });
     }
+
+    public function createFromOrder(Order $order): Invoice
+    {
+        return DB::transaction(function () use ($order) {
+            $lockedOrder = Order::query()
+                ->where('tenant_id', $order->tenant_id)
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Idempotency: an order can have only one linked invoice.
+            $existingInvoice = Invoice::query()
+                ->where('tenant_id', $lockedOrder->tenant_id)
+                ->where('order_id', $lockedOrder->id)
+                ->first();
+
+            if ($existingInvoice) {
+                return $existingInvoice;
+            }
+
+            $items = $lockedOrder->items()
+                ->with('catalogItem')
+                ->get();
+
+            if ($items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'An order must contain at least one item before an invoice can be created.',
+                ]);
+            }
+
+            $subtotal = 0.0;
+            $itemDiscount = 0.0;
+            $itemTax = 0.0;
+
+            foreach ($items as $item) {
+                if (! $item->catalogItem ||
+                    (int) $item->catalogItem->tenant_id !== (int) $lockedOrder->tenant_id) {
+                    throw ValidationException::withMessages([
+                        'items' => 'An order contains an unavailable catalog item.',
+                    ]);
+                }
+
+                $subtotal += (float) $item->quantity * (float) $item->unit_price;
+                $itemDiscount += (float) $item->discount;
+                $itemTax += (float) $item->tax;
+            }
+
+            $discount = $itemDiscount + (float) $lockedOrder->discount;
+            $tax = $itemTax + (float) $lockedOrder->tax;
+
+           try {
+                $invoice = Invoice::query()->create([
+                    'tenant_id' => $lockedOrder->tenant_id,
+                    'branch_id' => $lockedOrder->branch_id,
+                    'customer_id' => $lockedOrder->customer_id,
+                    'order_id' => $lockedOrder->id,
+                    'created_by' => $lockedOrder->created_by,
+                    'invoice_number' => 'INV-' . $lockedOrder->order_number,
+                    'status' => 'draft',
+                    'payment_status' => 'unpaid',
+                    'subtotal' => round($subtotal, 2),
+                    'discount' => round($discount, 2),
+                    'tax' => round($tax, 2),
+                    'total' => round($subtotal - $discount + $tax, 2),
+                    'notes' => $lockedOrder->notes,
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                throw ValidationException::withMessages([
+                    'invoice_number' => 'This invoice number has already been used.',
+                ]);
+            }
+
+            foreach ($items as $item) {
+                $invoice->items()->create([
+                    'tenant_id' => $lockedOrder->tenant_id,
+                    'catalog_item_id' => $item->catalog_item_id,
+                    'description' => $item->catalogItem->name,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'discount' => $item->discount,
+                    'tax' => $item->tax,
+                    'line_total' => $item->line_total,
+                ]);
+            }
+
+            return $invoice->fresh()->load('items');
+        });
+    }
+
+
+    public function syncDraftFromOrder(Order $order): Invoice
+    {
+        return DB::transaction(function () use ($order) {
+            $lockedOrder = Order::query()
+                ->where('tenant_id', $order->tenant_id)
+                ->whereKey($order->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Support legacy orders that do not yet have a linked invoice.
+            $invoice = Invoice::query()
+                ->where('tenant_id', $lockedOrder->tenant_id)
+                ->where('order_id', $lockedOrder->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $invoice) {
+                $invoice = $this->createFromOrder($lockedOrder);
+            }
+
+            // Never overwrite an invoice that has left the draft state.
+            if (
+                $invoice->status !== \App\InvoiceStatus::DRAFT
+                || $invoice->payment_status !== \App\PaymentStatus::UNPAID
+            ) {
+                throw ValidationException::withMessages([
+                    'invoice' => [
+                        'The linked invoice is no longer an editable draft. '
+                        . 'The order cannot be updated.',
+                    ],
+                ]);
+            }
+
+            $items = $lockedOrder->items()
+                ->with('catalogItem')
+                ->get();
+
+            if ($items->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'items' => 'An order must contain at least one item.',
+                ]);
+            }
+
+            $subtotal = 0.0;
+            $itemDiscount = 0.0;
+            $itemTax = 0.0;
+            $invoiceItems = [];
+
+            foreach ($items as $item) {
+                $catalogItem = $item->catalogItem;
+
+                if (
+                    ! $catalogItem
+                    || (int) $catalogItem->tenant_id
+                        !== (int) $lockedOrder->tenant_id
+                ) {
+                    throw ValidationException::withMessages([
+                        'items' => 'An order contains an unavailable catalog item.',
+                    ]);
+                }
+
+                $quantity = (float) $item->quantity;
+                $unitPrice = (float) $item->unit_price;
+                $discount = (float) $item->discount;
+                $tax = (float) $item->tax;
+
+                if (
+                    $quantity <= 0
+                    || $unitPrice < 0
+                    || $discount < 0
+                    || $tax < 0
+                ) {
+                    throw ValidationException::withMessages([
+                        'items' => 'An order contains invalid item values.',
+                    ]);
+                }
+
+                $lineTotal = ($quantity * $unitPrice) - $discount + $tax;
+
+                if ($lineTotal < 0) {
+                    throw ValidationException::withMessages([
+                        'items' => 'An order item total cannot be negative.',
+                    ]);
+                }
+
+                $subtotal += $quantity * $unitPrice;
+                $itemDiscount += $discount;
+                $itemTax += $tax;
+
+                $invoiceItems[] = [
+                    'tenant_id' => $lockedOrder->tenant_id,
+                    'catalog_item_id' => $item->catalog_item_id,
+                    'description' => $catalogItem->name,
+                    'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
+                    'discount' => $discount,
+                    'tax' => $tax,
+                    'line_total' => $lineTotal,
+                ];
+            }
+
+            $discount = $itemDiscount + (float) $lockedOrder->discount;
+            $tax = $itemTax + (float) $lockedOrder->tax;
+            $total = $subtotal - $discount + $tax;
+
+            if ($total < 0) {
+                throw ValidationException::withMessages([
+                    'total' => 'The synchronized invoice total cannot be negative.',
+                ]);
+            }
+
+            $invoice->update([
+                'branch_id' => $lockedOrder->branch_id,
+                'customer_id' => $lockedOrder->customer_id,
+                'created_by' => $lockedOrder->created_by,
+                'subtotal' => round($subtotal, 2),
+                'discount' => round($discount, 2),
+                'tax' => round($tax, 2),
+                'total' => round($total, 2),
+                'notes' => $lockedOrder->notes,
+            ]);
+
+            // Replace the draft invoice lines atomically.
+            $invoice->items()->delete();
+
+            foreach ($invoiceItems as $invoiceItem) {
+                $invoice->items()->create($invoiceItem);
+            }
+
+            return $invoice->fresh()->load('items');
+        });
+    }
+
 
     public function issue(Invoice $invoice): Invoice
     {
@@ -252,12 +496,19 @@ class InvoiceService
 
             $totalPaid = $paidAmount + $amount;
 
+            // if ($totalPaid >= (float) $invoice->total) {
+            //     $invoice->payment_status = \App\PaymentStatus::PAID;
+            //     $invoice->status = \App\InvoiceStatus::PAID;
+            // } elseif ($totalPaid > 0) {
+            //     $invoice->payment_status = \App\PaymentStatus::PARTIALLY_PAID;
+            //     $invoice->status = \App\InvoiceStatus::PARTIALLY_PAID;
+            // }
             if ($totalPaid >= (float) $invoice->total) {
                 $invoice->payment_status = \App\PaymentStatus::PAID;
-                $invoice->status = \App\InvoiceStatus::PAID;
             } elseif ($totalPaid > 0) {
                 $invoice->payment_status = \App\PaymentStatus::PARTIALLY_PAID;
-                $invoice->status = \App\InvoiceStatus::PARTIALLY_PAID;
+            } else {
+                $invoice->payment_status = \App\PaymentStatus::UNPAID;
             }
 
             $invoice->save();
@@ -356,14 +607,32 @@ class InvoiceService
             $validatedItems = [];
 
             foreach ($items as $itemData) {
-                $catalogItem = CatalogItem::query()
-                    ->where('tenant_id', $invoice->tenant_id)
-                    ->whereKey($itemData['catalog_item_id'])
-                    ->first();
+                $catalogItemId = $itemData['catalog_item_id'] ?? null;
+                $catalogItem = null;
+                if ($catalogItemId !== null && $catalogItemId !== '') {
+                    $catalogItem = CatalogItem::query()
+                        ->where('tenant_id', $invoice->tenant_id)
+                        ->whereKey($catalogItemId)
+                        ->first();
 
-                if (! $catalogItem) {
+                    if (! $catalogItem) {
+                        throw ValidationException::withMessages([
+                            'items.catalog_item_id' => [
+                                'The catalog item does not belong to this tenant.',
+                            ],
+                        ]);
+                    }
+                }
+
+                 $description = trim((string) ($itemData['description'] ?? ''));
+
+                if ($description === '' && $catalogItem !== null) {
+                    $description = $catalogItem->name;
+                }
+
+                if ($description === '') {
                     throw ValidationException::withMessages([
-                        'items' => 'The catalog item does not belong to this tenant.',
+                        'items' => 'Every invoice line must have a catalog item or a description.',
                     ]);
                 }
 
@@ -401,7 +670,8 @@ class InvoiceService
 
                 $validatedItems[] = [
                     'tenant_id' => $invoice->tenant_id,
-                    'catalog_item_id' => $catalogItem->id,
+                    'catalog_item_id' => $catalogItem?->id,
+                    'description' => $description,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'discount' => $itemDiscount,
@@ -452,10 +722,15 @@ class InvoiceService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (
-                $invoice->status === \App\InvoiceStatus::PARTIALLY_PAID ||
-                $invoice->payment_status === \App\PaymentStatus::PARTIALLY_PAID
-            ) {
+            // if (
+            //     $invoice->status === \App\InvoiceStatus::PARTIALLY_PAID ||
+            //     $invoice->payment_status === \App\PaymentStatus::PARTIALLY_PAID
+            // ) {
+            //     throw ValidationException::withMessages([
+            //         'status' => 'A partially paid invoice cannot be cancelled.',
+            //     ]);
+            // }
+            if ($invoice->payment_status === \App\PaymentStatus::PARTIALLY_PAID) {
                 throw ValidationException::withMessages([
                     'status' => 'A partially paid invoice cannot be cancelled.',
                 ]);
@@ -562,18 +837,20 @@ class InvoiceService
             if ($totalPaid <= 0) {
                 $invoice->payment_status = \App\PaymentStatus::UNPAID;
 
-                if ($invoice->status === \App\InvoiceStatus::PAID) {
-                    $invoice->status = \App\InvoiceStatus::ISSUED;
-                }
-            } elseif ($totalPaid < (float) $invoice->total) {
+                // if ($invoice->status === \App\InvoiceStatus::PAID) {
+                //     $invoice->status = \App\InvoiceStatus::ISSUED;
+                // }
+            } elseif ($totalPaid >= (float) $invoice->total) {
+                $invoice->payment_status = \App\PaymentStatus::PAID;
+            } else {
                 $invoice->payment_status = \App\PaymentStatus::PARTIALLY_PAID;
 
-                if (
-                    $invoice->status === \App\InvoiceStatus::PAID ||
-                    $invoice->status === \App\InvoiceStatus::PARTIALLY_PAID
-                ) {
-                    $invoice->status = \App\InvoiceStatus::PARTIALLY_PAID;
-                }
+                // if (
+                //     $invoice->status === \App\InvoiceStatus::PAID ||
+                //     $invoice->status === \App\InvoiceStatus::PARTIALLY_PAID
+                // ) {
+                //     $invoice->status = \App\InvoiceStatus::PARTIALLY_PAID;
+                // }
             }
 
             $invoice->save();

@@ -7,7 +7,9 @@ use App\PaymentStatus;
 use App\Models\Branch;
 use App\Models\CatalogItem;
 use App\Models\Order;
+use App\Models\Invoices;
 use App\Models\OrderItem;
+use App\Services\InvoiceService;
 use App\Models\Tenant;
 use App\Models\Customer;
 use App\Models\User;
@@ -431,4 +433,390 @@ class OrderTest extends TestCase
             $order->customer->tenant_id
         );
     }
+
+    public function test_creating_order_creates_one_linked_draft_invoice(): void
+{
+    $tenant = Tenant::factory()->create();
+    $branch = Branch::factory()->for($tenant)->create();
+    $user = User::factory()->for($tenant)->create();
+
+    $product = CatalogItem::factory()
+        ->for($tenant)
+        ->create(['selling_price' => 100]);
+
+    $order = app(\App\Services\OrderService::class)->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'order_number' => 'ORD-AUTO-001',
+        'items' => [
+            [
+                'catalog_item_id' => $product->id,
+                'quantity' => 2,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $this->assertDatabaseHas('invoices', [
+        'tenant_id' => $tenant->id,
+        'order_id' => $order->id,
+        'customer_id' => null,
+        'status' => 'draft',
+        'payment_status' => 'unpaid',
+        'total' => 200,
+    ]);
+
+    $this->assertSame(
+        1,
+        \App\Models\Invoice::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('order_id', $order->id)
+            ->count()
+    );
+}
+public function test_order_and_invoice_creation_roll_back_together(): void
+{
+    $tenant = Tenant::factory()->create();
+    $branch = Branch::factory()->for($tenant)->create();
+    $user = User::factory()->for($tenant)->create();
+
+    $product = CatalogItem::factory()
+        ->for($tenant)
+        ->create(['selling_price' => 100]);
+
+    // Force the invoice number to collide with an existing invoice.
+    \App\Models\Invoice::factory()
+        ->for($tenant)
+        ->create([
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'invoice_number' => 'INV-ORD-ROLLBACK-001',
+            'order_id' => null,
+        ]);
+
+    try {
+        app(\App\Services\OrderService::class)->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'order_number' => 'ORD-ROLLBACK-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $product->id,
+                    'quantity' => 1,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $this->fail('Expected invoice creation to fail.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        // Expected: the duplicate invoice number is rejected.
+    }
+
+    $this->assertDatabaseMissing('orders', [
+        'tenant_id' => $tenant->id,
+        'order_number' => 'ORD-ROLLBACK-001',
+    ]);
+}
+
+public function test_updating_order_synchronizes_its_linked_draft_invoice(): void
+{
+     $tenant = Tenant::factory()->create();
+    $branch = Branch::factory()->for($tenant)->create();
+    $user = User::factory()->for($tenant)->create();
+
+     $product = CatalogItem::factory()
+        ->for($tenant)
+        ->create(['selling_price' => 100]);
+    // Arrange: create an order using your existing test helper.
+    $order =  app(\App\Services\OrderService::class)->create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'created_by' => $user->id,
+            'order_number' => 'ORD-ROLLBACK-001',
+            'items' => [
+                [
+                    'catalog_item_id' => $product->id,
+                    'quantity' => 1,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+    $invoice = \App\Models\Invoice::query()
+        ->where('tenant_id', $order->tenant_id)
+        ->where('order_id', $order->id)
+        ->firstOrFail();
+
+    $originalInvoiceId = $invoice->id;
+    $originalInvoiceNumber = $invoice->invoice_number;
+
+    // Act: update the order using your existing valid update payload.
+    app(\App\Services\OrderService::class)->update($order, [
+        'branch_id' => $order->branch_id,
+        'customer_id' => $order->customer_id,
+        'order_number' => $order->order_number,
+        'discount' => 5,
+        'tax' => 2,
+        'notes' => 'Updated order notes',
+        'items' => [
+            [
+                'catalog_item_id' => $order->items->first()->catalog_item_id,
+                'quantity' => 3,
+                'discount' => 1,
+                'tax' => 2,
+            ],
+        ],
+    ]);
+
+    // Assert: same invoice, updated values, no duplicate.
+    $invoice->refresh();
+
+    $this->assertSame($originalInvoiceId, $invoice->id);
+    $this->assertSame($originalInvoiceNumber, $invoice->invoice_number);
+    $this->assertSame('Updated order notes', $invoice->notes);
+    $this->assertEquals(1, $invoice->items()->count());
+
+    $this->assertDatabaseHas('invoices', [
+        'id' => $originalInvoiceId,
+        'order_id' => $order->id,
+        'status' => 'draft',
+    ]);
+
+    $this->assertSame(
+        1,
+        \App\Models\Invoice::query()
+            ->where('tenant_id', $order->tenant_id)
+            ->where('order_id', $order->id)
+            ->count()
+    );
+}
+
+public function test_updating_order_is_rejected_when_linked_invoice_is_issued(): void
+{
+    [$order, $product] = $this->createOrderForInvoiceProtectionTest(
+        'ORD-ISSUED-001'
+    );
+
+    $invoice = \App\Models\Invoice::query()
+    ->where('tenant_id', $order->tenant_id)
+    ->where('order_id', $order->id)
+    ->firstOrFail();
+
+    $this->assertNotNull($invoice);
+
+    app(\App\Services\InvoiceService::class)->issue($invoice);
+
+    $originalOrderTotal = $order->fresh()->total;
+    $originalInvoiceTotal = $invoice->fresh()->total;
+    $originalOrderQuantity = $order->items()->first()->quantity;
+    $originalInvoiceQuantity = $invoice->items()->first()->quantity;
+
+    try {
+        app(\App\Services\OrderService::class)->update($order, [
+            'branch_id' => $order->branch_id,
+            'customer_id' => $order->customer_id,
+            'order_number' => $order->order_number,
+            'discount' => 0,
+            'tax' => 0,
+            'notes' => 'Attempted edit',
+            'items' => [
+                [
+                    'catalog_item_id' => $product->id,
+                    'quantity' => 2,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $this->fail('Expected the order update to be rejected.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        $this->assertNotEmpty($e->errors());
+    }
+
+    $this->assertEquals($originalOrderTotal, $order->fresh()->total);
+    $this->assertEquals($originalInvoiceTotal, $invoice->fresh()->total);
+
+    $this->assertEquals(
+        $originalOrderQuantity,
+        $order->items()->first()->quantity
+    );
+
+    $this->assertEquals(
+        $originalInvoiceQuantity,
+        $invoice->items()->first()->quantity
+    );
+
+    $this->assertSame('issued', $invoice->fresh()->status->value);
+    $this->assertSame('draft', $order->fresh()->status->value);
+    $this->assertNotSame('Attempted edit', $order->fresh()->notes);
+
+    // The original order and invoice line items remain intact.
+$this->assertCount(1, $order->fresh()->items);
+$this->assertCount(1, $invoice->fresh()->items);
+
+// The issued invoice remains issued and unpaid.
+$this->assertSame('issued', $invoice->fresh()->status->value);
+$this->assertSame('unpaid', $invoice->fresh()->payment_status->value);
+
+// The order's original notes remain unchanged.
+$this->assertNotSame(
+    'Attempted edit',
+    $order->fresh()->notes
+);
+
+// No duplicate linked invoice was created.
+$this->assertSame(
+    1,
+    \App\Models\Invoice::query()
+        ->where('tenant_id', $order->tenant_id)
+        ->where('order_id', $order->id)
+        ->count()
+);
+}
+
+public function test_updating_order_is_rejected_when_linked_invoice_is_paid(): void
+{
+    [$order, $product, $user] = $this->createOrderForInvoiceProtectionTest(
+        'ORD-PAID-001'
+    );
+
+ $invoice = \App\Models\Invoice::query()
+    ->where('tenant_id', $order->tenant_id)
+    ->where('order_id', $order->id)
+    ->firstOrFail();
+
+    $this->assertNotNull($invoice);
+
+    $invoiceService = app(\App\Services\InvoiceService::class);
+
+    $invoiceService->issue($invoice);
+
+    $invoice = $invoice->fresh();
+
+    $invoiceService->recordPayment($invoice, [
+        'recorded_by' => $user->id,
+        'amount' => $invoice->total,
+        'method' => 'cash',
+        'paid_at' => now(),
+    ]);
+
+    $invoice->refresh();
+
+    $originalOrderTotal = $order->fresh()->total;
+    $originalInvoiceTotal = $invoice->total;
+    $originalOrderQuantity = $order->items()->first()->quantity;
+    $originalInvoiceQuantity = $invoice->items()->first()->quantity;
+
+    try {
+        app(\App\Services\OrderService::class)->update($order, [
+            'branch_id' => $order->branch_id,
+            'customer_id' => $order->customer_id,
+            'order_number' => $order->order_number,
+            'discount' => 0,
+            'tax' => 0,
+            'notes' => 'Attempted paid-order edit',
+            'items' => [
+                [
+                    'catalog_item_id' => $product->id,
+                    'quantity' => 2,
+                    'discount' => 0,
+                    'tax' => 0,
+                ],
+            ],
+        ]);
+
+        $this->fail('Expected the order update to be rejected.');
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        $this->assertNotEmpty($e->errors());
+    }
+
+    $this->assertEquals($originalOrderTotal, $order->fresh()->total);
+    $this->assertEquals($originalInvoiceTotal, $invoice->fresh()->total);
+
+    $this->assertEquals(
+        $originalOrderQuantity,
+        $order->items()->first()->quantity
+    );
+
+    $this->assertEquals(
+        $originalInvoiceQuantity,
+        $invoice->items()->first()->quantity
+    );
+
+ $this->assertSame('issued', $invoice->fresh()->status->value);
+$this->assertSame('paid', $invoice->fresh()->payment_status->value);
+    $this->assertSame('draft', $order->fresh()->status->value);
+    $this->assertNotSame('Attempted paid-order edit', $order->fresh()->notes);
+
+    // The original order and invoice line items remain intact.
+$this->assertCount(1, $order->fresh()->items);
+$this->assertCount(1, $invoice->fresh()->items);
+
+// The invoice remains paid.
+$this->assertSame('paid', $invoice->fresh()->payment_status->value);
+
+// The order's original notes remain unchanged.
+$this->assertNotSame(
+    'Attempted paid-order edit',
+    $order->fresh()->notes
+);
+
+// No duplicate linked invoice was created.
+$this->assertSame(
+    1,
+    \App\Models\Invoice::query()
+        ->where('tenant_id', $order->tenant_id)
+        ->where('order_id', $order->id)
+        ->count()
+);
+}
+
+/**
+ * Shared fixture for linked-invoice protection tests.
+ */
+private function createOrderForInvoiceProtectionTest(
+    string $orderNumber
+): array {
+    $tenant = \App\Models\Tenant::factory()->create();
+
+    $user = \App\Models\User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $branch = \App\Models\Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $product = \App\Models\CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => 'product',
+        'selling_price' => 100,
+        'is_active' => true,
+    ]);
+
+    $order = app(\App\Services\OrderService::class)->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'order_number' => $orderNumber,
+        'items' => [
+            [
+                'catalog_item_id' => $product->id,
+                'quantity' => 1,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    return [$order, $product, $user];
+}
+
 }

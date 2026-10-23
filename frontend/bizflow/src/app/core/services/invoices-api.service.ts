@@ -10,6 +10,24 @@ export interface InvoiceCustomer {
   company_name?: string | null;
 }
 
+export interface CreateInvoiceLineRequest {
+  catalog_item_id?: number | null;
+  description?: string;
+  quantity: number;
+  unit_price: number;
+  discount?: number;
+  tax?: number;
+}
+
+export interface CreateInvoiceRequest {
+  branch_id: number;
+  customer_id?: number | null;
+  invoice_number: string;
+  due_at?: string | null;
+  notes?: string | null;
+  items: CreateInvoiceLineRequest[];
+}
+
 export interface InvoiceBranch {
   id: number;
   name: string;
@@ -159,6 +177,20 @@ list(
       `${this.apiUrl}/invoices/${id}`,
     );
   }
+
+
+
+create(
+  payload: CreateInvoiceRequest,
+): Observable<{ success: boolean; message?: string; data: Invoice }> {
+  return this.http.post<{
+    success: boolean;
+    message?: string;
+    data: Invoice;
+  }>(`${this.apiUrl}/invoices`, payload);
+}
+
+
 
 
   recordPayment(id: number,payload: RecordInvoicePaymentRequest,): Observable<{ success: boolean; message?: string; data: InvoicePayment }> 

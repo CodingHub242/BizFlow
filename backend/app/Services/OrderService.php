@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\CatalogItem;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\InvoiceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -172,7 +173,11 @@ class OrderService
                 $order->items()->create($item);
             }
 
-            return $order->load('items');
+            app(InvoiceService::class)->createFromOrder($order);
+
+            return $order->fresh()->load('items');
+
+            //return $order->load('items');
         });
     }
 
@@ -293,6 +298,9 @@ class OrderService
             foreach ($validatedItems as $item) {
                 $order->items()->create($item);
             }
+
+            // Keep the linked draft invoice synchronized with the edited order.
+            app(InvoiceService::class)->syncDraftFromOrder($order);
 
             return $order->fresh()->load([
                 'items.catalogItem',

@@ -332,6 +332,10 @@ loadInvoices(page = 1): void {
     this.loadInvoices();
   }
 
+  createInvoice(): void {
+  this.router.navigate(['/invoices/create']);
+}
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();

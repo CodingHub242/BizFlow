@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\OrderPayment;
+
 
 class InvoicePayment extends Model
 {
@@ -50,5 +52,10 @@ class InvoicePayment extends Model
     public function reversal(): HasOne
     {
         return $this->hasOne(InvoicePaymentReversal::class);
+    }
+
+    public function orderPayment(): BelongsTo
+    {
+        return $this->belongsTo(OrderPayment::class);
     }
 }

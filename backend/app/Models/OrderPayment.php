@@ -5,6 +5,8 @@ namespace App\Models;
 use App\OrderPaymentMethod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\InvoicePayment;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderPayment extends Model
@@ -44,5 +46,10 @@ class OrderPayment extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function invoicePayment(): HasOne
+    {
+        return $this->hasOne(InvoicePayment::class);
     }
 }

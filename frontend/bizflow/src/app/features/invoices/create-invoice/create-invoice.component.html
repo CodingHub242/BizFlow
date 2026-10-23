@@ -1,0 +1,276 @@
+
+<div class="create-invoice-page">
+  <header class="page-header">
+    <div>
+      <h1>Create Invoice</h1>
+      <p>Create an invoice using your products, services, or manual line items.</p>
+    </div>
+
+    <button type="button" class="secondary-button" (click)="cancel()">
+      Back to invoices
+    </button>
+  </header>
+
+  @if (loading) {
+    <div class="state-card">
+      <div class="loading-spinner"></div>
+      <p>Loading branches, customers, and catalog items...</p>
+    </div>
+  } @else {
+    @if (error) {
+      <div class="error-banner" role="alert">
+        <span>{{ error }}</span>
+        <button
+          type="button"
+          aria-label="Dismiss error"
+          (click)="error = ''"
+        >
+          ×
+        </button>
+      </div>
+    }
+
+    <form (ngSubmit)="submit()" #invoiceForm="ngForm">
+      <section class="form-card">
+        <div class="section-heading">
+          <div>
+            <h2>Invoice details</h2>
+            <p>Choose the branch and enter the invoice information.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="invoiceNumber">Invoice number *</label>
+            <input
+              id="invoiceNumber"
+              name="invoiceNumber"
+              [(ngModel)]="invoiceNumber"
+              required
+              maxlength="255"
+              placeholder="e.g. INV-20261023-ABCDE"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="branch">Branch *</label>
+            <app-searchable-select
+              inputId="branch"
+              name="branchId"
+              [options]="branchOptions"
+              [(ngModel)]="branchId"
+              placeholder="Select a branch"
+              searchPlaceholder="Search branches..."
+              noResultsText="No branches found."
+              [required]="true"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="customer">Customer</label>
+            <app-searchable-select
+              inputId="customer"
+              name="customerId"
+              [options]="customerOptions"
+              [(ngModel)]="customerId"
+              placeholder="Walk-in customer"
+              searchPlaceholder="Search customers..."
+              noResultsText="No customers found."
+            />
+            <small>Leave blank for a walk-in customer.</small>
+          </div>
+
+          <div class="form-field">
+            <label for="dueAt">Due date</label>
+            <input
+              id="dueAt"
+              type="date"
+              name="dueAt"
+              [(ngModel)]="dueAt"
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="notes">Notes</label>
+            <textarea
+              id="notes"
+              name="notes"
+              [(ngModel)]="notes"
+              rows="3"
+              placeholder="Optional invoice notes or payment instructions"
+            ></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-card">
+        <div class="section-heading line-heading">
+          <div>
+            <h2>Invoice items</h2>
+            <p>Select a catalog item or enter a manual description.</p>
+          </div>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="addLine()"
+          >
+            + Add line
+          </button>
+        </div>
+
+        @for (line of items; track $index; let i = $index) {
+          <div class="invoice-line">
+            <div class="line-title">
+              <strong>Line {{ i + 1 }}</strong>
+
+              @if (items.length > 1) {
+                <button
+                  type="button"
+                  class="remove-button"
+                  (click)="removeLine(i)"
+                >
+                  Remove
+                </button>
+              }
+            </div>
+
+            <div class="form-grid">
+              <div class="form-field full-width">
+                <label [for]="'catalog-' + i">Product or service</label>
+                <app-searchable-select
+                  [inputId]="'catalog-' + i"
+                  [name]="'catalogItem' + i"
+                  [options]="catalogOptions"
+                  [ngModel]="line.catalog_item_id"
+                  (ngModelChange)="onCatalogItemChanged(i, $event)"
+                  placeholder="Manual item — select a catalog item if applicable"
+                  searchPlaceholder="Search products and services..."
+                  noResultsText="No active catalog items found."
+                />
+                <small>
+                  Leave unselected to create a manual invoice line.
+                </small>
+              </div>
+
+              <div class="form-field full-width">
+                <label [for]="'description-' + i">Description</label>
+                <input
+                  [id]="'description-' + i"
+                  [name]="'description' + i"
+                  [(ngModel)]="line.description"
+                  [required]="!line.catalog_item_id"
+                  maxlength="2000"
+                  placeholder="Describe the product, service, or work"
+                />
+              </div>
+
+              <div class="form-field">
+                <label [for]="'quantity-' + i">Quantity *</label>
+                <input
+                  [id]="'quantity-' + i"
+                  [name]="'quantity' + i"
+                  type="number"
+                  min="0.001"
+                  step="any"
+                  [(ngModel)]="line.quantity"
+                  (ngModelChange)="onQuantityChanged(i)"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label [for]="'price-' + i">Unit price (GH₵) *</label>
+                <input
+                  [id]="'price-' + i"
+                  [name]="'price' + i"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [(ngModel)]="line.unit_price"
+                  required
+                />
+              </div>
+
+              <div class="form-field">
+                <label [for]="'discount-' + i">Discount (GH₵)</label>
+                <input
+                  [id]="'discount-' + i"
+                  [name]="'discount' + i"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [(ngModel)]="line.discount"
+                />
+              </div>
+
+              <div class="form-field">
+                <label [for]="'tax-' + i">Tax (GH₵)</label>
+                <input
+                  [id]="'tax-' + i"
+                  [name]="'tax' + i"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [(ngModel)]="line.tax"
+                />
+              </div>
+            </div>
+
+            <div class="line-total">
+              <span>Line total</span>
+              <strong>{{ formatMoney(lineTotal(line)) }}</strong>
+            </div>
+          </div>
+        }
+      </section>
+
+      <section class="form-card totals-card">
+        <h2>Invoice summary</h2>
+
+        <div class="total-row">
+          <span>Subtotal</span>
+          <strong>{{ formatMoney(subtotal) }}</strong>
+        </div>
+
+        <div class="total-row">
+          <span>Discount</span>
+          <strong>{{ formatMoney(totalDiscount) }}</strong>
+        </div>
+
+        <div class="total-row">
+          <span>Tax</span>
+          <strong>{{ formatMoney(totalTax) }}</strong>
+        </div>
+
+        <div class="total-row grand-total">
+          <span>Estimated total</span>
+          <strong>{{ formatMoney(total) }}</strong>
+        </div>
+
+        <p class="summary-note">
+          This is a preview. The server calculates the saved invoice totals.
+        </p>
+      </section>
+
+      <footer class="form-actions">
+        <button
+          type="button"
+          class="secondary-button"
+          (click)="cancel()"
+          [disabled]="saving"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="primary-button"
+          [disabled]="saving || loading || !items.length"
+        >
+          {{ saving ? 'Creating invoice...' : 'Create invoice' }}
+        </button>
+      </footer>
+    </form>
+  }
+</div>

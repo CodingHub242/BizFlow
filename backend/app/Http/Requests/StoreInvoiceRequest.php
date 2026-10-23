@@ -59,7 +59,7 @@ class StoreInvoiceRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
 
             'items.*.catalog_item_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('catalog_items', 'id')
                 ->where(fn ($query) =>
@@ -68,6 +68,13 @@ class StoreInvoiceRequest extends FormRequest
                         $this->user()->tenant_id
                     )
                 ),
+            ],
+
+            'items.*.description' => [
+                'nullable',
+                'string',
+                'max:2000',
+                'required_without:items.*.catalog_item_id',
             ],
 
             'items.*.quantity' => [
@@ -93,6 +100,32 @@ class StoreInvoiceRequest extends FormRequest
                 'numeric',
                 'gte:0',
             ],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                foreach ($this->input('items', []) as $index => $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+
+                    $catalogItemId = $item['catalog_item_id'] ?? null;
+                    $description = trim((string) ($item['description'] ?? ''));
+
+                    if (
+                        ($catalogItemId === null || $catalogItemId === '')
+                        && $description === ''
+                    ) {
+                        $validator->errors()->add(
+                            "items.{$index}.description",
+                            'Provide a description when no catalog item is selected.'
+                        );
+                    }
+                }
+            },
         ];
     }
 }
