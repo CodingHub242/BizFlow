@@ -10,13 +10,14 @@
       </p>
     </div>
 
+    @if(canCreateItem){
     <button
       type="button"
       class="primary-button"
       (click)="addCatalogItem()"
     >
       + Add Product / Service
-    </button>
+    </button>}
   </div>
 
   <div class="catalog-toolbar">
@@ -109,7 +110,7 @@
           ) {
 
             <tr
-              (click)="viewCatalogItem(item.id)"
+              (click)="canViewItem ? viewCatalogItem(item.id) : null"
             >
 
             <td>

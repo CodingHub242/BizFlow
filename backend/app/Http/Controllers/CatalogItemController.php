@@ -13,8 +13,29 @@ use Illuminate\Validation\Rule;
 
 class CatalogItemController extends Controller
 {
+     private function authorizeSettings(Request $request,string $permission): void 
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user && $user->tenant_id,
+            403,
+            'Does Not Exist'
+        );
+
+        setPermissionsTeamId($user->tenant_id);
+
+        abort_unless(
+            $user->hasPermissionTo($permission, 'web'),
+            403,
+            'You do not have permission to perform this action.'
+        );
+    }
+
     public function store(Request $request): JsonResponse
     {
+        $this->authorizeSettings($request, 'products.create');
+
         $user = $request->user();
 
         $validated = $request->validate([
@@ -74,6 +95,8 @@ class CatalogItemController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+         $this->authorizeSettings($request, 'products.view');
+
         $query = CatalogItem::query()
         ->where('tenant_id', $request->user()->tenant_id);
 
@@ -136,6 +159,8 @@ class CatalogItemController extends Controller
 
     public function show(Request $request, CatalogItem $catalogItem): JsonResponse
     {
+         $this->authorizeSettings($request, 'products.view');
+
         if ($catalogItem->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -148,6 +173,7 @@ class CatalogItemController extends Controller
 
     public function update(Request $request, CatalogItem $catalogItem): JsonResponse
     {
+         $this->authorizeSettings($request, 'products.update');
         if ($catalogItem->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -197,6 +223,7 @@ class CatalogItemController extends Controller
 
     public function destroy(Request $request, CatalogItem $catalogItem): JsonResponse
     {
+         $this->authorizeSettings($request, 'products.delete');
         if ($catalogItem->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -211,6 +238,7 @@ class CatalogItemController extends Controller
 
     public function restore(Request $request, CatalogItem $catalogItem): JsonResponse
     {
+         $this->authorizeSettings($request, 'products.delete');
         if ($catalogItem->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -233,6 +261,7 @@ class CatalogItemController extends Controller
 
     public function archived(Request $request): JsonResponse
     {
+         $this->authorizeSettings($request, 'products.view');
         $request->validate([
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'type' => ['sometimes', 'string', 'in:product,service'],
@@ -282,6 +311,7 @@ class CatalogItemController extends Controller
     }
 
     public function uploadImage(Request $request,CatalogItem $catalogItem): JsonResponse {
+         $this->authorizeSettings($request, 'products.create');
         $tenantId = $request->user()->tenant_id;
 
         if ((int) $catalogItem->tenant_id !== (int) $tenantId) {
@@ -326,6 +356,7 @@ class CatalogItemController extends Controller
     }
 
     public function deleteImage(Request $request,CatalogItem $catalogItem): JsonResponse {
+         $this->authorizeSettings($request, 'products.update');
         if (
             (int) $catalogItem->tenant_id !==
             (int) $request->user()->tenant_id

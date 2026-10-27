@@ -2,6 +2,7 @@ import { Component, OnInit,OnDestroy, ChangeDetectorRef, inject } from '@angular
 import { CatalogApi, CatalogItem, CatalogPagination, CatalogItemType,CatalogListParams } from '../../core/services/catalog-api';
 import { FormsModule } from '@angular/forms'; 
 import { Router } from '@angular/router'; 
+import { AuthService } from '../../core/services/auth.service';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, } from 'rxjs/operators';
 
@@ -17,6 +18,7 @@ private readonly searchSubject = new Subject<string>();
 private readonly searchSubscription: Subscription; 
 private readonly router = inject(Router); 
 private readonly changeDetector = inject(ChangeDetectorRef);
+ private readonly authService = inject(AuthService);
 
 readonly Math = Math; 
 catalogItems: CatalogItem[] = [];
@@ -101,6 +103,15 @@ viewMode: 'active' | 'archived' = 'active';
   { 
     this.router.navigate(['/catalog', id]); 
   }
+
+   get canViewItem(): boolean {
+    return this.authService.hasPermission('customers.update');
+  }
+
+  get canCreateItem(): boolean {
+    return this.authService.hasPermission('customers.update');
+  }
+
 
   ngOnDestroy(): void 
   { 

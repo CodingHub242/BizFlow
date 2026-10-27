@@ -16,6 +16,7 @@ import {
   CatalogItem,
   CatalogItemType,
 } from '../../../core/services/catalog-api';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-catalog-details',
@@ -30,6 +31,7 @@ export class CatalogDetailsComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
 
   readonly form = this.formBuilder.group({
     name: ['', Validators.required],
@@ -434,5 +436,17 @@ export class CatalogDetailsComponent implements OnInit, OnDestroy {
         this.changeDetector.detectChanges();
       },
     });
+  }
+
+  get canUpdateItem(): boolean {
+    return this.authService.hasPermission('products.update');
+  }
+
+  get canDeleteItem(): boolean {
+    return this.authService.hasPermission('products.delete');
+  }
+
+   get canRestoreItem(): boolean {
+    return this.authService.hasPermission('products.delete');
   }
 }
