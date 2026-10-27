@@ -147,4 +147,106 @@ class EmployeeAccountTest extends TestCase
             'email' => 'cross-tenant@example.com',
         ]);
     }
+
+public function test_employee_can_be_created_without_assigning_a_role(): void
+{
+    $tenant = Tenant::factory()->create();
+    $admin = $this->administratorFor($tenant);
+
+    $response = $this->actingAs($admin)->postJson(
+        '/api/employees/accounts',
+        [
+            'name' => 'Ama Mensah',
+            'email' => 'ama-no-role@example.com',
+            'password' => 'StrongPassword!2026',
+            'employee_number' => 'EMP-2001',
+        ]
+    );
+
+    $response->assertCreated();
+
+    $this->assertDatabaseHas('employees', [
+        'tenant_id' => $tenant->id,
+        'employee_number' => 'EMP-2001',
+    ]);
+}
+
+public function test_owner_role_cannot_be_assigned_through_employee_creation(): void
+{
+    $tenant = Tenant::factory()->create();
+    $admin = $this->administratorFor($tenant);
+
+    $response = $this->actingAs($admin)->postJson(
+        '/api/employees/accounts',
+        [
+            'name' => 'New Employee',
+            'email' => 'new-owner@example.com',
+            'password' => 'StrongPassword!2026',
+            'employee_number' => 'EMP-2002',
+            'role' => 'Owner',
+        ]
+    );
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['role']);
+
+    $this->assertDatabaseMissing('users', [
+        'email' => 'new-owner@example.com',
+    ]);
+}
+
+public function test_administrator_role_cannot_be_assigned_through_employee_creation(): void
+{
+    $tenant = Tenant::factory()->create();
+    $admin = $this->administratorFor($tenant);
+
+    $response = $this->actingAs($admin)->postJson(
+        '/api/employees/accounts',
+        [
+            'name' => 'New Administrator',
+            'email' => 'new-admin@example.com',
+            'password' => 'StrongPassword!2026',
+            'employee_number' => 'EMP-2003',
+            'role' => 'Administrator',
+        ]
+    );
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['role']);
+
+    $this->assertDatabaseMissing('users', [
+        'email' => 'new-admin@example.com',
+    ]);
+}
+
+public function test_employee_creation_rolls_back_if_role_assignment_fails(): void
+{
+    $tenant = Tenant::factory()->create();
+    $admin = $this->administratorFor($tenant);
+
+    $usersBefore = User::where('tenant_id', $tenant->id)->count();
+    $employeesBefore = Employee::where('tenant_id', $tenant->id)->count();
+
+    $this->actingAs($admin)->postJson(
+        '/api/employees/accounts',
+        [
+            'name' => 'Rollback Employee',
+            'email' => 'rollback@example.com',
+            'password' => 'StrongPassword!2026',
+            'employee_number' => 'EMP-2004',
+            'role' => 'Nonexistent Role',
+        ]
+    )->assertUnprocessable();
+
+    $this->assertSame(
+        $usersBefore,
+        User::where('tenant_id', $tenant->id)->count()
+    );
+
+    $this->assertSame(
+        $employeesBefore,
+        Employee::where('tenant_id', $tenant->id)->count()
+    );
+}
+
 }

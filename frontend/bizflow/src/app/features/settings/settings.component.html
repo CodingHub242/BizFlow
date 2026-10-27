@@ -1,9 +1,22 @@
+@let user = currentUser();
 @if(canViewSettings){
 <div class="settings-page">
   <header class="settings-header">
     <div>
       <h1>Settings</h1>
       <p>Manage your business information and preferences.</p>
+    </div>
+
+    <div class="actionbuttons">
+      @if(user?.role=='Owner' || user?.role=='Administrator'){
+      <button class="employees" (click)="manageEmps()">
+        Manage Employees
+      </button>
+    }
+
+      <button class="editemp" (click)="EditProf()">
+        Edit Profile
+      </button>
     </div>
   </header>
 

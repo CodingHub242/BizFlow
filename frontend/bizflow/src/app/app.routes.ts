@@ -189,6 +189,12 @@ export const routes: Routes = [
         import('./features/settings/settings.component')
           .then(m => m.SettingsComponent),
     },
+    {
+      path: 'employees',
+      loadComponent: () =>
+        import('./features/employees/employees.component')
+          .then(m => m.EmployeesComponent),
+    },
       
     ],
   },

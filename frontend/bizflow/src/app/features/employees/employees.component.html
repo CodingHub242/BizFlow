@@ -1,0 +1,386 @@
+<div class="employees-page">
+  <header class="page-header">
+    <div class="page-heading">
+      <span class="eyebrow">TEAM MANAGEMENT</span>
+      <h1>Employees</h1>
+      <p>Manage your team, employee accounts, and branch assignments.</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="showCreateForm = !showCreateForm; errorMessage = ''; successMessage = ''"
+    >
+      <span class="button-icon">{{ showCreateForm ? '−' : '+' }}</span>
+      {{ showCreateForm ? 'Close form' : 'Add employee' }}
+    </button>
+  </header>
+
+  @if (successMessage) {
+    <div class="alert alert-success" role="status">
+      <span class="alert-icon">✓</span>
+      <span>{{ successMessage }}</span>
+      <button
+        type="button"
+        class="alert-close"
+        aria-label="Dismiss message"
+        (click)="successMessage = ''"
+      >×</button>
+    </div>
+  }
+
+  @if (errorMessage) {
+    <div class="alert alert-error" role="alert">
+      <span class="alert-icon">!</span>
+      <span>{{ errorMessage }}</span>
+      <button
+        type="button"
+        class="alert-close"
+        aria-label="Dismiss error"
+        (click)="errorMessage = ''"
+      >×</button>
+    </div>
+  }
+
+  @if (showCreateForm) {
+    <section class="form-card">
+      <div class="section-heading">
+        <div>
+          <h2>Create employee account</h2>
+          <p>Create a login account and its employee record.</p>
+        </div>
+        <span class="form-badge">New employee</span>
+      </div>
+
+      <form
+        #employeeFormRef="ngForm"
+        (ngSubmit)="createEmployee()"
+        novalidate
+      >
+        <div class="form-section">
+          <h3>Personal information</h3>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="employee-name">Full name <span class="required">*</span></label>
+              <input
+                id="employee-name"
+                type="text"
+                name="name"
+                [(ngModel)]="form.name"
+                #nameModel="ngModel"
+                required
+                maxlength="255"
+                autocomplete="name"
+                placeholder="e.g. Ama Mensah"
+                [class.invalid]="nameModel.invalid && nameModel.touched"
+              />
+              @if (nameModel.invalid && nameModel.touched) {
+                <small class="field-error">Enter the employee's full name.</small>
+              }
+            </div>
+
+            <div class="form-field">
+              <label for="employee-email">Email address <span class="required">*</span></label>
+              <input
+                id="employee-email"
+                type="email"
+                name="email"
+                [(ngModel)]="form.email"
+                #emailModel="ngModel"
+                required
+                email
+                maxlength="255"
+                autocomplete="email"
+                placeholder="employee@company.com"
+                [class.invalid]="emailModel.invalid && emailModel.touched"
+              />
+              @if (emailModel.invalid && emailModel.touched) {
+                <small class="field-error">Enter a valid email address.</small>
+              }
+            </div>
+
+            <div class="form-field">
+              <label for="employee-password">Initial password <span class="required">*</span></label>
+              <input
+                id="employee-password"
+                type="password"
+                name="password"
+                [(ngModel)]="form.password"
+                #passwordModel="ngModel"
+                required
+                minlength="12"
+                autocomplete="new-password"
+                placeholder="At least 12 characters"
+                [class.invalid]="passwordModel.invalid && passwordModel.touched"
+              />
+              @if (passwordModel.invalid && passwordModel.touched) {
+                <small class="field-error">Use at least 12 characters.</small>
+              }
+              <small>Use a secure temporary password and share it safely.</small>
+            </div>
+
+            <div class="form-field">
+              <label for="employee-phone">Phone number</label>
+              <input
+                id="employee-phone"
+                type="tel"
+                name="phone"
+                [(ngModel)]="form.phone"
+                maxlength="30"
+                autocomplete="tel"
+                placeholder="Employee phone number"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Employment details</h3>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="employee-number">Employee number <span class="required">*</span></label>
+              <input
+                id="employee-number"
+                type="text"
+                name="employee_number"
+                [(ngModel)]="form.employee_number"
+                #numberModel="ngModel"
+                required
+                maxlength="100"
+                placeholder="e.g. EMP-001"
+                [class.invalid]="numberModel.invalid && numberModel.touched"
+              />
+              @if (numberModel.invalid && numberModel.touched) {
+                <small class="field-error">Employee number is required.</small>
+              }
+            </div>
+
+            <div class="form-field">
+              <label for="employee-job-title">Job title</label>
+              <input
+                id="employee-job-title"
+                type="text"
+                name="job_title"
+                [(ngModel)]="form.job_title"
+                maxlength="100"
+                placeholder="e.g. Sales Officer"
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="employee-status">Employment status</label>
+              <select
+                id="employee-status"
+                name="employment_status"
+                [(ngModel)]="form.employment_status"
+                required
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="employee-hired-at">Hire date</label>
+              <input
+                id="employee-hired-at"
+                type="date"
+                name="hired_at"
+                [(ngModel)]="form.hired_at"
+              />
+            </div>
+
+            <div class="form-field form-field-full">
+              <label>Branch assignment</label>
+
+              <app-searchable-select
+                inputId="employee-branch"
+                name="branch_id"
+                [options]="branchOptions"
+                placeholder="No branch assigned"
+                searchPlaceholder="Search branches..."
+                [clearable]="true"
+                [disabled]="loadingBranches"
+                [(ngModel)]="form.branch_id"
+              />
+
+              @if (loadingBranches) {
+                <small>Loading available branches…</small>
+              } @else if (branchErrorMessage) {
+                <small class="field-error">{{ branchErrorMessage }}</small>
+              } @else {
+                <small>Optional. Only active branches are shown.</small>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            [disabled]="saving"
+            (click)="showCreateForm = false; errorMessage = ''"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="saving || employeeFormRef.invalid"
+          >
+            @if (saving) {
+              <span class="spinner"></span>
+              Creating…
+            } @else {
+              Create employee
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section class="employees-card">
+    <div class="list-header">
+      <div>
+        <h2>Team directory</h2>
+        <p>
+          @if (total === 1) {
+            1 employee in your business
+          } @else {
+            {{ total }} employees in your business
+          }
+        </p>
+      </div>
+
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          name="employeeSearch"
+          [(ngModel)]="search"
+          (ngModelChange)="applySearch()"
+          placeholder="Search employees…"
+          aria-label="Search employees on this page"
+        />
+        @if (search) {
+          <button
+            type="button"
+            class="search-clear"
+            aria-label="Clear search"
+            (click)="search = ''; applySearch()"
+          >×</button>
+        }
+      </div>
+    </div>
+
+    @if (loading) {
+      <div class="loading-state">
+        <span class="spinner spinner-dark"></span>
+        <p>Loading employees…</p>
+      </div>
+    } @else if (filteredEmployees.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">♙</div>
+        @if (search.trim()) {
+          <h3>No matching employees</h3>
+          <p>Try a different name, email, employee number, or status.</p>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="search = ''; applySearch()"
+          >Clear search</button>
+        } @else {
+          <h3>No employees yet</h3>
+          <p>Add your first employee to start building your team directory.</p>
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="showCreateForm = true"
+          >Add your first employee</button>
+        }
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Employee number</th>
+              <th>Branch</th>
+              <th>Job title</th>
+              <th>Status</th>
+              <th>Hire date</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (employee of filteredEmployees; track employee.id) {
+              <tr>
+                <td>
+                  <div class="employee-cell">
+                    <div class="avatar">
+                      {{ (employee.name || employee.email || '?').charAt(0).toUpperCase() }}
+                    </div>
+                    <div class="employee-info">
+                      <span class="employee-name">{{ employee.name || 'Unnamed employee' }}</span>
+                      <span class="employee-email">{{ employee.email || 'No email available' }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <td>
+                  <span class="employee-number">{{ employee.employee_number }}</span>
+                </td>
+
+                <td>{{ employee.branch_name || 'Unassigned' }}</td>
+                <td>{{ employee.job_title || '—' }}</td>
+
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.status-active]="employee.employment_status === 'active'"
+                    [class.status-inactive]="employee.employment_status === 'inactive'"
+                    [class.status-suspended]="employee.employment_status === 'suspended'"
+                  >
+                    <span class="status-dot"></span>
+                    {{ employee.employment_status | titlecase }}
+                  </span>
+                </td>
+
+                <td>{{ employee.hired_at || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="pagination">
+        <span class="pagination-summary">
+          Page {{ currentPage }} of {{ lastPage }} · {{ total }} total
+        </span>
+
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            [disabled]="currentPage <= 1 || loading"
+            (click)="loadEmployees(currentPage - 1)"
+          >Previous</button>
+
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            [disabled]="currentPage >= lastPage || loading"
+            (click)="loadEmployees(currentPage + 1)"
+          >Next</button>
+        </div>
+      </footer>
+    }
+  </section>
+</div>

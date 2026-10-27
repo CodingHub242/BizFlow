@@ -6,6 +6,11 @@
 
 .settings-header {
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
 
   h1 {
     margin: 0 0 8px;
@@ -234,5 +239,26 @@
   .logo-section {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+.actionbuttons{
+ display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .employees{
+    padding:15px;
+    border-radius: 8px;
+    background:#111827;
+    color:#fff;
+  }
+  .editemp{
+     padding:15px;
+    border-radius: 8px;
+    color:#111827;
+    background:#fff;
+    border:1px solid rgba(95, 91, 91, 0.733)
   }
 }

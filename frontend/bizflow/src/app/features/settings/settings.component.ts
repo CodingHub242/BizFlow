@@ -1,8 +1,10 @@
-import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit,DestroyRef, inject,ChangeDetectorRef,signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
-import { AuthService } from '../../core/services/auth.service';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthService,AuthUser } from '../../core/services/auth.service';
 import {SettingsApi,BusinessProfile,UpdateBusinessProfileRequest} from '../../core/services/settings-api';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-settings',
@@ -13,7 +15,11 @@ import {SettingsApi,BusinessProfile,UpdateBusinessProfileRequest} from '../../co
 export class SettingsComponent implements OnInit {
   private readonly settingsApi = inject(SettingsApi);
   private readonly cdr = inject(ChangeDetectorRef);
+   private readonly destroyRef = inject(DestroyRef);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  readonly currentUser = signal<AuthUser | null>(null);
 
   profile: BusinessProfile | null = null;
   removingLogo = false;
@@ -36,6 +42,12 @@ export class SettingsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProfile();
+
+     this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => {
+        this.currentUser.set(user);
+      });
   }
 
   loadProfile(): void {
@@ -255,5 +267,14 @@ uploadLogo(): void {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  manageEmps(){
+    //go to employee component
+    this.router.navigateByUrl('employees');
+  }
+
+  EditProf(){
+    //should open employee/user edit/own page
   }
 }
