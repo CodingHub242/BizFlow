@@ -81,4 +81,41 @@ class EmployeeService
             ]);
         });
     }
+
+    public function update(int $tenantId,int $employeeId,array $data): Employee 
+    {
+        return DB::transaction(function () use (
+            $tenantId,
+            $employeeId,
+            $data
+        ) {
+            $employee = Employee::query()
+                ->where('tenant_id', $tenantId)
+                ->lockForUpdate()
+                ->findOrFail($employeeId);
+
+            if (array_key_exists('branch_id', $data)
+                && $data['branch_id'] !== null) {
+                $branchExists = Branch::query()
+                    ->whereKey($data['branch_id'])
+                    ->where('tenant_id', $tenantId)
+                    ->exists();
+
+                if (! $branchExists) {
+                    throw ValidationException::withMessages([
+                        'branch_id' =>
+                            'The selected branch does not belong to this tenant.',
+                    ]);
+                }
+            }
+
+            $employee->fill($data);
+            $employee->save();
+
+            return $employee->fresh([
+                'user:id,name,email',
+                'branch:id,name',
+            ]);
+        });
+    }
 }

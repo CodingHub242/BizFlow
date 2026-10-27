@@ -20,6 +20,11 @@ class TenantProvisioningService
 
     public function assignOwner(Tenant $tenant, User $user): void
     {
+        if ((int) $user->tenant_id !== (int) $tenant->id) {
+            throw new \InvalidArgumentException(
+                'The owner must belong to the specified tenant.'
+            );
+        }
         setPermissionsTeamId($tenant->id);
 
         $user->assignRole('Owner');

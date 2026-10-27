@@ -67,4 +67,16 @@ export class SettingsApi {
             formData,
         );
     }
+
+    removeBusinessLogo(): Observable<{success: boolean;message: string;data: {logo_path: string | null;logo_url: string | null;};}> 
+    {
+        return this.http.delete<{
+            success: boolean;
+            message: string;
+            data: {
+            logo_path: string | null;
+            logo_url: string | null;
+            };
+        }>(`${this.apiUrl}/settings/business-profile/logo`);
+    }
 }

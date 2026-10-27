@@ -8,18 +8,43 @@ use App\Models\Employee;
 use App\Models\Tenant;
 use Spatie\Permission\Models\Role;
 use App\Models\User;
+use Database\Seeders\BizFlowRolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\QueryException;
+use App\Services\Tenant\TenantProvisioningService;
 use Tests\TestCase;
 
 class EmployeeTest extends TestCase
 {
     use RefreshDatabase;
 
+   protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(BizFlowRolePermissionSeeder::class);
+
+//         $provisioning = app(TenantProvisioningService::class);
+// $provisioning->provision($tenant);
+
+// setPermissionsTeamId($tenant->id);
+
+// $role = Role::query()
+//     ->where('tenant_id', $tenant->id)
+//     ->where('name', 'Administrator')
+//     ->where('guard_name', 'web')
+//     ->firstOrFail();
+    }
+
     public function test_employee_domain_enforces_relationships_tenant_isolation_and_uniqueness(): void
     {
         $tenantA = Tenant::factory()->create();
         $tenantB = Tenant::factory()->create();
+
+         $provisioning = app(TenantProvisioningService::class);
+
+        $provisioning->provision($tenantA);
+        $provisioning->provision($tenantB);
 
         $branchA = Branch::factory()->create([
             'tenant_id' => $tenantA->id,
@@ -28,6 +53,8 @@ class EmployeeTest extends TestCase
         $userA = User::factory()->create([
             'tenant_id' => $tenantA->id,
         ]);
+
+       
 
         $employee = Employee::create([
             'tenant_id' => $tenantA->id,
@@ -87,6 +114,8 @@ class EmployeeTest extends TestCase
             'employment_status' => EmploymentStatus::ACTIVE,
         ]);
 
+         setPermissionsTeamId($tenantA->id);
+
         $this->assertSame('EMP-00001', $employeeB->employee_number);
         $this->assertSame($tenantB->id, $employeeB->tenant_id);
 
@@ -127,10 +156,15 @@ class EmployeeTest extends TestCase
         }
     }
 
-    public function test_employee_api_rejects_cross_tenant_user_and_branch(): void
+  public function test_employee_api_rejects_cross_tenant_user_and_branch(): void
 {
     $tenantA = Tenant::factory()->create();
     $tenantB = Tenant::factory()->create();
+
+    $provisioning = app(TenantProvisioningService::class);
+
+    $provisioning->provision($tenantA);
+    $provisioning->provision($tenantB);
 
     $userA = User::factory()->create([
         'tenant_id' => $tenantA->id,
@@ -149,9 +183,12 @@ class EmployeeTest extends TestCase
     $role = Role::query()
         ->where('tenant_id', $tenantA->id)
         ->where('name', 'Administrator')
+        ->where('guard_name', 'web')
         ->firstOrFail();
 
     $userA->assignRole($role);
+
+    $userA->givePermissionTo('employees.create');
 
     $response = $this
         ->actingAs($userA, 'sanctum')

@@ -71,6 +71,16 @@
               {{ uploadingLogo ? 'Uploading...' : 'Upload logo' }}
             </button>
           }
+
+          @if (profile?.logo_path) {
+              <button style="margin-left:5px;"
+                type="button"
+                (click)="removeLogo()"
+                [disabled]="removingLogo || uploadingLogo"
+              >
+                {{ removingLogo ? 'Removing...' : 'Remove logo' }}
+              </button>
+            }
         </div>
       }
       </div>
@@ -85,6 +95,7 @@
               type="text"
               [(ngModel)]="form.name"
               maxlength="255"
+              [readonly]="!canUpdateSettings"
               required
             />
           </div>
@@ -97,6 +108,7 @@
               type="text"
               [(ngModel)]="form.business_type"
               maxlength="100"
+              [readonly]="!canUpdateSettings"
               placeholder="e.g. Retail, Services, Construction"
             />
           </div>
@@ -109,6 +121,7 @@
               type="email"
               [(ngModel)]="form.email"
               maxlength="255"
+              [readonly]="!canUpdateSettings"
               placeholder="business@example.com"
             />
           </div>
@@ -121,6 +134,7 @@
               type="tel"
               [(ngModel)]="form.phone"
               maxlength="30"
+              [readonly]="!canUpdateSettings"
               placeholder="Business contact number"
             />
           </div>
@@ -134,6 +148,7 @@
           </div>
         }
 
+        @if(canUpdateSettings){
         <div class="form-actions">
           <button
             type="submit"
@@ -141,7 +156,7 @@
           >
             {{ saving ? 'Saving...' : 'Save changes' }}
           </button>
-        </div>
+        </div>}
       </form>
     }
   </section>

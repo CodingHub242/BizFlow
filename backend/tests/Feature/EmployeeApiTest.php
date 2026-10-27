@@ -7,6 +7,8 @@ use App\Models\Employee;
 use App\Models\Tenant;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
+use App\Services\Tenant\TenantProvisioningService;
+use Database\Seeders\BizFlowRolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,19 +16,43 @@ class EmployeeApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function assignRole(
+    
+
+protected function setUp(): void
+{
+    parent::setUp();
+
+    $this->seed(BizFlowRolePermissionSeeder::class);
+}
+
+   
+private function assignRole(
     User $user,
     string $roleName = 'Administrator'
 ): void {
-    setPermissionsTeamId($user->tenant_id);
+    $tenantId = $user->tenant_id;
+
+    $provisioning = app(TenantProvisioningService::class);
+    $provisioning->provision(
+        $user->tenant()->firstOrFail()
+    );
+
+    setPermissionsTeamId($tenantId);
 
     $role = Role::query()
-        ->where('tenant_id', $user->tenant_id)
+        ->where('tenant_id', $tenantId)
         ->where('name', $roleName)
+        ->where('guard_name', 'web')
         ->firstOrFail();
 
     $user->assignRole($role);
+
+    $this->assertTrue(
+    $user->fresh()->hasPermissionTo('employees.create', 'web'),
+    "Administrator role for tenant {$tenantId} lacks employees.create."
+);
 }
+
 
     public function test_authenticated_user_can_create_employee_but_cannot_cross_tenant_boundaries(): void
     {

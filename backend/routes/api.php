@@ -383,8 +383,22 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/dashboard/activity',[DashboardController::class, 'activity']);
 
     // EMPLOYEES
+    Route::get('/employees', [EmployeeController::class, 'index'])
+    ->middleware('permission:employees.view');
+
     Route::post('/employees', [EmployeeController::class, 'store'])
     ->middleware('permission:employees.create');
+
+    Route::get('/employees/{employee}', [EmployeeController::class, 'show'])
+    ->whereNumber('employee')
+    ->middleware('permission:employees.view');
+
+    Route::put('/employees/{employee}', [EmployeeController::class, 'update'])
+        ->whereNumber('employee')
+        ->middleware('permission:employees.update');
+
+    Route::post('/employees/accounts',[EmployeeController::class, 'storeAccount']
+    )->middleware('permission:employees.create');
 
     // QUICK BOOKS MIGRATION CENTER
     Route::post('/migration-sessions', [MigrationSessionController::class, 'store'])
@@ -475,6 +489,11 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
         TenantSettingsController::class,
         'update',
     ]);
+
+    Route::delete(
+        '/settings/business-profile/logo',
+        [TenantSettingsController::class, 'removeLogo']
+    );
 
     // ROLES
     Route::post('/roles', [RoleController::class, 'store']);

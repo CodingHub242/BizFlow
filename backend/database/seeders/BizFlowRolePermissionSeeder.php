@@ -384,20 +384,62 @@ class BizFlowRolePermissionSeeder extends Seeder
         }
     }
 
-   public function provisionTenantRoles(int $tenantId): void
-{
-    foreach (self::PERMISSIONS as $permission) {
-        Permission::findOrCreate($permission, 'web');
+
+    public function provisionTenantRoles(int $tenantId): void
+    {
+        foreach (self::PERMISSIONS as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        setPermissionsTeamId($tenantId);
+
+        foreach (self::DEFAULT_ROLES as $roleName) {
+            $role = Role::query()->firstOrCreate([
+                'tenant_id' => $tenantId,
+                'name' => $roleName,
+                'guard_name' => 'web',
+            ]);
+
+            // Initialize permissions for each newly created role.
+            if ($role->wasRecentlyCreated) {
+                $role->syncPermissions(
+                    self::ROLE_PERMISSIONS[$roleName] ?? []
+                );
+            }
+        }
     }
 
-    setPermissionsTeamId($tenantId);
 
-    foreach (self::DEFAULT_ROLES as $roleName) {
-        $role = Role::findOrCreate($roleName, 'web');
+    // public function provisionTenantRoles(int $tenantId): void
+    // {
+    //     foreach (self::PERMISSIONS as $permission) {
+    //         Permission::findOrCreate($permission, 'web');
+    //     }
 
-        $role->syncPermissions(
-            self::ROLE_PERMISSIONS[$roleName] ?? []
-        );
-    }
-}
+    //     setPermissionsTeamId($tenantId);
+
+    //     // foreach (self::DEFAULT_ROLES as $roleName) {
+    //     //     $role = Role::findOrCreate($roleName, 'web');
+
+    //     //     $role->syncPermissions(
+    //     //         self::ROLE_PERMISSIONS[$roleName] ?? []
+    //     //     );
+    //     // }
+    //     foreach (self::DEFAULT_ROLES as $roleName) {
+    //         $role = Role::query()->firstOrCreate(
+    //             [
+    //                 'tenant_id' => $tenantId,
+    //                 'name' => $roleName,
+    //                 'guard_name' => 'web',
+    //             ]
+    //         );
+    //     }
+
+    //     // Only initialize permissions when this role was just created.
+    //     if ($role->wasRecentlyCreated) {
+    //         $role->syncPermissions(
+    //             self::ROLE_PERMISSIONS[$roleName] ?? []
+    //         );
+    //     }
+    // }
 }

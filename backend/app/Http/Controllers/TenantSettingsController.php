@@ -145,4 +145,51 @@ class TenantSettingsController extends Controller
             ],
         ]);
     }
+
+
+    public function removeLogo(Request $request): JsonResponse
+    {
+        $this->authorizeSettings($request, 'settings.update_logo');
+
+        $tenant = $this->currentTenant($request);
+
+        $oldPath = $tenant->logo_path;
+
+        if (!$oldPath) {
+            return response()->json([
+                'success' => true,
+                'message' => 'No business logo is currently set.',
+                'data' => [
+                    'logo_path' => null,
+                    'logo_url' => null,
+                ],
+            ]);
+        }
+
+        // Only allow deletion from this tenant's logo directory.
+        $expectedPrefix = "tenant-logos/{$tenant->id}/";
+
+        abort_unless(
+            str_starts_with($oldPath, $expectedPrefix),
+            403,
+            'The stored logo path is invalid.'
+        );
+
+        // Clear the database first so a file deletion failure
+        // cannot leave the profile pointing to a missing file.
+        $tenant->logo_path = null;
+        $tenant->save();
+
+        Storage::disk('public')->delete($oldPath);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Business logo removed successfully.',
+            'data' => [
+                'logo_path' => null,
+                'logo_url' => null,
+            ],
+        ]);
+    }
+
 }

@@ -29,7 +29,11 @@ class EmployeeRoleServiceTest extends TestCase
             'employee_number' => 'EMP-00001',
         ]);
 
-        setPermissionsTeamId($tenant->id);
+       $provisioning = app(\App\Services\Tenant\TenantProvisioningService::class);
+
+$provisioning->provision($tenant);
+
+setPermissionsTeamId($tenant->id);
 
         $service = app(EmployeeRoleService::class);
 

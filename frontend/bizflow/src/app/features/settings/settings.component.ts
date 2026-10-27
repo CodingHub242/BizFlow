@@ -16,7 +16,7 @@ export class SettingsComponent implements OnInit {
   private readonly authService = inject(AuthService);
 
   profile: BusinessProfile | null = null;
-
+  removingLogo = false;
   form: UpdateBusinessProfileRequest = {
     name: '',
     email: null,
@@ -201,5 +201,59 @@ uploadLogo(): void {
 
   get canUpdateLogo(): boolean {
     return this.authService.hasPermission('settings.update_logo');
+  }
+
+  removeLogo(): void {
+    if (
+      !this.profile?.logo_path ||
+      this.removingLogo
+    ) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Are you sure you want to remove your business logo?'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.removingLogo = true;
+    this.logoError = '';
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.settingsApi.removeBusinessLogo()
+      .pipe(
+        finalize(() => {
+          this.removingLogo = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          if (this.profile) {
+            this.profile = {
+              ...this.profile,
+              logo_path: null,
+              logo_url: null,
+            };
+          }
+
+          this.selectedLogo = null;
+          this.logoPreview = null;
+          this.successMessage = response.message;
+
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          this.logoError =
+            error?.error?.message ??
+            'Unable to remove the business logo.';
+
+          this.cdr.detectChanges();
+        },
+      });
   }
 }
