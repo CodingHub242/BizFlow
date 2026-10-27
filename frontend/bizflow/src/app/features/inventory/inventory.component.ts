@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {Branch,BranchApi} from '../../core/services/branch-api';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
-
+import { AuthService } from '../../core/services/auth.service';
 import {Inventory,InventoryApi} from '../../core/services/inventory-api.service';
 
 type StockStatus =
@@ -23,7 +23,7 @@ export class InventoryComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly branchApi = inject(BranchApi);
-
+  private readonly authService = inject(AuthService);
   private readonly destroy$ = new Subject<void>();
   private readonly searchSubject = new Subject<string>();
 
@@ -234,6 +234,22 @@ export class InventoryComponent implements OnInit, OnDestroy {
 
   openImportExport(): void {
     this.router.navigate(['/inventory/import-export']);
+  }
+
+   get canAdjust(): boolean {
+    return this.authService.hasPermission('inventory.adjust');
+  }
+
+  get canReceive(): boolean {
+    return this.authService.hasPermission('inventory.receive');
+  }
+
+   get canTransfer(): boolean {
+    return this.authService.hasPermission('inventory.transfer');
+  }
+
+   get canView(): boolean {
+    return this.authService.hasPermission('inventory.view');
   }
 
   ngOnDestroy(): void {

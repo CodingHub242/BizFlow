@@ -2,7 +2,7 @@ import {ChangeDetectorRef,Component,OnDestroy,OnInit,inject} from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin, Subject, takeUntil } from 'rxjs';
-
+import { AuthService } from '../../../core/services/auth.service';
 import {Inventory,InventoryApi,TransferStockRequest} from '../../../core/services/inventory-api.service';
 import { Branch, BranchApi } from '../../../core/services/branch-api';
 import {CatalogApi,CatalogItem} from '../../../core/services/catalog-api';
@@ -21,7 +21,7 @@ export class TransferStockComponent implements OnInit, OnDestroy {
   private readonly catalogApi = inject(CatalogApi);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
-
+  private readonly authService = inject(AuthService); 
   private readonly destroy$ = new Subject<void>();
   private balanceRequestVersion = 0;
 
@@ -369,6 +369,10 @@ export class TransferStockComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         },
       });
+  }
+
+   get canTransfer(): boolean {
+    return this.authService.hasPermission('inventory.transfer');
   }
 
   formatQuantity(value: number | string): string {

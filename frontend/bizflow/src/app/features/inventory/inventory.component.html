@@ -9,18 +9,21 @@
 
 
     <div class="header-actions">
+      @if(canTransfer){
       <button style="padding:15px 17px;" class="secondary-button" type="button" (click)="transferStock()">
         Transfer Stock
-      </button>
+      </button>}
 
+       @if(canAdjust){
       <button style="padding:15px 17px;" class="secondary-button" type="button" (click)="adjustStock()">
         Adjust Stock
-      </button>
+      </button>}
 
+       @if(canReceive){
       <button class="primary-button" type="button" (click)="receiveStock()">
         <span>+</span>
         Receive Stock
-      </button>
+      </button>}
 
       <button type="button" class="secondary-button" (click)="openImportExport()">
         Import / Export
@@ -221,13 +224,14 @@
 
                 <!-- Actions -->
                 <td>
+                   @if(canView){
                   <button
                     class="view-button"
                     type="button"
                     (click)="viewInventory(item.id)"
                   >
                     View
-                  </button>
+                  </button>}
                 </td>
 
               </tr>

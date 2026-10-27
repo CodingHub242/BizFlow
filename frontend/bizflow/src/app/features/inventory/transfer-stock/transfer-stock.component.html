@@ -25,6 +25,7 @@
     </div>
   }
 
+  @if(canTransfer){
   <div class="form-card">
     @if (success) {
       <div class="alert alert-success" role="status">
@@ -259,5 +260,7 @@
         </button>
       </div>
     </form>
-  </div>
+  </div>}@else{
+    <p>You don't have the permission to transfer Stock..</p>
+  }
 </div>

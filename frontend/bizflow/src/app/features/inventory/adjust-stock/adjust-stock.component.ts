@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import {SearchableSelectComponent,SearchableSelectOption} from '../../../shared/components/searchable-select/searchable-select.component';
-
+import { AuthService } from '../../../core/services/auth.service';
 import {AdjustStockRequest,Inventory,InventoryApi} from '../../../core/services/inventory-api.service';
 import { Branch, BranchApi } from '../../../core/services/branch-api';
 import {CatalogApi,CatalogItem} from '../../../core/services/catalog-api';
@@ -23,6 +23,7 @@ export class AdjustStockComponent implements OnInit, OnDestroy {
   private readonly catalogApi = inject(CatalogApi);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
 
   private readonly destroy$ = new Subject<void>();
   private stockLookupVersion = 0;
@@ -326,6 +327,9 @@ export class AdjustStockComponent implements OnInit, OnDestroy {
   //       (item.sku ?? '').toLowerCase().includes(search),
   //   );
   // }
+   get canAdjust(): boolean {
+    return this.authService.hasPermission('inventory.adjust');
+  }
 
   get branchOptions(): SearchableSelectOption[] {
   return this.branches.map((branch) => ({

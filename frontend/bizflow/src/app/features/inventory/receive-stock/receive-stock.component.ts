@@ -2,6 +2,7 @@ import {ChangeDetectorRef,Component,OnDestroy,OnInit,inject} from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
+import { AuthService } from '../../../core/services/auth.service';
 import {SearchableSelectComponent,SearchableSelectOption} from '../../../shared/components/searchable-select/searchable-select.component';
 import {InventoryApi,ReceiveStockRequest,} from '../../../core/services/inventory-api.service';
 import { Branch, BranchApi } from '../../../core/services/branch-api';
@@ -20,6 +21,7 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
   private readonly catalogApi = inject(CatalogApi);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly authService = inject(AuthService);
 
   private readonly destroy$ = new Subject<void>();
 
@@ -293,6 +295,10 @@ closeCreateBranch(): void {
       },
     });
 }
+
+ get canReceive(): boolean {
+    return this.authService.hasPermission('inventory.receive');
+  }
 
 //managing search and selectors
   get branchOptions(): SearchableSelectOption[] {

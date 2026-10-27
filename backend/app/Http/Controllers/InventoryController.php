@@ -16,8 +16,29 @@ use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
+     private function authorizeSettings(Request $request,string $permission): void 
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user && $user->tenant_id,
+            403,
+            'Does Not Exist'
+        );
+
+        setPermissionsTeamId($user->tenant_id);
+
+        abort_unless(
+            $user->hasPermissionTo($permission, 'web'),
+            403,
+            'You do not have permission to perform this action.'
+        );
+    }
+
     public function index(Request $request): JsonResponse
     {
+         $this->authorizeSettings($request, 'inventory.view');
+
         $request->validate([
             'branch_id' => ['sometimes', 'integer','min:1'],
             'catalog_item_id' => ['sometimes', 'integer','min:1'],
@@ -74,6 +95,8 @@ class InventoryController extends Controller
 
     public function show(Request $request, Inventory $inventory): JsonResponse
     {
+         $this->authorizeSettings($request, 'inventory.view');
+
         if ($inventory->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -89,6 +112,7 @@ class InventoryController extends Controller
 
     public function availability(Request $request,InventoryService $inventoryService): JsonResponse 
     {
+         $this->authorizeSettings($request, 'inventory.view');
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'catalog_item_id' => ['required', 'integer', 'min:1'],
@@ -110,6 +134,7 @@ class InventoryController extends Controller
 
     public function receive(Request $request,InventoryService $inventoryService): JsonResponse 
     {
+         $this->authorizeSettings($request, 'inventory.receive');
         $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'catalog_item_id' => ['required', 'integer', 'min:1'],
@@ -151,6 +176,7 @@ class InventoryController extends Controller
 
     public function adjust(Request $request,InventoryService $inventoryService): JsonResponse 
     {
+         $this->authorizeSettings($request, 'inventory.adjust');
         $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'catalog_item_id' => ['required', 'integer', 'min:1'],
@@ -186,6 +212,7 @@ class InventoryController extends Controller
 
     public function movements(Request $request): JsonResponse
     {
+         $this->authorizeSettings($request, 'inventory.view');
         $request->validate([
             'branch_id' => ['sometimes', 'integer', 'min:1'],
             'catalog_item_id' => ['sometimes', 'integer', 'min:1'],
@@ -238,6 +265,7 @@ class InventoryController extends Controller
 
     public function transfer(Request $request,InventoryService $inventoryService): JsonResponse 
     {
+         $this->authorizeSettings($request, 'inventory.transfer');
         if ($request->has('source_branch_id') && $request->has('destination_branch_id')) {
             $request->merge([
                 'from_branch_id' => $request->input('source_branch_id'),
@@ -289,6 +317,8 @@ class InventoryController extends Controller
 
     public function openingStock(Request $request,InventoryService $inventoryService): JsonResponse 
     {
+         $this->authorizeSettings($request, 'inventory.receive');
+
         $validated = $request->validate([
             'branch_id' => ['required', 'integer', 'min:1'],
             'catalog_item_id' => ['required', 'integer', 'min:1'],
