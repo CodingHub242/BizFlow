@@ -105,11 +105,11 @@ viewMode: 'active' | 'archived' = 'active';
   }
 
    get canViewItem(): boolean {
-    return this.authService.hasPermission('customers.update');
+    return this.authService.hasPermission('products.view');
   }
 
   get canCreateItem(): boolean {
-    return this.authService.hasPermission('customers.update');
+    return this.authService.hasPermission('products.create');
   }
 
 
