@@ -90,6 +90,11 @@ class BizFlowRolePermissionSeeder extends Seeder
         'categories.create',
         'categories.update',
         'categories.delete',
+
+        // Business Settings
+        'settings.view',
+        'settings.update',
+        'settings.update_logo',
     ];
 
     public const ROLE_PERMISSIONS = [
@@ -154,6 +159,11 @@ class BizFlowRolePermissionSeeder extends Seeder
         'categories.create',
         'categories.update',
         'categories.delete',
+
+        // Business Settings
+        'settings.view',
+        'settings.update',
+        'settings.update_logo',
     ],
 
     'Administrator' => [
@@ -217,6 +227,11 @@ class BizFlowRolePermissionSeeder extends Seeder
         'categories.create',
         'categories.update',
         'categories.delete',
+
+        // Business Settings
+        'settings.view',
+        'settings.update',
+        'settings.update_logo',
     ],
 
     'Manager' => [
@@ -262,6 +277,9 @@ class BizFlowRolePermissionSeeder extends Seeder
         'categories.view',
         'categories.create',
         'categories.update',
+
+        // Business Settings
+        'settings.view',
     ],
 
     'Salesperson' => [

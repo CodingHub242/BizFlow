@@ -3,6 +3,7 @@ import { CustomerApi, Customer,CustomerPagination } from '../../core/services/cu
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, Subscription } from 'rxjs';
+import { AuthService } from '../../core/services/auth.service';
 import { map } from 'rxjs/operators';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
@@ -19,6 +20,7 @@ export class CustomersComponent  implements OnInit {
  private readonly searchSubscription: Subscription;
  private readonly router = inject(Router);
  private readonly changeDetector = inject(ChangeDetectorRef);
+ private readonly authService = inject(AuthService);
 
  readonly Math = Math;
  customers: Customer[] = [];
@@ -71,6 +73,26 @@ search = '';
 
   viewCustomer(id: any): void {
     this.router.navigate(['/customers', id]);
+  }
+
+    get canCreateCustomer(): boolean {
+    return this.authService.hasPermission('customers.create');
+  }
+
+   get canViewCustomers(): boolean {
+    return this.authService.hasPermission('customers.view');
+  }
+
+  get canUpdateCustomers(): boolean {
+    return this.authService.hasPermission('customers.update');
+  }
+
+  get canDeleteCustomer(): boolean {
+    return this.authService.hasPermission('customers.delete');
+  }
+
+   get canRestoreCustomer(): boolean {
+    return this.authService.hasPermission('customers.delete');
   }
 
   ngOnDestroy(): void {

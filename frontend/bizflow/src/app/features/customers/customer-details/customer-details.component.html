@@ -21,7 +21,7 @@
         Back to Customers
       </button>
 
-      @if (!isEditing && customer) {
+      @if (!isEditing && customer && canUpdateCustomers) {
         <button
           type="button"
           class="primary-button"
@@ -146,12 +146,14 @@
                 Cancel
               </button>
 
+              @if(canUpdateCustomers){
               <button
                 type="submit"
                 class="primary-button"
               >
                 Save Changes
               </button>
+            }
             </div>
           </form>
         </section>

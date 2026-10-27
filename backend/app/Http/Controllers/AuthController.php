@@ -63,13 +63,21 @@ class AuthController extends Controller
 
         $token = $user->createToken('BizFlow Web');
 
-        $roles = DB::table('model_has_roles')
-            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-            ->where('model_has_roles.model_id', $user->id)
-            ->where('model_has_roles.model_type', \App\Models\User::class)
-            ->pluck('roles.name');
+        // $roles = DB::table('model_has_roles')
+        //     ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+        //     ->where('model_has_roles.model_id', $user->id)
+        //     ->where('model_has_roles.model_type', \App\Models\User::class)
+        //     ->pluck('roles.name');
 
-        foreach($roles as $role){}
+        // foreach($roles as $role){}
+        setPermissionsTeamId($user->tenant_id);
+
+        $role = $user->getRoleNames()->first();
+
+        $permissions = $user->getAllPermissions()
+            ->pluck('name')
+            ->unique()
+            ->values();
 
         return response()->json([
             'success' => true,
@@ -82,6 +90,7 @@ class AuthController extends Controller
                 //get the role of the user from model has roles and sanctum
                 'role' => $role,
                 'tenant_id' => $user->tenant_id,
+                'permissions' => $permissions,
             ],
         ]);
     }

@@ -9,7 +9,8 @@ export interface AuthUser {
   email: string;
   tenant_id: number;
   role: string; // Add the role property to the AuthUser interface so that it can be used in the TopbarComponent
-   tenant?: {
+  permissions: string[];
+  tenant?: {
     id: number;
     name: string;
     status: string;
@@ -55,9 +56,7 @@ export interface BusinessRegistrationResponse {
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private currentUserSubject = new BehaviorSubject<any>(
-    this.getStoredUser()
-  );
+  private currentUserSubject = new BehaviorSubject<AuthUser | null>(this.getStoredUser());
   currentUser$ = this.currentUserSubject.asObservable();
   
   private readonly apiUrl = API_URL;
@@ -66,7 +65,7 @@ export class AuthService {
 
   private getStoredUser() {
   const user = localStorage.getItem('bizflow_user');
-  return user ? JSON.parse(user) : null;
+  return user ? JSON.parse(user) as AuthUser : null;
 }
   login(email: string, password: string): Observable<LoginResponse> {
     return this.http
@@ -120,6 +119,18 @@ export class AuthService {
       localStorage.setItem('bizflow_user', JSON.stringify(user));
       this.currentUserSubject.next(user);
     }),
+  );
+}
+
+hasPermission(permission: string): boolean {
+  const user = this.currentUserSubject.value;
+
+  return user?.permissions?.includes(permission) ?? false;
+}
+
+hasAnyPermission(permissions: string[]): boolean {
+  return permissions.some(permission =>
+    this.hasPermission(permission)
   );
 }
 

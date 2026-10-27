@@ -11,8 +11,29 @@ use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
+    private function authorizeSettings(Request $request,string $permission): void 
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user && $user->tenant_id,
+            403,
+            'Does Not Exist'
+        );
+
+        setPermissionsTeamId($user->tenant_id);
+
+        abort_unless(
+            $user->hasPermissionTo($permission, 'web'),
+            403,
+            'You do not have permission to perform this action.'
+        );
+    }
+
     public function store(StoreCustomerRequest $request): JsonResponse
     {
+        $this->authorizeSettings($request, 'customers.create');
+
         $customer = Customer::create([
             'tenant_id' => $request->user()->tenant_id,
             'name' => $request->validated('name'),
@@ -35,6 +56,8 @@ class CustomerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+         $this->authorizeSettings($request, 'customers.view');
+
         $request->validate([
             'status' => ['sometimes', 'string', 'in:active,inactive'],
         ]);
@@ -80,6 +103,8 @@ class CustomerController extends Controller
 
     public function show(Request $request, Customer $customer): JsonResponse
     {
+         $this->authorizeSettings($request, 'customers.view');
+
         if ($customer->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -92,6 +117,8 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request,Customer $customer): JsonResponse 
     {
+         $this->authorizeSettings($request, 'customers.update');
+
         if ($customer->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -107,6 +134,7 @@ class CustomerController extends Controller
 
     public function destroy(Request $request, Customer $customer): JsonResponse
     {
+         $this->authorizeSettings($request, 'customers.delete');
         if ($customer->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
@@ -121,6 +149,7 @@ class CustomerController extends Controller
 
     public function restore(Request $request, Customer $customer): JsonResponse
     {
+         $this->authorizeSettings($request, 'customers.delete');
         if ($customer->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }

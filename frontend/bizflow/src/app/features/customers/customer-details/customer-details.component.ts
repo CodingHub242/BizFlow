@@ -1,6 +1,7 @@
 import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Router } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Customer, CustomerApi } from '../../../core/services/customer-api';
 
@@ -17,6 +18,7 @@ export class CustomerDetailsComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly formBuilder = inject(FormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
+   private readonly authService = inject(AuthService);
   readonly form = this.formBuilder.group({
     name: ['', Validators.required],
     email: [''],
@@ -97,4 +99,18 @@ cancelEditing(): void {
       },
     });
   }
+
+  get canUpdateCustomers(): boolean {
+    return this.authService.hasPermission('customers.update');
+  }
+
+  get canDeleteCustomer(): boolean {
+    return this.authService.hasPermission('customers.delete');
+  }
+
+   get canRestoreCustomer(): boolean {
+    return this.authService.hasPermission('customers.delete');
+  }
+
+
 }

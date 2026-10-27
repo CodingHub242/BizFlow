@@ -26,6 +26,7 @@ use App\Http\Controllers\QuickBooksSupplierImportController;
 use App\Http\Controllers\QuickBooksPaymentsImportController;
 use App\Http\Controllers\QuickBooksCompanyInfoController;
 use App\Http\Controllers\QuickBooksBillsImportController;
+use App\Http\Controllers\TenantSettingsController;
 use App\Http\Controllers\QuickBooksEstimatesImportController;
 use App\Http\Controllers\QuickBooksOAuthController;
 use App\Http\Controllers\InventoryImportController;
@@ -45,24 +46,41 @@ Route::post('/logout', [AuthController::class, 'logout'])
 Route::get('/user', function (Request $request) {
      $user = $request->user();
 
-    $roles = DB::table('model_has_roles')
-            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-            ->where('model_has_roles.model_id', $user->id)
-            ->where('model_has_roles.model_type', \App\Models\User::class)
-            ->pluck('roles.name');
+      abort_unless($user, 401);
 
-    foreach($roles as $role){}
+       if (!$user->tenant_id) {
+            abort(403, 'Business account could not be found.');
+        }
 
-    return response()->json([
+        // Establish the active tenant context for Spatie Permission.
+        setPermissionsTeamId($user->tenant_id);
+
+          $tenant = $user->tenant;
+
+           abort_unless($tenant, 403, 'Business account could not be found.');
+
+    // $roles = DB::table('model_has_roles')
+    //         ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+    //         ->where('model_has_roles.model_id', $user->id)
+    //         ->where('model_has_roles.model_type', \App\Models\User::class)
+    //         ->pluck('roles.name');
+
+    // foreach($roles as $role){}
+
+     return response()->json([
         'id' => $user->id,
         'name' => $user->name,
         'email' => $user->email,
-        'role' => $role,
+        'role' => $user->getRoleNames()->first(),
         'tenant_id' => $user->tenant_id,
+        'permissions' => $user->getAllPermissions()
+            ->pluck('name')
+            ->unique()
+            ->values(),
         'tenant' => [
-            'id' => $user->tenant->id,
-            'name' => $user->tenant->name,
-            'status' => $user->tenant->status->value,
+            'id' => $tenant->id,
+            'name' => $tenant->name,
+            'status' => $tenant->status->value,
         ],
     ]);
 })->middleware('auth:sanctum');
@@ -441,6 +459,22 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     // GENERAL TENANT REPORTS
     Route::get('/reports/overview', [GeneralReportController::class,'overview',
     ])->middleware('permission:reports.view');
+
+
+    //Settings Operations
+    Route::get('/settings/business-profile', [
+        TenantSettingsController::class,
+        'show',
+    ]);
+
+    Route::post('/settings/business-profile/logo',
+        [TenantSettingsController::class, 'uploadLogo']
+    );
+
+    Route::put('/settings/business-profile', [
+        TenantSettingsController::class,
+        'update',
+    ]);
 
     // ROLES
     Route::post('/roles', [RoleController::class, 'store']);

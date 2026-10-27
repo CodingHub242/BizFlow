@@ -1,0 +1,149 @@
+@if(canViewSettings){
+<div class="settings-page">
+  <header class="settings-header">
+    <div>
+      <h1>Settings</h1>
+      <p>Manage your business information and preferences.</p>
+    </div>
+  </header>
+
+  <section class="settings-card">
+    <div class="card-heading">
+      <div>
+        <h2>Business Profile</h2>
+        <p>Update the information associated with your business.</p>
+      </div>
+    </div>
+
+    @if (loading) {
+      <p class="status-message">Loading business profile...</p>
+    } @else {
+      @if (errorMessage) {
+        <div class="alert error" role="alert">
+          {{ errorMessage }}
+        </div>
+      }
+
+      @if (successMessage) {
+        <div class="alert success" role="status">
+          {{ successMessage }}
+        </div>
+      }
+
+      <div class="logo-section">
+        <div class="logo-preview">
+          @if (logoPreview) {
+            <img [src]="logoPreview" alt="Selected business logo" />
+          } @else if (profile?.logo_path) {
+           <img
+            [src]="profile?.logo_url"
+            alt="Business logo"
+          />
+          } @else {
+            <span class="logo-placeholder">
+              {{ form.name.charAt(0).toUpperCase() || 'B' }}
+            </span>
+          }
+        </div>
+
+        @if(canUpdateLogo){
+        <div class="logo-controls">
+          <h3>Business logo</h3>
+          <p>JPG, PNG, or WebP. Maximum size: 2 MB.</p>
+
+          <input
+            #logoInput
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            (change)="onLogoSelected($event)"
+          />
+
+          @if (logoError) {
+            <p class="field-error" role="alert">{{ logoError }}</p>
+          }
+
+          @if (selectedLogo) {
+            <button
+              type="button"
+              (click)="uploadLogo()"
+              [disabled]="uploadingLogo"
+            >
+              {{ uploadingLogo ? 'Uploading...' : 'Upload logo' }}
+            </button>
+          }
+        </div>
+      }
+      </div>
+
+      <form (ngSubmit)="saveProfile()">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="businessName">Business name *</label>
+            <input
+              id="businessName"
+              name="name"
+              type="text"
+              [(ngModel)]="form.name"
+              maxlength="255"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="businessType">Business type</label>
+            <input
+              id="businessType"
+              name="business_type"
+              type="text"
+              [(ngModel)]="form.business_type"
+              maxlength="100"
+              placeholder="e.g. Retail, Services, Construction"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="businessEmail">Business email</label>
+            <input
+              id="businessEmail"
+              name="email"
+              type="email"
+              [(ngModel)]="form.email"
+              maxlength="255"
+              placeholder="business@example.com"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="businessPhone">Business phone</label>
+            <input
+              id="businessPhone"
+              name="phone"
+              type="tel"
+              [(ngModel)]="form.phone"
+              maxlength="30"
+              placeholder="Business contact number"
+            />
+          </div>
+        </div>
+
+        @if (profile) {
+          <div class="readonly-field">
+            <span>Business identifier</span>
+            <strong>{{ profile.slug }}</strong>
+            <small>This identifier is managed separately.</small>
+          </div>
+        }
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            [disabled]="!canUpdateSettings || saving || !form.name.trim()"
+          >
+            {{ saving ? 'Saving...' : 'Save changes' }}
+          </button>
+        </div>
+      </form>
+    }
+  </section>
+</div>
+}

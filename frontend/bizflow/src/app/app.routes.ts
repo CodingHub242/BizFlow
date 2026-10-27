@@ -183,6 +183,12 @@ export const routes: Routes = [
         import('./features/general-reports/general-reports.component')
           .then(m => m.GeneralReportsComponent),
     },
+    {
+      path: 'settings',
+      loadComponent: () =>
+        import('./features/settings/settings.component')
+          .then(m => m.SettingsComponent),
+    },
       
     ],
   },

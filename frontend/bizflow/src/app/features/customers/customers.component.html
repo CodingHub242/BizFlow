@@ -5,9 +5,11 @@
       <p>Manage your customers and their business history.</p>
     </div>
 
+    @if(canCreateCustomer){
     <button type="button" class="primary-button" (click)="addCustomer()">
       + Add Customer
     </button>
+  }
   </div>
 
   <div class="customer-toolbar">
@@ -31,9 +33,11 @@
 
     <p>Add your first customer to get started.</p>
 
+     @if(canCreateCustomer){
     <button type="button" class="primary-button">
       + Add Customer
     </button>
+  }
   </div>
 } @else {
   <div class="customer-table-card">
@@ -49,7 +53,7 @@
 
       <tbody>
         @for (customer of customers; track customer.id) {
-          <tr (click)="viewCustomer(customer?.id)">
+          <tr (click)="canViewCustomers ? viewCustomer(customer?.id) : null">
             <td>
               <div class="customer-name">
                 {{ customer.name }}
