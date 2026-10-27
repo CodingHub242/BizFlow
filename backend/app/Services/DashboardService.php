@@ -25,15 +25,16 @@ class DashboardService
 
 {
 
-public function summary(int $tenantId,?string $dateFrom = null,?string $dateTo = null): array
-
-       {
+        public function summary(int $tenantId,?string $dateFrom = null,?string $dateTo = null): array
+        {
 
            $salesTotal = Invoice::query()
 
                ->where('tenant_id', $tenantId)
 
-               ->whereNotIn('status', ['draft', 'cancelled'])
+               ->whereNotIn('status', ['cancelled'])
+
+               ->whereIn('payment_status',['partially_paid','paid'])
 
                ->when($dateFrom, function ($query) use ($dateFrom) {
 
@@ -108,7 +109,9 @@ public function summary(int $tenantId,?string $dateFrom = null,?string $dateTo =
 
                $query->where('tenant_id', $tenantId)
 
-                   ->whereNotIn('status', ['draft', 'cancelled'])
+                   ->whereNotIn('status', ['cancelled'])
+
+                   ->whereIn('payment_status',['partially_paid','paid'])
 
                    ->when($dateFrom, function ($query) use ($dateFrom) {
 
@@ -150,7 +153,9 @@ public function summary(int $tenantId,?string $dateFrom = null,?string $dateTo =
 
                $query->where('tenant_id', $tenantId)
 
-                   ->whereNotIn('status', ['draft', 'cancelled'])
+                   ->whereNotIn('status', ['cancelled'])
+
+                   ->whereIn('payment_status',['partially_paid','paid'])
 
                    ->when($dateFrom, function ($query) use ($dateFrom) {
 
@@ -200,7 +205,7 @@ public function summary(int $tenantId,?string $dateFrom = null,?string $dateTo =
 
                'reversals',
 
-function ($join) {
+                function ($join) {
 
                    $join->on(
 
@@ -242,7 +247,7 @@ function ($join) {
 
         $outstandingInvoiceTotal = (float) Invoice::query()
             ->where('invoices.tenant_id', $tenantId)
-            ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+            ->whereNotIn('invoices.status', ['cancelled'])
             ->when($dateFrom, function ($query) use ($dateFrom) {
                 $query->whereDate('invoices.issued_at', '>=', $dateFrom);
             })
@@ -273,7 +278,7 @@ function ($join) {
 
             $outstandingInvoicePreviousPeriod = (float) Invoice::query()
                 ->where('invoices.tenant_id', $tenantId)
-                ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+                ->whereNotIn('invoices.status', ['cancelled'])
                 ->whereBetween('invoices.issued_at', [$previousFrom, $previousTo])
                 ->leftJoinSub($netPayments, 'previous_payments', function ($join) {
                     $join->on('previous_payments.invoice_id', '=', 'invoices.id');
@@ -305,7 +310,7 @@ function ($join) {
 
             $outstandingInvoices = Invoice::query()
             ->where('invoices.tenant_id', $tenantId)
-            ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+            ->whereNotIn('invoices.status', ['cancelled'])
             ->leftJoin('customers', function ($join) {
                 $join->on('customers.id', '=', 'invoices.customer_id')
                     ->on('customers.tenant_id', '=', 'invoices.tenant_id');
@@ -368,7 +373,8 @@ function ($join) {
             ->where('invoice_items.tenant_id', $tenantId)
             ->whereHas('invoice', function ($query) use ($tenantId, $dateFrom, $dateTo) {
                 $query->where('tenant_id', $tenantId)
-                    ->whereNotIn('status', ['draft', 'cancelled'])
+                    ->whereNotIn('status', ['cancelled'])
+                    ->whereIn('payment_status',['partially_paid','paid'])
                     ->when($dateFrom, function ($query) use ($dateFrom) {
                         $query->whereDate('issued_at', '>=', $dateFrom);
                     })
@@ -497,7 +503,8 @@ function ($join) {
 
                ->where('invoices.tenant_id', $tenantId)
 
-               ->whereNotIn('invoices.status', ['draft', 'cancelled'])
+               ->whereNotIn('invoices.status', ['cancelled'])
+               ->whereIn('invoices.payment_status',['partially_paid','paid'])
 
                ->when(
 
@@ -511,11 +518,14 @@ function ($join) {
 
                    $dateTo,
 
-fn($query) => $query->whereDate('invoices.issued_at', '<=', $dateTo)
+                    fn($query) => $query->whereDate('invoices.issued_at', '<=', $dateTo)
 
                )
 
-               ->join('branches', 'branches.id', '=', 'invoices.branch_id')
+              ->join('branches', function ($join) {
+                    $join->on('branches.id', '=', 'invoices.branch_id')
+                        ->on('branches.tenant_id', '=', 'invoices.tenant_id');
+                })
 
                ->selectRaw('
 
@@ -547,61 +557,46 @@ fn($query) => $query->whereDate('invoices.issued_at', '<=', $dateTo)
 
                ->toArray();
 
-          $paymentsByMethod = InvoicePayment::query()
 
-               ->where('tenant_id', $tenantId)
+        $paymentReversals = DB::table('invoice_payment_reversals')
+            ->select('invoice_payment_id')
+            ->selectRaw('SUM(amount) AS reversed_total')
+            ->where('tenant_id', $tenantId)
+            ->groupBy('invoice_payment_id');
 
-               ->when(
-
-                   $dateFrom,
-
-fn($query) => $query->whereDate('paid_at', '>=', $dateFrom)
-
-               )
-
-               ->when(
-
-                   $dateTo,
-
-fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
-
-               )
-
-               ->selectRaw('method as payment_method, SUM(amount) as total')
-
-               ->groupBy('method')
-
-               ->orderByRaw("
-
-                   CASE method
-
-                       WHEN 'cash' THEN 1
-
-                       WHEN 'mobile_money' THEN 2
-
-                       WHEN 'bank_transfer' THEN 3
-
-                       WHEN 'card' THEN 4
-
-                       ELSE 5
-
-                   END
-
-               ")
-
-               ->get()
-
-               ->map(fn($payment) => [
-
-                   'payment_method' => $payment->payment_method,
-
-                   'total' => (float) $payment->total,
-
-               ])
-
-               ->values()
-
-               ->toArray();
+         $paymentsByMethod = InvoicePayment::query()
+            ->where('invoice_payments.tenant_id', $tenantId)
+            ->leftJoinSub($paymentReversals, 'reversals', function ($join) {
+                $join->on(
+                    'reversals.invoice_payment_id',
+                    '=',
+                    'invoice_payments.id'
+                );
+            })
+            ->when($dateFrom, function ($query) use ($dateFrom) {
+                $query->whereDate('invoice_payments.paid_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function ($query) use ($dateTo) {
+                $query->whereDate('invoice_payments.paid_at', '<=', $dateTo);
+            }) ->selectRaw('
+                invoice_payments.method AS payment_method,
+                SUM(
+                    invoice_payments.amount
+                    - COALESCE(reversals.reversed_total, 0)
+                ) AS total
+            ')
+            ->groupBy('invoice_payments.method')
+            ->havingRaw('SUM(
+                invoice_payments.amount
+                - COALESCE(reversals.reversed_total, 0)
+            ) > 0') ->orderBy('invoice_payments.method')
+            ->get()
+            ->map(fn ($payment) => [
+                'payment_method' => $payment->payment_method,
+                'total' => (float) $payment->total,
+            ])
+            ->values()
+            ->toArray();
 
            $customerCount = Customer::query()
 
@@ -663,7 +658,9 @@ fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
 
                ->where('tenant_id', $tenantId)
 
-               ->whereNotIn('status', ['draft', 'cancelled'])
+               ->whereNotIn('status', ['cancelled'])
+
+               ->whereIn('payment_status',['partially_paid','paid'])
 
                ->when($dateFrom, function ($query) use ($dateFrom) {
 
@@ -697,7 +694,9 @@ fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
 
                    ->where('tenant_id', $tenantId)
 
-                   ->whereNotIn('status', ['draft', 'cancelled'])
+                   ->whereNotIn('status', ['cancelled'])
+
+                   ->whereIn('payment_status',['partially_paid','paid'])
 
                    ->whereBetween('issued_at', [$previousFrom, $previousTo])
 
@@ -795,7 +794,9 @@ fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
 
                ->where('tenant_id', $tenantId)
 
-               ->whereNotIn('status', ['draft', 'cancelled'])
+               ->whereNotIn('status', ['cancelled'])
+
+               ->whereIn('payment_status',['partially_paid','paid'])
 
                ->whereBetween('issued_at', [$trendStart, $trendEnd])
 
@@ -813,7 +814,7 @@ fn($query) => $query->whereDate('paid_at', '<=', $dateTo)
 
                ->keyBy(
 
-fn ($row) => \Carbon\Carbon::parse($row->period)
+                fn ($row) => \Carbon\Carbon::parse($row->period)
 
                        ->format($periodFormat)
 
@@ -865,7 +866,9 @@ fn ($row) => \Carbon\Carbon::parse($row->period)
 
                    ->where('tenant_id', $tenantId)
 
-                   ->whereNotIn('status', ['draft', 'cancelled'])
+                   ->whereNotIn('status', ['cancelled'])
+
+                   ->whereIn('invoices.payment_status',['partially_paid','paid'])
 
                    ->whereBetween('issued_at', [$previousFrom, $previousTo])
 
@@ -887,7 +890,7 @@ fn ($row) => \Carbon\Carbon::parse($row->period)
 
                ->where('tenant_id', $tenantId)
 
-               ->whereNotIn('status', ['draft', 'cancelled'])
+               ->whereNotIn('status', ['cancelled'])
 
                ->with('customer')
 
@@ -1033,9 +1036,9 @@ fn ($row) => \Carbon\Carbon::parse($row->period)
 
        }
 
-public function activityFeed(int $tenantId,?string $type = null,?string $dateFrom = null,?string $dateTo = null,
+        public function activityFeed(int $tenantId,?string $type = null,?string $dateFrom = null,?string $dateTo = null,
 
-       int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+        int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator
 
        {
 
