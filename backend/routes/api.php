@@ -502,5 +502,8 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/roles', [RoleController::class, 'index'])
     ->middleware('permission:roles.view');
 
+    Route::get('/roles/permissions', [RoleController::class, 'permissionCatalog'])
+    ->middleware('permission:roles.view');
+
     Route::post('/roles', [RoleController::class, 'store']);
 });

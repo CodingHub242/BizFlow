@@ -1,0 +1,520 @@
+
+  GET|HEAD  api/branches .................................................................... BranchController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:branches.view
+  POST      api/branches .................................................................... BranchController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:branches.create
+  GET|HEAD  api/branches/{branch} ............................................................ BranchController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:branches.view
+  PUT       api/branches/{branch} .......................................................... BranchController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:branches.update
+  DELETE    api/branches/{branch} ......................................................... BranchController@destroy
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:branches.delete
+  POST      api/branches/{branch}/restore ................................................. BranchController@restore
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:branches.update
+  POST      api/catalog-items .......................................................... CatalogItemController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.create
+  GET|HEAD  api/catalog-items .......................................................... CatalogItemController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.view
+  GET|HEAD  api/catalog-items/archived .............................................. CatalogItemController@archived
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.view
+  GET|HEAD  api/catalog-items/{catalogItem} ............................................. CatalogItemController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.view
+  PUT       api/catalog-items/{catalogItem} ........................................... CatalogItemController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.update
+  DELETE    api/catalog-items/{catalogItem} .......................................... CatalogItemController@destroy
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.delete
+  POST      api/catalog-items/{catalogItem}/image ................................ CatalogItemController@uploadImage
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.update
+  DELETE    api/catalog-items/{catalogItem}/image ................................ CatalogItemController@deleteImage
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.update
+  POST      api/catalog-items/{catalogItem}/restore .................................. CatalogItemController@restore
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:products.update
+  GET|HEAD  api/categories ................................................................ CategoryController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:categories.view
+  POST      api/categories ................................................................ CategoryController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:categories.create
+  GET|HEAD  api/categories/{category} ...................................................... CategoryController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:categories.view
+  PUT       api/categories/{category} .................................................... CategoryController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:categories.update
+  DELETE    api/categories/{category} ................................................... CategoryController@destroy
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:categories.delete
+  POST      api/customers ................................................................. CustomerController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:customers.create
+  GET|HEAD  api/customers ................................................................. CustomerController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:customers.view
+  GET|HEAD  api/customers/{customer} ....................................................... CustomerController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:customers.view
+  PUT       api/customers/{customer} ..................................................... CustomerController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:customers.update
+  DELETE    api/customers/{customer} .................................................... CustomerController@destroy
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:customers.delete
+  POST      api/customers/{customer}/restore ............................................ CustomerController@restore
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:customers.update
+  GET|HEAD  api/dashboard ................................................................ DashboardController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:reports.view
+  GET|HEAD  api/dashboard/activity .................................................... DashboardController@activity
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+  GET|HEAD  api/employees ................................................................. EmployeeController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:employees.view
+  POST      api/employees ................................................................. EmployeeController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:employees.create
+  POST      api/employees/accounts ................................................. EmployeeController@storeAccount
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:employees.create
+  GET|HEAD  api/employees/{employee} ....................................................... EmployeeController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:employees.view
+  PUT       api/employees/{employee} ..................................................... EmployeeController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:employees.update
+  PUT       api/employees/{employee}/role ............................................ EmployeeController@assignRole
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:employees.manage_roles
+  POST      api/expenses ................................................................... ExpenseController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.create
+  GET|HEAD  api/expenses ................................................................... ExpenseController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.view
+  GET|HEAD  api/expenses/reports/branches ......................................... ExpenseReportController@branches
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.view
+  GET|HEAD  api/expenses/reports/categories ..................................... ExpenseReportController@categories
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.view
+  GET|HEAD  api/expenses/reports/payment-methods ............................ ExpenseReportController@paymentMethods
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.view
+  GET|HEAD  api/expenses/reports/summary ........................................... ExpenseReportController@summary
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.view
+  GET|HEAD  api/expenses/{expense} .......................................................... ExpenseController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.view
+  PUT       api/expenses/{expense} ........................................................ ExpenseController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.update
+  DELETE    api/expenses/{expense} ....................................................... ExpenseController@destroy
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:expenses.delete
+  GET|HEAD  api/integrations/quickbooks/callback .......... quickbooks.callback › QuickBooksOAuthController@callback
+            ⇂ api
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:20,1
+  POST      api/integrations/quickbooks/connect ............. quickbooks.connect › QuickBooksOAuthController@connect
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:10,1
+  DELETE    api/integrations/quickbooks/connections/{connection} quickbooks.disconnect › QuickBooksOAuthController@disconnect
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:10,1
+  GET|HEAD  api/integrations/quickbooks/connections/{connection}/company-info quickbooks.company-info › QuickBooksCompanyInfoController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:30,1
+  GET|HEAD  api/integrations/quickbooks/connections/{connection}/migration-catalog quickbooks.migration-catalog.index › QuickBooksMigrationCatalogController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:10,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/bills/import quickbooks.migration-catalog.bills.import › QuickBooksBillsImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/catalog_items/import quickbooks.migration-catalog.catalog-items.import › QuickBooksCatalogItemsImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/chart_of_accounts/import quickbooks.migration-catalog.chart-of-accounts.import › QuickBooksChartOfAccountsImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/credit_memos/import quickbooks.migration-catalog.credit-memos.import › QuickBooksCreditMemosImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/credit_memos/reconcile-applications quickbooks.migration-catalog.credit-memos.reconcile-applications › QuickBooksCreditMemoApplicationsReconcileController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/customers/import quickbooks.migration-catalog.customers.import › QuickBooksCustomerImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/estimates/import quickbooks.migration-catalog.estimates.import › QuickBooksEstimatesImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/expenses/import quickbooks.migration-catalog.expenses.import › QuickBooksExpensesImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/invoices/import quickbooks.migration-catalog.invoices.import › QuickBooksInvoicesImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:8,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/payments/import quickbooks.migration-catalog.payments.import › QuickBooksPaymentsImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  POST      api/integrations/quickbooks/connections/{connection}/migration-catalog/suppliers/import quickbooks.migration-catalog.suppliers.import › QuickBooksSupplierImportController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  GET|HEAD  api/integrations/quickbooks/connections/{connection}/migration-catalog/{entityType} quickbooks.migration-catalog.preview › QuickBooksMigrationCatalogController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:30,1
+  GET|HEAD  api/integrations/quickbooks/status ................ quickbooks.status › QuickBooksOAuthController@status
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+  GET|HEAD  api/inventory ................................................................ InventoryController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.view
+  POST      api/inventory/adjust ........................................................ InventoryController@adjust
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.adjust
+  GET|HEAD  api/inventory/availability ............................................ InventoryController@availability
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.view
+  GET|HEAD  api/inventory/export .................................................. InventoryExportController@export
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.view
+  POST      api/inventory/imports/preview ........................................ InventoryImportController@preview
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.import
+  GET|HEAD  api/inventory/imports/{uuid} ............................................ InventoryImportController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.import
+  POST      api/inventory/imports/{uuid}/confirm ................................. InventoryImportController@confirm
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.import
+  GET|HEAD  api/inventory/movements .................................................. InventoryController@movements
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.view
+  POST      api/inventory/opening-stock ........................................... InventoryController@openingStock
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.receive
+  GET|HEAD  api/inventory/opening-stock-candidates ...................... InventoryController@openingStockCandidates
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.receive
+  POST      api/inventory/receive ...................................................... InventoryController@receive
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.receive
+  POST      api/inventory/transfer .................................................... InventoryController@transfer
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.transfer
+  GET|HEAD  api/inventory/{inventory} ..................................................... InventoryController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:inventory.view
+  POST      api/invoices ................................................................... InvoiceController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:invoices.create
+  GET|HEAD  api/invoices ................................................................... InvoiceController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:invoices.view
+  GET|HEAD  api/invoices/{invoice} .......................................................... InvoiceController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:invoices.view
+  POST      api/invoices/{invoice}/cancel ................................................. InvoiceController@cancel
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:invoices.cancel
+  POST      api/invoices/{invoice}/issue ................................................... InvoiceController@issue
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:invoices.update
+  POST      api/invoices/{invoice}/payments ........................................ InvoiceController@recordPayment
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:invoices.record_payment
+  POST      api/login ......................................................................... AuthController@login
+            ⇂ api
+  POST      api/logout ....................................................................... AuthController@logout
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+  POST      api/migration-sessions ................................................ MigrationSessionController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.create
+  POST      api/migration-sessions/{session}/analyze ............................ MigrationSessionController@analyze
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.create
+  POST      api/migration-sessions/{session}/batches ........................ MigrationSessionController@createBatch
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.import
+  POST      api/migration-sessions/{session}/batches/{batch}/import .............. MigrationSessionController@import
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.import
+  POST      api/migration-sessions/{session}/batches/{batch}/retry ................ MigrationSessionController@retry
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.import
+  POST      api/migration-sessions/{session}/mapping ....................... MigrationSessionController@storeMapping
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.create
+  GET|HEAD  api/migration-sessions/{session}/report .............................. MigrationSessionController@report
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.view
+  GET|HEAD  api/migration-sessions/{session}/review .............................. MigrationSessionController@review
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.view
+  POST      api/migration-sessions/{session}/upload .............................. MigrationSessionController@upload
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.create
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:migration-upload
+  POST      api/migration-sessions/{session}/validate ................. MigrationSessionController@validateMigration
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:migration.create
+  POST      api/onboarding/register .......................................... BusinessOnboardingController@register
+            ⇂ api
+            ⇂ Illuminate\Routing\Middleware\ThrottleRequests:5,1
+  GET|HEAD  api/reports/overview .................................................. GeneralReportController@overview
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:reports.view
+  GET|HEAD  api/roles ......................................................................... RoleController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:roles.view
+  POST      api/roles ......................................................................... RoleController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+  GET|HEAD  api/roles/permissions ................................................. RoleController@permissionCatalog
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:roles.view
+  GET|HEAD  api/sales ........................................................................ OrderController@index
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.view
+  POST      api/sales ........................................................................ OrderController@store
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.create
+  GET|HEAD  api/sales/{order} ................................................................. OrderController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.view
+  PUT       api/sales/{order} ............................................................... OrderController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.update
+  DELETE    api/sales/{order} .............................................................. OrderController@destroy
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.delete
+  POST      api/sales/{order}/fulfill ...................................................... OrderController@fulfill
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.update
+  POST      api/sales/{order}/fulfillment-requests .............................. OrderController@prepareFulfillment
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.update
+  POST      api/sales/{order}/payments ................................................ OrderController@storePayment
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+            ⇂ App\Http\Middleware\CheckPermission:sales.update
+  GET|HEAD  api/settings/business-profile ............................................ TenantSettingsController@show
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+  PUT       api/settings/business-profile .......................................... TenantSettingsController@update
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+  POST      api/settings/business-profile/logo ................................. TenantSettingsController@uploadLogo
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+  DELETE    api/settings/business-profile/logo ................................. TenantSettingsController@removeLogo
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+            ⇂ App\Http\Middleware\EnsureTenantIsApproved
+  GET|HEAD  api/user ............................................................................. routes/api.php:46
+            ⇂ api
+            ⇂ Illuminate\Auth\Middleware\Authenticate:sanctum
+
+                                                                                                Showing [110] routes
+

@@ -2,14 +2,18 @@
 
 namespace App\Services;
 
+use Database\Seeders\BizFlowRolePermissionSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class RoleService
 {
     public function create(
         int $tenantId,
-        string $name
+        string $name,
+        array $permissions = [],
     ): Role {
         setPermissionsTeamId($tenantId);
 
@@ -25,11 +29,51 @@ class RoleService
             ]);
         }
 
-        return Role::create([
-            'tenant_id' => $tenantId,
-            'name' => $name,
-            'guard_name' => 'web',
-        ]);
+        $allowedPermissions = BizFlowRolePermissionSeeder::PERMISSIONS;
+
+        $invalidPermissions = array_diff(
+            $permissions,
+            $allowedPermissions,
+        );
+
+        if ($invalidPermissions !== []) {
+            throw ValidationException::withMessages([
+                'permissions' => [
+                    'One or more selected permissions are not supported by BizFlow.',
+                ],
+            ]);
+        }
+
+         return DB::transaction(function () use (
+            $tenantId,
+            $name,
+            $permissions,
+        ): Role {
+            $role = Role::create([
+                'tenant_id' => $tenantId,
+                'name' => $name,
+                'guard_name' => 'web',
+            ]);
+
+            if ($permissions !== []) {
+                $permissionRecords = Permission::query()
+                    ->where('guard_name', 'web')
+                    ->whereIn('name', $permissions)
+                    ->get();
+
+                if ($permissionRecords->count() !== count(array_unique($permissions))) {
+                    throw ValidationException::withMessages([
+                        'permissions' => [
+                            'Some selected permissions have not been provisioned in BizFlow.',
+                        ],
+                    ]);
+                }
+
+                $role->syncPermissions($permissionRecords);
+            }
+
+            return $role->load('permissions');
+        });
     }
 
     public function assignPermissions(
@@ -43,10 +87,36 @@ class RoleService
             ]);
         }
 
+        $invalidPermissions = array_diff(
+            $permissions,
+            BizFlowRolePermissionSeeder::PERMISSIONS,
+        );
+
+
+         if ($invalidPermissions !== []) {
+            throw ValidationException::withMessages([
+                'permissions' => [
+                    'One or more selected permissions are not supported by BizFlow.',
+                ],
+            ]);
+        }
+
         setPermissionsTeamId($tenantId);
+       $permissionRecords = Permission::query()
+            ->where('guard_name', 'web')
+            ->whereIn('name', $permissions)
+            ->get();
 
-        $role->syncPermissions($permissions);
+        if ($permissionRecords->count() !== count(array_unique($permissions))) {
+            throw ValidationException::withMessages([
+                'permissions' => [
+                    'Some selected permissions have not been provisioned in BizFlow.',
+                ],
+            ]);
+        }
 
-        return $role->fresh();
+        $role->syncPermissions($permissionRecords);
+
+        return $role->fresh()->load('permissions');
     }
 }

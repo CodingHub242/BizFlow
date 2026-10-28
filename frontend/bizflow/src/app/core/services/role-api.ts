@@ -15,11 +15,14 @@ export interface Role {
 export interface RoleResponse {
   success: boolean;
   message: string;
-  data: Role;
+   data: Role & {
+    permissions: string[];
+  };
 }
 
 export interface CreateRoleRequest {
   name: string;
+  permissions: string[];
 }
 
 export interface RoleListResponse {
@@ -34,6 +37,22 @@ export interface AssignEmployeeRoleRequest {
 export interface AssignEmployeeRoleResponse {
   success: boolean;
   message: string;
+}
+
+export interface PermissionOption {
+  name: string;
+  module: string;
+}
+
+export interface PermissionGroup {
+  key: string;
+  label: string;
+  permissions: PermissionOption[];
+}
+
+export interface PermissionCatalogResponse {
+  success: boolean;
+  data: PermissionGroup[];
 }
 
 @Injectable({
@@ -60,6 +79,12 @@ export class RoleApi {
     return this.http.put<AssignEmployeeRoleResponse>(
         `${this.apiUrl}/employees/${employeeId}/role`,
         payload,
+    );
+  }
+
+  permissionCatalog(): Observable<PermissionCatalogResponse> {
+    return this.http.get<PermissionCatalogResponse>(
+        `${this.apiUrl}/roles/permissions`,
     );
   }
 }

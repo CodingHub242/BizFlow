@@ -36,21 +36,21 @@ class RoleApiTest extends TestCase
 }
 
     public function test_user_with_role_creation_permission_can_create_custom_role(): void
-    {
-        $tenant = Tenant::factory()->create();
+{
+    $this->seed(BizFlowRolePermissionSeeder::class);
 
+    $tenant = Tenant::factory()->create();
 
-        $user = User::factory()->create([
-            'tenant_id' => $tenant->id,
-        ]);
-
-        setPermissionsTeamId($tenant->id);
-
-    $permission = Permission::firstOrCreate([
-        'name' => 'roles.create',
-        'guard_name' => 'web',
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
     ]);
 
+    setPermissionsTeamId($tenant->id);
+
+    // Retrieve the already-provisioned permission.
+    $permission = Permission::findByName('roles.create', 'web');
+
+    // Create the role used to authorize this API request.
     $role = Role::query()->firstOrCreate([
         'tenant_id' => $tenant->id,
         'name' => 'Administrator',
@@ -58,31 +58,48 @@ class RoleApiTest extends TestCase
     ]);
 
     $role->givePermissionTo($permission);
-
     $user->assignRole($role);
 
-        $response = $this
-            ->actingAs($user)
-            ->postJson('/api/roles', [
-                'name' => 'Store Supervisor',
-            ]);
-
-        $response
-            ->assertCreated()
-            ->assertJson([
-                'success' => true,
-                'message' => 'Role created successfully.',
-                'data' => [
-                    'tenant_id' => $tenant->id,
-                    'name' => 'Store Supervisor',
-                    'guard_name' => 'web',
-                ],
-            ]);
-
-        $this->assertDatabaseHas('roles', [
-            'tenant_id' => $tenant->id,
+    $response = $this
+        ->actingAs($user)
+        ->postJson('/api/roles', [
             'name' => 'Store Supervisor',
-            'guard_name' => 'web',
+            'permissions' => [
+                'customers.view',
+                'sales.view',
+                'sales.create',
+            ],
         ]);
-    }
+
+    $response
+        ->assertCreated()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Role created successfully.',
+            'data' => [
+                'tenant_id' => $tenant->id,
+                'name' => 'Store Supervisor',
+                'guard_name' => 'web',
+               
+            ],
+        ]);
+
+    $this->assertDatabaseHas('roles', [
+        'tenant_id' => $tenant->id,
+        'name' => 'Store Supervisor',
+        'guard_name' => 'web',
+    ]);
+
+    // Confirm permissions are stored through Spatie's relationship.
+    $createdRole = Role::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('name', 'Store Supervisor')
+        ->firstOrFail();
+
+    $this->assertEqualsCanonicalizing(
+        ['customers.view', 'sales.view', 'sales.create'],
+        $createdRole->permissions->pluck('name')->all()
+    );
+}
+
 }
