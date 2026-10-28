@@ -167,8 +167,11 @@ class EmployeeController extends Controller
                 'required',
                 'string',
                 Rule::exists('roles', 'name')
-                    ->where('tenant_id', $tenantId)
-                    ->where('guard_name', 'web'),
+                    ->where('guard_name', 'web')
+                    ->where(function ($query) use ($tenantId) {
+                        $query->whereNull('tenant_id')
+                            ->orWhere('tenant_id', $tenantId);
+                    }),
                 Rule::notIn(['Owner', 'Administrator']),
             ],
         ]);

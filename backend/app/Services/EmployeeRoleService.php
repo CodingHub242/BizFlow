@@ -35,9 +35,12 @@ class EmployeeRoleService
 
         // Resolve the role explicitly within this tenant.
         $tenantRole = Role::query()
-            ->where('tenant_id', $tenantId)
             ->where('name', $role)
             ->where('guard_name', 'web')
+            ->where(function ($query) use ($tenantId) {
+                $query->whereNull('tenant_id')
+                    ->orWhere('tenant_id', $tenantId);
+            })
             ->first();
 
         if (!$tenantRole) {
