@@ -9,6 +9,9 @@ use App\Models\Employee;
 use App\Http\Requests\StoreEmployeeAccountRequest;
 use App\Services\EmployeeAccountService;
 use App\Http\Requests\UpdateEmployeeRequest;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
+use App\Services\EmployeeRoleService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -78,6 +81,7 @@ class EmployeeController extends Controller
             ->where('tenant_id', $request->user()->tenant_id)
             ->with(['user:id,name,email', 'branch:id,name'])
             ->findOrFail($employee);
+            
 
         return response()->json([
             'success' => true,
@@ -87,6 +91,16 @@ class EmployeeController extends Controller
 
     private function employeeData(Employee $employee): array
     {
+        $user = $employee->user;
+
+        $roleName = null;
+
+        if ($user) {
+            setPermissionsTeamId((int) $employee->tenant_id);
+
+            $roleName = $user->getRoleNames()->first();
+        }
+
         return [
             'id' => $employee->id,
             'user_id' => $employee->user_id,
@@ -99,6 +113,7 @@ class EmployeeController extends Controller
             'job_title' => $employee->job_title,
             'employment_status' => $employee->employment_status->value,
             'hired_at' => $employee->hired_at?->toDateString(),
+            'role' => $roleName,
             'created_at' => $employee->created_at,
         ];
     }
@@ -132,6 +147,47 @@ class EmployeeController extends Controller
             'message' => 'Employee account created successfully.',
             'data' => $this->employeeData($employee),
         ], 201);
+    }
+
+    public function assignRole(Request $request,int $employee,EmployeeRoleService $employeeRoleService): JsonResponse 
+    {
+        $user = $request->user();
+        $tenantId = (int) $user->tenant_id;
+
+        setPermissionsTeamId($tenantId);
+
+        abort_unless(
+            $user->hasPermissionTo('employees.manage_roles', 'web'),
+            403,
+            'You do not have permission to manage employee roles.'
+        );
+
+        $validated = $request->validate([
+            'role' => [
+                'required',
+                'string',
+                Rule::exists('roles', 'name')
+                    ->where('tenant_id', $tenantId)
+                    ->where('guard_name', 'web'),
+                Rule::notIn(['Owner', 'Administrator']),
+            ],
+        ]);
+
+        $employeeRecord = Employee::query()
+            ->where('tenant_id', $tenantId)
+            ->with('user')
+            ->findOrFail($employee);
+
+        $employeeRoleService->assign(
+            $employeeRecord,
+            $validated['role'],
+            $tenantId,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee role updated successfully.',
+        ]);
     }
 
 }

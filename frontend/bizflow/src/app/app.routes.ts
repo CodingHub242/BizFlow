@@ -190,6 +190,12 @@ export const routes: Routes = [
           .then(m => m.SettingsComponent),
     },
     {
+      path: 'employees/:id',
+      loadComponent: () =>
+        import('./features/employees/employee-details/employee-details.component')
+          .then(m => m.EmployeeDetailsComponent),
+    },
+    {
       path: 'employees',
       loadComponent: () =>
         import('./features/employees/employees.component')

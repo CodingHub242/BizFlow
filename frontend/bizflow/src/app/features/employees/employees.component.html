@@ -138,6 +138,29 @@
         <div class="form-section">
           <h3>Employment details</h3>
 
+            <div class="form-field form-field-full">
+              <label>Branch assignment</label>
+
+              <app-searchable-select
+                inputId="employee-branch"
+                name="branch_id"
+                [options]="branchOptions"
+                placeholder="No branch assigned"
+                searchPlaceholder="Search branches..."
+                [clearable]="true"
+                [disabled]="loadingBranches"
+                [(ngModel)]="form.branch_id"
+              />
+
+              @if (loadingBranches) {
+                <small>Loading available branches…</small>
+              } @else if (branchErrorMessage) {
+                <small class="field-error">{{ branchErrorMessage }}</small>
+              } @else {
+                <small>Optional. Only active branches are shown.</small>
+              }
+            </div>
+
           <div class="form-grid">
             <div class="form-field">
               <label for="employee-number">Employee number <span class="required">*</span></label>
@@ -171,7 +194,7 @@
 
             <div class="form-field">
               <label for="employee-status">Employment status</label>
-              <select
+              <select style="height:40px;"
                 id="employee-status"
                 name="employment_status"
                 [(ngModel)]="form.employment_status"
@@ -193,28 +216,7 @@
               />
             </div>
 
-            <div class="form-field form-field-full">
-              <label>Branch assignment</label>
-
-              <app-searchable-select
-                inputId="employee-branch"
-                name="branch_id"
-                [options]="branchOptions"
-                placeholder="No branch assigned"
-                searchPlaceholder="Search branches..."
-                [clearable]="true"
-                [disabled]="loadingBranches"
-                [(ngModel)]="form.branch_id"
-              />
-
-              @if (loadingBranches) {
-                <small>Loading available branches…</small>
-              } @else if (branchErrorMessage) {
-                <small class="field-error">{{ branchErrorMessage }}</small>
-              } @else {
-                <small>Optional. Only active branches are shown.</small>
-              }
-            </div>
+          
           </div>
         </div>
 
@@ -316,6 +318,7 @@
               <th>Job title</th>
               <th>Status</th>
               <th>Hire date</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
@@ -324,9 +327,9 @@
               <tr>
                 <td>
                   <div class="employee-cell">
-                    <div class="avatar">
+                    <!-- <div class="avatar">
                       {{ (employee.name || employee.email || '?').charAt(0).toUpperCase() }}
-                    </div>
+                    </div> -->
                     <div class="employee-info">
                       <span class="employee-name">{{ employee.name || 'Unnamed employee' }}</span>
                       <span class="employee-email">{{ employee.email || 'No email available' }}</span>
@@ -354,6 +357,15 @@
                 </td>
 
                 <td>{{ employee.hired_at || '—' }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-small"
+                    [routerLink]="['/employees', employee.id]"
+                  >
+                    View details
+                  </button>
+                </td>
               </tr>
             }
           </tbody>

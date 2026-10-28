@@ -11,19 +11,21 @@ import {
   Employee,
   CreateEmployeeAccountRequest,
 } from '../../core/services/employees-api.service';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-employees',
   standalone: true,
   templateUrl: './employees.component.html',
   styleUrls: ['./employees.component.scss'],
-  imports: [CommonModule,FormsModule,SearchableSelectComponent],
+  imports: [CommonModule,FormsModule,SearchableSelectComponent,RouterLink],
 })
 export class EmployeesComponent implements OnInit {
   private readonly api = inject(EmployeesApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly branchApi = inject(BranchApi);
+  
 
 branchOptions: SearchableSelectOption[] = [];
 loadingBranches = false;
@@ -70,9 +72,11 @@ branchErrorMessage = '';
         label: branch.name,
         description: branch.code,
       }));
+      this.cdr.detectChanges();
     },
     error: () => {
       this.branchErrorMessage = 'Unable to load branches. You can still create an employee without assigning a branch.';
+      this.cdr.detectChanges();
     },
   });
 }
@@ -110,11 +114,15 @@ branchErrorMessage = '';
           this.lastPage = response.meta.last_page;
           this.total = response.meta.total;
           this.applySearch();
+
+          this.cdr.detectChanges();
         },
         error: error => {
           this.errorMessage =
             error?.error?.message ??
             'Unable to load employees.';
+
+            this.cdr.detectChanges();
         },
       });
   }
@@ -162,7 +170,7 @@ branchErrorMessage = '';
         takeUntilDestroyed(this.destroyRef),
         finalize(() => {
           this.saving = false;
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         })
       )
       .subscribe({
@@ -170,6 +178,8 @@ branchErrorMessage = '';
           this.successMessage = response.message;
           this.showCreateForm = false;
           this.form = this.emptyForm();
+          this.cdr.detectChanges();
+
           this.loadEmployees(this.currentPage);
         },
         error: error => {
@@ -178,6 +188,8 @@ branchErrorMessage = '';
             ? Object.values(validationErrors).flat().join(' ')
             : error?.error?.message ??
               'Unable to create employee account.';
+
+              this.cdr.detectChanges();
         },
       });
   }

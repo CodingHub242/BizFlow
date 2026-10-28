@@ -1,0 +1,302 @@
+<div class="employee-details-page">
+  <button type="button" class="back-button" (click)="goBack()">
+    <span aria-hidden="true">←</span> Back to employees
+  </button>
+
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">TEAM MANAGEMENT</span>
+      <h1>Employee details</h1>
+      <p>View employee information and manage employment details.</p>
+    </div>
+
+    @if (employee && !loading && !editMode) {
+      <button type="button" class="btn btn-primary" (click)="startEditing()">
+        Edit employee
+      </button>
+    }
+  </header>
+
+  @if (errorMessage) {
+    <div class="alert alert-error" role="alert">
+      {{ errorMessage }}
+    </div>
+  }
+
+  @if (successMessage) {
+    <div class="alert alert-success" role="status">
+      {{ successMessage }}
+    </div>
+  }
+
+  @if (loading) {
+    <section class="details-card loading-state">
+      Loading employee details…
+    </section>
+  } @else if (employee) {
+    <section class="details-card">
+      <div class="employee-summary">
+        <!-- <div class="avatar">
+          {{ (employee.name || employee.email || '?').charAt(0).toUpperCase() }}
+        </div> -->
+
+        <div class="summary-info">
+          <h2>{{ employee.name || 'Unnamed employee' }}</h2>
+          <p>{{ employee.email || 'No email available' }}</p>
+          <span
+            class="status-badge"
+            [class.status-active]="employee.employment_status === 'active'"
+            [class.status-inactive]="employee.employment_status === 'inactive'"
+            [class.status-suspended]="employee.employment_status === 'suspended'"
+          >
+            {{ employee.employment_status | titlecase }}
+          </span>
+        </div>
+      </div>
+
+      @if (editMode) {
+        <form #detailsForm="ngForm" (ngSubmit)="saveChanges()" novalidate>
+          <div class="form-section">
+            <h3>Employment information</h3>
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="employee-number">Employee number *</label>
+                <input
+                  id="employee-number"
+                  name="employee_number"
+                  [(ngModel)]="form.employee_number"
+                  #numberModel="ngModel"
+                  required
+                  maxlength="100"
+                />
+                @if (numberModel.invalid && numberModel.touched) {
+                  <small class="field-error">Employee number is required.</small>
+                }
+              </div>
+
+              <div class="form-field">
+                <label for="job-title">Job title</label>
+                <input
+                  id="job-title"
+                  name="job_title"
+                  [(ngModel)]="form.job_title"
+                  maxlength="100"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="employee-phone">Phone number</label>
+                <input
+                  id="employee-phone"
+                  type="tel"
+                  name="phone"
+                  [(ngModel)]="form.phone"
+                  maxlength="30"
+                />
+              </div>
+
+              <div class="form-field">
+                <label for="employee-status">Employment status</label>
+                <select style="height:40px;"
+                  id="employee-status"
+                  name="employment_status"
+                  [(ngModel)]="form.employment_status"
+                  required
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="hire-date">Hire date</label>
+                <input
+                  id="hire-date"
+                  type="date"
+                  name="hired_at"
+                  [(ngModel)]="form.hired_at"
+                />
+              </div>
+
+              <div class="form-field form-field-full">
+                <label>Branch assignment</label>
+                <app-searchable-select
+                  inputId="employee-branch"
+                  name="branch_id"
+                  [options]="branchOptions"
+                  placeholder="No branch assigned"
+                  searchPlaceholder="Search branches..."
+                  [clearable]="true"
+                  [disabled]="loadingBranches"
+                  [(ngModel)]="form.branch_id"
+                />
+                @if (branchErrorMessage) {
+                  <small class="field-error">{{ branchErrorMessage }}</small>
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              [disabled]="saving"
+              (click)="cancelEditing()"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="btn btn-primary"
+              [disabled]="saving || detailsForm.invalid"
+            >
+              {{ saving ? 'Saving…' : 'Save changes' }}
+            </button>
+          </div>
+        </form>
+      } @else {
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span>Employee number</span>
+            <strong>{{ employee.employee_number }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span>Branch</span>
+            <strong>{{ employee.branch_name || 'Unassigned' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span>Job title</span>
+            <strong>{{ employee.job_title || 'Not specified' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span>Phone number</span>
+            <strong>{{ employee.phone || 'Not specified' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span>Hire date</span>
+            <strong>{{ employee.hired_at || 'Not specified' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span>Account created</span>
+            <strong>{{ employee.created_at | date:'mediumDate' }}</strong>
+          </div>
+        </div>
+      }
+    </section>
+
+
+    
+    <section class="role-card">
+      <div class="role-card__header">
+        <div>
+          <h2>Employee Role</h2>
+          <p>
+            Manage the permissions and responsibilities assigned to this employee.
+          </p>
+        </div>
+
+        <span class="role-card__icon" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="10" cy="7" r="4" />
+            <path d="M20 8v6" />
+            <path d="M23 11h-6" />
+          </svg>
+        </span>
+      </div>
+
+      <div class="role-card__current">
+        <div class="role-card__current-label">Currently assigned role</div>
+
+        <div class="role-card__current-value">
+          <span class="role-card__status-dot"></span>
+          <strong>{{ currentRole || 'No role assigned' }}</strong>
+        </div>
+      </div>
+
+      <div
+        *ngIf="roleErrorMessage"
+        class="role-alert role-alert--error"
+        role="alert"
+      >
+        {{ roleErrorMessage }}
+      </div>
+
+      <div
+        *ngIf="roleSuccessMessage"
+        class="role-alert role-alert--success"
+        role="status"
+      >
+        {{ roleSuccessMessage }}
+      </div>
+
+      <div class="role-card__form">
+        <div class="role-card__field">
+          <label for="employeeRole">Assign a role</label>
+
+          <div class="role-card__select-wrap">
+            <select
+              id="employeeRole"
+              name="employeeRole"
+              [(ngModel)]="selectedRole"
+              [disabled]="loadingRoles || savingRole || roles.length === 0"
+            >
+              <option value="">Select a role</option>
+
+              <option
+                *ngFor="let role of roles"
+                [value]="role.name"
+              >
+                {{ role.name }}
+              </option>
+            </select>
+          </div>
+
+          <small>
+            Changing a role updates the employee's assigned permissions.
+          </small>
+        </div>
+
+        <button
+          type="button"
+          class="role-card__save"
+          (click)="saveRole()"
+          [disabled]="
+            savingRole ||
+            loadingRoles ||
+            !selectedRole ||
+            selectedRole === currentRole
+          "
+        >
+          <span *ngIf="!savingRole">Save role</span>
+          <span *ngIf="savingRole">Saving...</span>
+        </button>
+      </div>
+
+      <div *ngIf="loadingRoles" class="role-card__loading">
+        Loading available roles...
+      </div>
+    </section>
+
+
+  }
+</div>

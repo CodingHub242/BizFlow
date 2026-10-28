@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreRoleRequest;
 use App\Services\RoleService;
+use Spatie\Permission\Models\Role;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class RoleController extends Controller
@@ -37,4 +39,38 @@ class RoleController extends Controller
             ],
         ], 201);
     }
+
+    public function index(Request $request): JsonResponse
+	{
+	    $user = $request->user();
+	    $tenantId = (int) $user->tenant_id;
+	
+	    setPermissionsTeamId($tenantId);
+	
+	    abort_unless(
+	        $user->hasPermissionTo('roles.view', 'web'),
+	        403,
+	        'You do not have permission to view roles.'
+	    );
+	
+	    $roles = Role::query()
+	        ->where('guard_name', 'web')
+	        ->where(function ($query) use ($tenantId) {
+	            $query->whereNull('tenant_id')
+	                ->orWhere('tenant_id', $tenantId);
+	        })
+	        ->orderBy('name')
+	        ->get([
+	            'id',
+	            'tenant_id',
+	            'name',
+	            'guard_name',
+	            'created_at',
+	        ]);
+	
+	    return response()->json([
+	        'success' => true,
+	        'data' => $roles,
+	    ]);
+	}
 }

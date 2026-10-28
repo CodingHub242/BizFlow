@@ -16,6 +16,7 @@ export interface Employee {
   job_title: string | null;
   employment_status: 'active' | 'inactive' | 'suspended';
   hired_at: string | null;
+  role?: string | null;
   created_at: string;
 }
 
@@ -66,6 +67,18 @@ export class EmployeesApiService {
     return this.http.post<EmployeeResponse>(
       `${this.baseUrl}/accounts`,
       payload
+    );
+  }
+
+  get(id: number) {
+    return this.http.get<EmployeeResponse>(`${this.baseUrl}/${id}`);
+  }
+
+  update(id: number,payload: Partial<CreateEmployeeAccountRequest>) 
+  {
+    return this.http.put<EmployeeResponse>(
+        `${this.baseUrl}/${id}`,
+        payload,
     );
   }
 }

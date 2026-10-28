@@ -400,6 +400,9 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/employees/accounts',[EmployeeController::class, 'storeAccount']
     )->middleware('permission:employees.create');
 
+    Route::put('/employees/{employee}/role',[EmployeeController::class, 'assignRole']
+    )->middleware('permission:employees.manage_roles');
+
     // QUICK BOOKS MIGRATION CENTER
     Route::post('/migration-sessions', [MigrationSessionController::class, 'store'])
         ->middleware('permission:migration.create');
@@ -496,5 +499,8 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     );
 
     // ROLES
+    Route::get('/roles', [RoleController::class, 'index'])
+    ->middleware('permission:roles.view');
+
     Route::post('/roles', [RoleController::class, 'store']);
 });
