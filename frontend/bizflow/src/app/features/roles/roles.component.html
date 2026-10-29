@@ -1,0 +1,210 @@
+<div class="roles-page">
+  <header class="page-header">
+    <div>
+      <span class="eyebrow">TEAM MANAGEMENT</span>
+      <h1>Roles &amp; Permissions</h1>
+      <p>Manage employee roles and control access to BizFlow features.</p>
+    </div>
+
+    <button
+      *ngIf="canCreateRoles"
+      type="button"
+      class="btn btn-primary"
+      (click)="openCreateForm()"
+      [disabled]="showCreateForm"
+    >
+      + Create custom role
+    </button>
+  </header>
+
+  <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success" role="status">
+    {{ successMessage }}
+  </div>
+
+  <section *ngIf="showCreateForm" class="panel create-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Create custom role</h2>
+        <p>Choose a name and assign the permissions this role needs.</p>
+      </div>
+    </div>
+
+    <form (ngSubmit)="createRole()" #roleForm="ngForm" novalidate>
+      <div class="form-field">
+        <label for="role-name">Role name</label>
+        <input
+          id="role-name"
+          name="roleName"
+          type="text"
+          [(ngModel)]="roleName"
+          #roleNameModel="ngModel"
+          required
+          maxlength="100"
+          placeholder="e.g. Sales Supervisor"
+          [disabled]="saving"
+        />
+
+        <small
+          *ngIf="roleNameModel.invalid && roleNameModel.touched"
+          class="field-error"
+        >
+          Enter a role name.
+        </small>
+      </div>
+
+      <div class="permission-heading">
+        <div>
+          <h3>Permissions</h3>
+          <p>
+            {{ selectedPermissions.size }} permission(s) selected.
+          </p>
+        </div>
+      </div>
+
+      <div *ngIf="permissionGroups.length === 0" class="loading-state">
+        Loading permission catalogue…
+      </div>
+
+      <div class="permission-groups">
+        <section
+          *ngFor="let group of permissionGroups; trackBy: trackGroup"
+          class="permission-group"
+        >
+          <div class="permission-group__header">
+            <h4>{{ group.label }}</h4>
+
+            <label class="select-all">
+              <input
+                type="checkbox"
+                [checked]="isGroupFullySelected(group)"
+                (change)="toggleGroup(group, $any($event.target).checked)"
+                [disabled]="saving"
+              />
+              Select all
+            </label>
+          </div>
+
+          <div class="permission-list">
+            <label
+              *ngFor="let permission of group.permissions"
+              class="permission-option"
+            >
+              <input
+                type="checkbox"
+                [checked]="isPermissionSelected(permission.name)"
+                (change)="
+                  togglePermission(
+                    permission.name,
+                    $any($event.target).checked
+                  )
+                "
+                [disabled]="saving"
+              />
+
+              <span>{{ permission.name }}</span>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <div *ngIf="formError" class="alert alert-error" role="alert">
+        {{ formError }}
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          (click)="cancelCreate()"
+          [disabled]="saving"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="
+            saving ||
+            roleForm.invalid ||
+            permissionGroups.length === 0
+          "
+        >
+          {{ saving ? 'Creating…' : 'Create role' }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel roles-panel">
+    <div class="section-heading">
+      <div>
+        <h2>Available roles</h2>
+        <p>
+          Global roles and roles created for your business.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="loadRoles()"
+        [disabled]="loading"
+      >
+        Refresh
+      </button>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+      Loading roles…
+    </div>
+
+    <div
+      *ngIf="!loading && roles.length === 0"
+      class="empty-state"
+    >
+      <h3>No roles found</h3>
+      <p>There are no roles available to display.</p>
+    </div>
+
+    <div
+      *ngIf="!loading && roles.length > 0"
+      class="roles-table-wrapper"
+    >
+      <table class="roles-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Type</th>
+            <th>Guard</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let role of roles; trackBy: trackRole">
+            <td>
+              <strong>{{ role.name }}</strong>
+            </td>
+            <td>
+              <span
+                class="role-type"
+                [class.role-type--system]="isSystemRole(role)"
+              >
+                {{ isSystemRole(role) ? 'System role' : 'Custom role' }}
+              </span>
+            </td>
+            <td>{{ role.guard_name }}</td>
+            <td>
+              {{ role.created_at ? (role.created_at | date:'mediumDate') : '—' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

@@ -3,6 +3,7 @@ import {ChangeDetectorRef,Component,DestroyRef,OnInit,inject} from '@angular/cor
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { BranchApi, Branch } from '../../core/services/branch-api';
+import { AuthService,AuthUser } from '../../core/services/auth.service';
 import { SearchableSelectComponent, SearchableSelectOption } from '../../shared/components/searchable-select/searchable-select.component';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -25,6 +26,7 @@ export class EmployeesComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly branchApi = inject(BranchApi);
+  private readonly authService = inject(AuthService);
   
 
 branchOptions: SearchableSelectOption[] = [];
@@ -192,5 +194,9 @@ branchErrorMessage = '';
               this.cdr.detectChanges();
         },
       });
+  }
+
+    get canManageEmployees(): boolean {
+    return this.authService.hasPermission('employees.create');
   }
 }

@@ -190,6 +190,18 @@ export const routes: Routes = [
           .then(m => m.SettingsComponent),
     },
     {
+      path: 'roles',
+      loadComponent: () =>
+        import('./features/roles/roles.component')
+          .then(m => m.RolesComponent),
+    },
+    {
+      path: 'my-profile',
+      loadComponent: () =>
+        import('./features/profile/profile.component')
+          .then(m => m.ProfileComponent),
+    },
+    {
       path: 'employees/:id',
       loadComponent: () =>
         import('./features/employees/employee-details/employee-details.component')
@@ -201,6 +213,7 @@ export const routes: Routes = [
         import('./features/employees/employees.component')
           .then(m => m.EmployeesComponent),
     },
+    
       
     ],
   },

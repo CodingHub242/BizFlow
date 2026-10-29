@@ -1,0 +1,101 @@
+<div class="profile-page">
+  <header class="profile-header">
+    <div>
+      <span class="eyebrow">MY ACCOUNT</span>
+      <h1>My Profile</h1>
+      <p>View and update your personal account details.</p>
+    </div>
+  </header>
+
+  <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success" role="status">
+    {{ successMessage }}
+  </div>
+
+  <section class="profile-card">
+    <div *ngIf="loading" class="status-message">
+      Loading your profile…
+    </div>
+
+    <form
+      *ngIf="!loading"
+      #profileForm="ngForm"
+      (ngSubmit)="saveProfile()"
+      novalidate
+    >
+      <div class="profile-intro">
+        <div class="profile-avatar">
+          {{ (form.name || form.email || '?').charAt(0).toUpperCase() }}
+        </div>
+
+        <div>
+          <h2>{{ form.name || 'Your profile' }}</h2>
+          <p>{{ form.email }}</p>
+          <span class="account-role">
+            {{ user()?.role || 'Employee' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="profile-name">Full name</label>
+          <input
+            id="profile-name"
+            name="name"
+            type="text"
+            [(ngModel)]="form.name"
+            #nameModel="ngModel"
+            required
+            maxlength="255"
+            autocomplete="name"
+            [disabled]="saving"
+          />
+
+          <small
+            *ngIf="nameModel.invalid && nameModel.touched"
+            class="field-error"
+          >
+            Enter your name.
+          </small>
+        </div>
+
+        <div class="form-field">
+          <label for="profile-email">Email address</label>
+          <input
+            id="profile-email"
+            name="email"
+            type="email"
+            [(ngModel)]="form.email"
+            #emailModel="ngModel"
+            required
+            email
+            maxlength="255"
+            autocomplete="email"
+            [disabled]="saving"
+          />
+
+          <small
+            *ngIf="emailModel.invalid && emailModel.touched"
+            class="field-error"
+          >
+            Enter a valid email address.
+          </small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="saving || profileForm.invalid"
+        >
+          {{ saving ? 'Saving…' : 'Save profile' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

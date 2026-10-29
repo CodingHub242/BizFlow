@@ -6,7 +6,7 @@ import { API_URL } from '../config/api.config';
 
 export interface Role {
   id: number;
-  tenant_id: number;
+  tenant_id: number | null;
   name: string;
   guard_name: string;
   created_at: string;

@@ -1,3 +1,4 @@
+@let user = currentUser();
 <div class="employee-details-page">
   <button type="button" class="back-button" (click)="goBack()">
     <span aria-hidden="true">←</span> Back to employees
@@ -10,7 +11,7 @@
       <p>View employee information and manage employment details.</p>
     </div>
 
-    @if (employee && !loading && !editMode) {
+    @if (employee && !loading && !editMode && canUpdateEmployee) {
       <button type="button" class="btn btn-primary" (click)="startEditing()">
         Edit employee
       </button>
@@ -233,6 +234,7 @@
         </div>
       </div>
 
+      @if(canUpdateRole){
       <div
         *ngIf="roleErrorMessage"
         class="role-alert role-alert--error"
@@ -295,6 +297,7 @@
       <div *ngIf="loadingRoles" class="role-card__loading">
         Loading available roles...
       </div>
+    }
     </section>
 
 

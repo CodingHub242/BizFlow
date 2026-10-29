@@ -1,4 +1,4 @@
-import {ChangeDetectorRef,Component,DestroyRef,OnInit,inject} from '@angular/core';
+import {ChangeDetectorRef,Component,DestroyRef,OnInit,inject,signal} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -8,6 +8,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {EmployeesApiService,Employee} from '../../../core/services/employees-api.service';
 import {BranchApi,Branch} from '../../../core/services/branch-api';
 import {SearchableSelectComponent,SearchableSelectOption} from '../../../shared/components/searchable-select/searchable-select.component';
+import { AuthService,AuthUser } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-employee-details',
@@ -28,6 +29,8 @@ export class EmployeeDetailsComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly roleApi = inject(RoleApi);
+  private readonly authService = inject(AuthService);
+   readonly currentUser = signal<AuthUser | null>(null);
   //private readonly routerLink = inject(RouterLink);
 
   roles: Role[] = [];
@@ -82,6 +85,12 @@ export class EmployeeDetailsComponent implements OnInit {
       });
 
       this.loadRoles();
+
+       this.authService.currentUser$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(user => {
+        this.currentUser.set(user);
+      });
   }
 
   loadRoles(): void {
@@ -310,6 +319,20 @@ saveRole(): void {
             this.cdr.detectChanges();
         },
       });
+  }
+
+    get canUpdateEmployee(): boolean {
+      let user = this.currentUser();
+      if(this.employee?.user_id!=user?.id){
+        return this.authService.hasPermission('employees.update');
+      }
+      else{
+        return false;
+      }
+  }
+  
+   get canUpdateRole(): boolean {
+    return this.authService.hasPermission('roles.update');
   }
 
   goBack(): void {

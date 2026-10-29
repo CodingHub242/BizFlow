@@ -6,6 +6,7 @@
       <p>Manage your team, employee accounts, and branch assignments.</p>
     </div>
 
+  @if(canManageEmployees){
     <button
       type="button"
       class="btn btn-primary"
@@ -14,6 +15,7 @@
       <span class="button-icon">{{ showCreateForm ? '−' : '+' }}</span>
       {{ showCreateForm ? 'Close form' : 'Add employee' }}
     </button>
+  }
   </header>
 
   @if (successMessage) {
@@ -109,13 +111,13 @@
                 [(ngModel)]="form.password"
                 #passwordModel="ngModel"
                 required
-                minlength="12"
+                minlength="8"
                 autocomplete="new-password"
-                placeholder="At least 12 characters"
+                placeholder="At least 8 characters"
                 [class.invalid]="passwordModel.invalid && passwordModel.touched"
               />
               @if (passwordModel.invalid && passwordModel.touched) {
-                <small class="field-error">Use at least 12 characters.</small>
+                <small class="field-error">Use at least 8 characters.</small>
               }
               <small>Use a secure temporary password and share it safely.</small>
             </div>

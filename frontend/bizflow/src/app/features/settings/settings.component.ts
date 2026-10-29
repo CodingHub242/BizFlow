@@ -215,6 +215,16 @@ uploadLogo(): void {
     return this.authService.hasPermission('settings.update_logo');
   }
 
+  get canViewRoles(): boolean{
+     return this.authService.hasPermission('roles.view');
+  }
+  get canManageRoles(): boolean{
+     return this.authService.hasPermission('roles.create');
+  }
+  get canManageEmployees(): boolean {
+  return this.authService.hasPermission('employees.view');
+}
+
   removeLogo(): void {
     if (
       !this.profile?.logo_path ||
@@ -274,7 +284,13 @@ uploadLogo(): void {
     this.router.navigateByUrl('employees');
   }
 
+   manageRols(){
+    //go to employee component
+    this.router.navigateByUrl('roles');
+  }
+
   EditProf(){
     //should open employee/user edit/own page
+    this.router.navigateByUrl('/my-profile');
   }
 }

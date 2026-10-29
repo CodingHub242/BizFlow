@@ -51,6 +51,21 @@ export interface BusinessRegistrationResponse {
   };
 }
 
+export interface UpdateProfileRequest {
+  name: string;
+  email: string;
+}
+
+export interface UpdateProfileResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -132,6 +147,36 @@ hasAnyPermission(permissions: string[]): boolean {
   return permissions.some(permission =>
     this.hasPermission(permission)
   );
+}
+
+updateProfile(
+  payload: UpdateProfileRequest,
+): Observable<UpdateProfileResponse> {
+  return this.http
+    .put<UpdateProfileResponse>(
+      `${this.apiUrl}/user/profile`,
+      payload,
+    )
+    .pipe(
+      tap(response => {
+        const currentUser = this.currentUserSubject.value;
+
+        if (currentUser) {
+          const updatedUser: AuthUser = {
+            ...currentUser,
+            name: response.data.name,
+            email: response.data.email,
+          };
+
+          localStorage.setItem(
+            'bizflow_user',
+            JSON.stringify(updatedUser),
+          );
+
+          this.currentUserSubject.next(updatedUser);
+        }
+      }),
+    );
 }
 
   logout(): void {

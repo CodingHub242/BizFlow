@@ -1,5 +1,5 @@
 @let user = currentUser();
-@if(canViewSettings){
+
 <div class="settings-page">
   <header class="settings-header">
     <div>
@@ -8,7 +8,12 @@
     </div>
 
     <div class="actionbuttons">
-      @if(user?.role=='Owner' || user?.role=='Administrator'){
+      @if (canViewRoles && canManageRoles) {
+      <button class="employees" (click)="manageRols()">
+        Manage Roles & Permissions
+      </button>}
+
+      @if (canManageEmployees) {
       <button class="employees" (click)="manageEmps()">
         Manage Employees
       </button>
@@ -20,6 +25,7 @@
     </div>
   </header>
 
+   @if (canViewSettings) {
   <section class="settings-card">
     <div class="card-heading">
       <div>
@@ -173,5 +179,25 @@
       </form>
     }
   </section>
-</div>
+}@else{
+   <section class="settings-card profile-only-card">
+      <div class="card-heading">
+        <div>
+          <h2>Personal profile</h2>
+          <p>Manage your own account details and preferences.</p>
+        </div>
+      </div>
+
+      <div class="profile-summary">
+        <strong>{{ user?.name || 'Your account' }}</strong>
+        <span>{{ user?.email || 'No email available' }}</span>
+        <span>{{ user?.role || 'Employee' }}</span>
+      </div>
+
+      <p>
+        You can manage your personal profile here. Business settings
+        are available only to users with the appropriate permissions.
+      </p>
+    </section>
 }
+</div>

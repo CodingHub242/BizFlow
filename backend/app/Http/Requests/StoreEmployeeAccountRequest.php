@@ -25,7 +25,7 @@ class StoreEmployeeAccountRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email'),
             ],
-            'password' => ['required', 'string', 'min:12'],
+            'password' => ['required', 'string', 'min:8'],
 
             'branch_id' => [
                 'nullable',

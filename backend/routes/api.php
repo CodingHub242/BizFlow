@@ -506,4 +506,23 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     ->middleware('permission:roles.view');
 
     Route::post('/roles', [RoleController::class, 'store']);
+
+    //UpdateProfile
+    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
+
+    // PASSWORD RESET
+    Route::post('/user/password-reset/request-otp', [
+        AuthController::class,
+        'requestPasswordResetOtp',
+    ])->middleware('throttle:3,1');
+
+    Route::post('/user/password-reset/verify-otp', [
+        AuthController::class,
+        'verifyPasswordResetOtp',
+    ])->middleware('throttle:5,1');
+
+    Route::post('/user/password-reset/reset', [
+        AuthController::class,
+        'resetPassword',
+    ])->middleware('throttle:5,1');
 });
