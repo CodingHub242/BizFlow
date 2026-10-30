@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap,BehaviorSubject} from 'rxjs';
 import { API_URL } from '../config/api.config';
+import { Router } from '@angular/router';
 
 export interface AuthUser {
   id: number;
@@ -79,6 +80,7 @@ export interface UpdateProfileResponse {
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private currentUserSubject = new BehaviorSubject<AuthUser | null>(this.getStoredUser());
   currentUser$ = this.currentUserSubject.asObservable();
   
@@ -226,6 +228,8 @@ logout(): void {
   localStorage.removeItem(this.tokenKey);
   localStorage.removeItem('bizflow_user');
   this.currentUserSubject.next(null);
+
+  this.router.navigateByUrl('login');
 }
 
 }
