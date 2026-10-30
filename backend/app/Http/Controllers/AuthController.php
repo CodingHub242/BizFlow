@@ -158,19 +158,22 @@ class AuthController extends Controller
             Mail::to($user->email)->send(
                 new PasswordResetOtpMail($otp, $user->name)
             );
-        } catch (\Throwable $exception) {
-            $record->delete();
+        }  catch (\Throwable $exception) {
+                $record->delete();
 
-            Log::error('Password reset OTP email delivery failed.', [
-                'user_id' => $user->id,
-                // Do not log the OTP or email credentials.
-            ]);
+                Log::error('Password reset OTP email delivery failed.', [
+                    'user_id' => $user->id,
+                    'exception_class' => get_class($exception),
+                    'exception_message' => $exception->getMessage(),
+                    'exception_file' => $exception->getFile(),
+                    'exception_line' => $exception->getLine(),
+                ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'We could not send the verification email. Please try again later.',
-            ], 503);
-        }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'We could not send the verification email. Please try again later.',
+                ], 503);
+            }
 
         return response()->json([
             'success' => true,

@@ -1,101 +1,315 @@
 <div class="profile-page">
   <header class="profile-header">
     <div>
-      <span class="eyebrow">MY ACCOUNT</span>
+      <!-- <span class="eyebrow">MY ACCOUNT</span> -->
       <h1>My Profile</h1>
-      <p>View and update your personal account details.</p>
+      <p>Manage your personal details and account security.</p>
     </div>
   </header>
 
-  <div *ngIf="errorMessage" class="alert alert-error" role="alert">
+  <div
+    *ngIf="errorMessage"
+    class="alert alert-error"
+    role="alert"
+  >
     {{ errorMessage }}
   </div>
 
-  <div *ngIf="successMessage" class="alert alert-success" role="status">
+  <div
+    *ngIf="successMessage"
+    class="alert alert-success"
+    role="status"
+  >
     {{ successMessage }}
   </div>
 
-  <section class="profile-card">
-    <div *ngIf="loading" class="status-message">
-      Loading your profile…
-    </div>
+  <div *ngIf="loading" class="status-message">
+    Loading your profile…
+  </div>
 
-    <form
-      *ngIf="!loading"
-      #profileForm="ngForm"
-      (ngSubmit)="saveProfile()"
-      novalidate
-    >
-      <div class="profile-intro">
-        <div class="profile-avatar">
-          {{ (form.name || form.email || '?').charAt(0).toUpperCase() }}
-        </div>
-
+  <ng-container *ngIf="!loading">
+    <!-- Profile details -->
+    <section class="profile-card">
+      <div class="section-heading">
         <div>
-          <h2>{{ form.name || 'Your profile' }}</h2>
-          <p>{{ form.email }}</p>
+          <h2>Personal details</h2>
+          <p>Update the name associated with your account.</p>
+        </div>
+      </div>
+
+      <div class="profile-intro">
+        <!-- <div class="profile-avatar">
+          {{ (form.name || user()?.email || '?')
+            .charAt(0).toUpperCase() }}
+        </div> -->
+
+        <div class="profile-identity">
+          <h3>{{ form.name || 'Your profile' }}</h3>
+          <p>{{ user()?.email }}</p>
           <span class="account-role">
             {{ user()?.role || 'Employee' }}
           </span>
         </div>
       </div>
 
-      <div class="form-grid">
-        <div class="form-field">
-          <label for="profile-name">Full name</label>
-          <input
-            id="profile-name"
-            name="name"
-            type="text"
-            [(ngModel)]="form.name"
-            #nameModel="ngModel"
-            required
-            maxlength="255"
-            autocomplete="name"
-            [disabled]="saving"
-          />
+      <form
+        #profileForm="ngForm"
+        (ngSubmit)="saveProfile()"
+        novalidate
+      >
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="profile-name">Full name</label>
+            <input
+              id="profile-name"
+              name="name"
+              type="text"
+              [(ngModel)]="form.name"
+              #nameModel="ngModel"
+              required
+              maxlength="255"
+              autocomplete="name"
+              [disabled]="saving"
+            />
 
-          <small
-            *ngIf="nameModel.invalid && nameModel.touched"
-            class="field-error"
-          >
-            Enter your name.
-          </small>
+            <small
+              *ngIf="nameModel.invalid && nameModel.touched"
+              class="field-error"
+            >
+              Enter your name.
+            </small>
+          </div>
+
+          <div class="form-field">
+            <label for="profile-email">Registered email</label>
+            <input
+              id="profile-email"
+              type="email"
+              [value]="user()?.email || ''"
+              readonly
+              disabled
+              autocomplete="email"
+            />
+            <small class="field-hint">
+              Your registered email cannot be changed here.
+            </small>
+          </div>
         </div>
 
-        <div class="form-field">
-          <label for="profile-email">Email address</label>
-          <input
-            id="profile-email"
-            name="email"
-            type="email"
-            [(ngModel)]="form.email"
-            #emailModel="ngModel"
-            required
-            email
-            maxlength="255"
-            autocomplete="email"
-            [disabled]="saving"
-          />
-
-          <small
-            *ngIf="emailModel.invalid && emailModel.touched"
-            class="field-error"
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="saving || profileForm.invalid"
           >
-            Enter a valid email address.
-          </small>
+            {{ saving ? 'Saving…' : 'Save changes' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Password reset -->
+    <section class="profile-card security-card">
+      <div class="section-heading">
+        <div>
+          <h2>Password and security</h2>
+          <p>
+            Verify your registered email before choosing a new password.
+          </p>
         </div>
       </div>
 
-      <div class="form-actions">
-        <button
-          type="submit"
-          class="btn btn-primary"
-          [disabled]="saving || profileForm.invalid"
+      <div class="reset-steps" aria-label="Password reset progress">
+        <div
+          class="reset-step"
+          [class.active]="resetStep === 'request'"
+          [class.completed]="resetStep !== 'request'"
         >
-          {{ saving ? 'Saving…' : 'Save profile' }}
+          <span>1</span>
+          <small>Email code</small>
+        </div>
+
+        <div
+          class="reset-step"
+          [class.active]="resetStep === 'verify'"
+          [class.completed]="resetStep === 'reset'"
+        >
+          <span>2</span>
+          <small>Verify code</small>
+        </div>
+
+        <div
+          class="reset-step"
+          [class.active]="resetStep === 'reset'"
+        >
+          <span>3</span>
+          <small>New password</small>
+        </div>
+      </div>
+
+      <!-- Step 1: Request OTP -->
+      <div *ngIf="resetStep === 'request'" class="reset-panel">
+        <h3>Verify your identity</h3>
+        <p>
+          We'll send a six-digit verification code to
+          <strong>{{ user()?.email }}</strong>.
+        </p>
+
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="requestingOtp"
+          (click)="requestOtp()"
+        >
+          {{ requestingOtp ? 'Sending code…' : 'Send verification code' }}
         </button>
       </div>
-    </form>
-  </section>
+
+      <!-- Step 2: Verify OTP -->
+      <form
+        *ngIf="resetStep === 'verify'"
+        #otpForm="ngForm"
+        class="reset-panel"
+        (ngSubmit)="verifyOtp()"
+        novalidate
+      >
+        <h3>Enter verification code</h3>
+        <p>
+          Enter the six-digit code sent to your registered email.
+          The code expires after five minutes.
+        </p>
+
+        <div class="form-field">
+          <label for="reset-otp">Verification code</label>
+          <input
+            id="reset-otp"
+            name="otp"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            pattern="[0-9]{6}"
+            maxlength="6"
+            [(ngModel)]="otp"
+            #otpModel="ngModel"
+            required
+            placeholder="000000"
+            [disabled]="verifyingOtp"
+          />
+
+          <small
+            *ngIf="otpModel.invalid && otpModel.touched"
+            class="field-error"
+          >
+            Enter all six digits.
+          </small>
+        </div>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="verifyingOtp || otpForm.invalid"
+          >
+            {{ verifyingOtp ? 'Verifying…' : 'Verify code' }}
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            [disabled]="requestingOtp || verifyingOtp"
+            (click)="startPasswordResetAgain()"
+          >
+            Start again
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="text-button"
+          [disabled]="requestingOtp || verifyingOtp"
+          (click)="requestOtp()"
+        >
+          Send a new code
+        </button>
+      </form>
+
+      <!-- Step 3: Choose new password -->
+      <form
+        *ngIf="resetStep === 'reset'"
+        #passwordForm="ngForm"
+        class="reset-panel"
+        (ngSubmit)="submitNewPassword()"
+        novalidate
+      >
+        <h3>Choose a new password</h3>
+        <p>
+          Use at least 12 characters. You'll need to sign in again
+          after the password is changed.
+        </p>
+
+        <div class="form-field">
+          <label for="new-password">New password</label>
+          <input
+            id="new-password"
+            name="newPassword"
+            type="password"
+            [(ngModel)]="newPassword"
+            #newPasswordModel="ngModel"
+            required
+            minlength="12"
+            autocomplete="new-password"
+            [disabled]="resettingPassword"
+          />
+
+          <small
+            *ngIf="newPasswordModel.invalid && newPasswordModel.touched"
+            class="field-error"
+          >
+            Use at least 12 characters.
+          </small>
+        </div>
+
+        <div class="form-field">
+          <label for="confirm-password">Confirm new password</label>
+          <input
+            id="confirm-password"
+            name="confirmPassword"
+            type="password"
+            [(ngModel)]="confirmPassword"
+            #confirmPasswordModel="ngModel"
+            required
+            autocomplete="new-password"
+            [disabled]="resettingPassword"
+          />
+        </div>
+
+        <p *ngIf="passwordError" class="field-error" role="alert">
+          {{ passwordError }}
+        </p>
+
+        <div class="form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="resettingPassword || passwordForm.invalid"
+          >
+            {{
+              resettingPassword
+                ? 'Updating password…'
+                : 'Update password'
+            }}
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            [disabled]="resettingPassword"
+            (click)="startPasswordResetAgain()"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+  </ng-container>
 </div>

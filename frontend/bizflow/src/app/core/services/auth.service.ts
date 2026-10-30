@@ -53,7 +53,15 @@ export interface BusinessRegistrationResponse {
 
 export interface UpdateProfileRequest {
   name: string;
-  email: string;
+}
+
+export interface PasswordResetResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface VerifyPasswordResetOtpResponse extends PasswordResetResponse {
+  reset_token: string;
 }
 
 export interface UpdateProfileResponse {
@@ -149,13 +157,14 @@ hasAnyPermission(permissions: string[]): boolean {
   );
 }
 
+
 updateProfile(
-  payload: UpdateProfileRequest,
+  payload: UpdateProfileRequest
 ): Observable<UpdateProfileResponse> {
   return this.http
     .put<UpdateProfileResponse>(
       `${this.apiUrl}/user/profile`,
-      payload,
+      payload
     )
     .pipe(
       tap(response => {
@@ -165,21 +174,58 @@ updateProfile(
           const updatedUser: AuthUser = {
             ...currentUser,
             name: response.data.name,
-            email: response.data.email,
+            email: response.data.email
           };
 
           localStorage.setItem(
             'bizflow_user',
-            JSON.stringify(updatedUser),
+            JSON.stringify(updatedUser)
           );
 
           this.currentUserSubject.next(updatedUser);
         }
-      }),
+      })
     );
 }
 
-  logout(): void {
-    localStorage.removeItem(this.tokenKey);
-  }
+
+
+requestPasswordResetOtp(): Observable<PasswordResetResponse> {
+  return this.http.post<PasswordResetResponse>(
+    `${this.apiUrl}/user/password-reset/request-otp`,
+    {}
+  );
+}
+
+verifyPasswordResetOtp(
+  otp: string
+): Observable<VerifyPasswordResetOtpResponse> {
+  return this.http.post<VerifyPasswordResetOtpResponse>(
+    `${this.apiUrl}/user/password-reset/verify-otp`,
+    { otp }
+  );
+}
+
+resetPassword(
+  resetToken: string,
+  password: string,
+  passwordConfirmation: string
+): Observable<PasswordResetResponse> {
+  return this.http.post<PasswordResetResponse>(
+    `${this.apiUrl}/user/password-reset/reset`,
+    {
+      reset_token: resetToken,
+      password,
+      password_confirmation: passwordConfirmation
+    }
+  );
+}
+
+
+logout(): void {
+  localStorage.removeItem(this.tokenKey);
+  localStorage.removeItem('bizflow_user');
+  this.currentUserSubject.next(null);
+}
+
 }

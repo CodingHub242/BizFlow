@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PlatformAuthController;
 use App\Http\Controllers\PlatformDashboardController;
 use App\Http\Controllers\PlatformAuditLogController;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\PlatformBusinessApprovalController;
 
 Route::get('/', function () {
