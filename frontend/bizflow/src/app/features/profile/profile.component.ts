@@ -195,9 +195,9 @@ export class ProfileComponent implements OnInit {
     this.successMessage = '';
     this.passwordError = '';
 
-    if (this.newPassword.length < 12) {
+    if (this.newPassword.length < 8) {
       this.passwordError =
-        'Your password must contain at least 12 characters.';
+        'Your password must contain at least 8 characters.';
       return;
     }
 
@@ -223,7 +223,7 @@ export class ProfileComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
         finalize(() => {
           this.resettingPassword = false;
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         })
       )
       .subscribe({
@@ -238,12 +238,16 @@ export class ProfileComponent implements OnInit {
           this.newPassword = '';
           this.confirmPassword = '';
           this.resetStep = 'request';
+
+          this.cdr.detectChanges();
         },
         error: error => {
           this.errorMessage = this.getErrorMessage(
             error,
             'Unable to reset your password.'
           );
+
+          this.cdr.detectChanges();
         }
       });
   }
