@@ -555,8 +555,25 @@ class InventoryService
                 'reorder_level' => 0,
             ]);
 
-            // A zero opening balance does not need a stock movement.
+            // Keep the batch ledger aligned with the opening aggregate balance.
             if ($quantity > 0) {
+                $batch = \\App\\Models\\InventoryBatch::create([
+                    'tenant_id' => $tenantId,
+                    'branch_id' => $branchId,
+                    'catalog_item_id' => $catalogItemId,
+                    'batch_number' => 'OPEN-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                    'quantity_received' => $quantity,
+                    'quantity_remaining' => $quantity,
+                    'unit_cost' => null,
+                    'selling_price' => null,
+                    'received_at' => now(),
+                    'source_type' => 'opening',
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'created_by' => auth()->id(),
+                ]);
+                $this->recordBatchMovement($batch, 'opening', $quantity, $referenceType, $referenceId, $notes);
+
                 InventoryMovement::create([
                     'tenant_id' => $tenantId,
                     'branch_id' => $branchId,
