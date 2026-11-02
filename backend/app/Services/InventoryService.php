@@ -139,11 +139,11 @@ class InventoryService
             $inventory->quantity += $quantity;
             $inventory->save();
 
-            $batch = \\App\\Models\\InventoryBatch::create([
+            $batch = \App\Models\InventoryBatch::create([
                 'tenant_id' => $tenantId,
                 'branch_id' => $branchId,
                 'catalog_item_id' => $catalogItemId,
-                'batch_number' => 'PUR-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                'batch_number' => 'PUR-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
                 'quantity_received' => $quantity,
                 'quantity_remaining' => $quantity,
                 'unit_cost' => null,
@@ -234,7 +234,7 @@ class InventoryService
 
                 $remainingToAllocate = $fulfilled;
                 $totalSellingValue = 0.0;
-                $batches = \\App\\Models\\InventoryBatch::query()
+                $batches = \App\Models\InventoryBatch::query()
                     ->where('tenant_id', $tenantId)
                     ->where('branch_id', $branchId)
                     ->where('catalog_item_id', $catalogItemId)
@@ -270,7 +270,7 @@ class InventoryService
                         $shortfall > 0 ? 'Partial fulfillment due to insufficient stock.' : null
                     );
 
-                    \\App\\Models\\InventoryBatchAllocation::create([
+                    \App\Models\InventoryBatchAllocation::create([
                         'tenant_id' => $tenantId,
                         'branch_id' => $branchId,
                         'catalog_item_id' => $catalogItemId,
