@@ -62,4 +62,9 @@ class CatalogItem extends Model
     {
         return $this->hasMany(SupplierCatalogItem::class);
     }
+
+    public function inventoryBatches(): HasMany
+    {
+        return $this->hasMany(InventoryBatch::class);
+    }
 }
