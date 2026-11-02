@@ -275,11 +275,11 @@ class InventoryService
             }
 
             if ($quantity > 0) {
-                $batch = \\App\\Models\\InventoryBatch::create([
+                $batch = \App\Models\InventoryBatch::create([
                     'tenant_id' => $tenantId,
                     'branch_id' => $branchId,
                     'catalog_item_id' => $catalogItemId,
-                    'batch_number' => 'ADJ-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                    'batch_number' => 'ADJ-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
                     'quantity_received' => $quantity,
                     'quantity_remaining' => $quantity,
                     'unit_cost' => null,
@@ -359,7 +359,7 @@ class InventoryService
             }
 
             $remaining = $quantity;
-            $batches = \\App\\Models\\InventoryBatch::query()
+            $batches = \App\Models\InventoryBatch::query()
                 ->where('tenant_id', $tenantId)
                 ->where('branch_id', $fromBranchId)
                 ->where('catalog_item_id', $catalogItemId)
@@ -382,11 +382,11 @@ class InventoryService
                 $sourceBatch->save();
                 $this->recordBatchMovement($sourceBatch, 'transfer_out', $moved, 'inventory_transfer', null, $notes);
 
-                $destinationBatch = \\App\\Models\\InventoryBatch::create([
+                $destinationBatch = \App\Models\InventoryBatch::create([
                     'tenant_id' => $tenantId,
                     'branch_id' => $toBranchId,
                     'catalog_item_id' => $catalogItemId,
-                    'batch_number' => 'TRF-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                    'batch_number' => 'TRF-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
                     'quantity_received' => $moved,
                     'quantity_remaining' => $moved,
                     'unit_cost' => $sourceBatch->unit_cost,
@@ -496,11 +496,11 @@ class InventoryService
 
             // Keep the batch ledger aligned with the opening aggregate balance.
             if ($quantity > 0) {
-                $batch = \\App\\Models\\InventoryBatch::create([
+                $batch = \App\Models\InventoryBatch::create([
                     'tenant_id' => $tenantId,
                     'branch_id' => $branchId,
                     'catalog_item_id' => $catalogItemId,
-                    'batch_number' => 'OPEN-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                    'batch_number' => 'OPEN-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
                     'quantity_received' => $quantity,
                     'quantity_remaining' => $quantity,
                     'unit_cost' => null,
@@ -535,7 +535,7 @@ class InventoryService
      */
     private function ensureBatchCoverage(Inventory $inventory, CatalogItem $catalogItem): void
     {
-        $batchQuantity = (float) \\App\\Models\\InventoryBatch::query()
+        $batchQuantity = (float) \App\Models\InventoryBatch::query()
             ->where('tenant_id', $inventory->tenant_id)
             ->where('branch_id', $inventory->branch_id)
             ->where('catalog_item_id', $inventory->catalog_item_id)
@@ -548,11 +548,11 @@ class InventoryService
         }
 
         if ($difference > 0.001) {
-            $batch = \\App\\Models\\InventoryBatch::create([
+            $batch = \App\Models\InventoryBatch::create([
                 'tenant_id' => $inventory->tenant_id,
                 'branch_id' => $inventory->branch_id,
                 'catalog_item_id' => $inventory->catalog_item_id,
-                'batch_number' => 'LEGACY-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                'batch_number' => 'LEGACY-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
                 'quantity_received' => $difference,
                 'quantity_remaining' => $difference,
                 'unit_cost' => null,
@@ -581,7 +581,7 @@ class InventoryService
         $remaining = $quantity;
         $consumed = [];
 
-        $batches = \\App\\Models\\InventoryBatch::query()
+        $batches = \App\Models\InventoryBatch::query()
             ->where('tenant_id', $tenantId)
             ->where('branch_id', $branchId)
             ->where('catalog_item_id', $catalogItemId)
@@ -616,14 +616,14 @@ class InventoryService
     }
 
     private function recordBatchMovement(
-        \\App\\Models\\InventoryBatch $batch,
+        \App\Models\InventoryBatch $batch,
         string $type,
         float $quantity,
         ?string $referenceType = null,
         ?int $referenceId = null,
         ?string $notes = null
     ): void {
-        \\App\\Models\\InventoryBatchMovement::create([
+        \App\Models\InventoryBatchMovement::create([
             'tenant_id' => $batch->tenant_id,
             'branch_id' => $batch->branch_id,
             'catalog_item_id' => $batch->catalog_item_id,
