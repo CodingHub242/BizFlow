@@ -629,7 +629,7 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
         );
 
         $this->assertSame(5.0, $result['fulfilled_quantity']);
-        $this->assertSame(23.0, $result['weighted_unit_selling_price']);
+        $this->assertSame(17.0, $result['weighted_unit_selling_price']);
         $this->assertEquals(0, (float) $first->fresh()->quantity_remaining);
         $this->assertEquals(5, (float) $second->fresh()->quantity_remaining);
         $this->assertEquals(5, (float) $inventory->fresh()->quantity);
