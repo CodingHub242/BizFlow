@@ -95,6 +95,14 @@ class BizFlowRolePermissionSeeder extends Seeder
         'settings.view',
         'settings.update',
         'settings.update_logo',
+
+        // Employee item requests
+        'employee_item_requests.view',
+        'employee_item_requests.create',
+        'employee_item_requests.approve',
+        'employee_item_requests.issue',
+        'employee_item_requests.return',
+        'employee_item_requests.manage',
     ];
 
     public const ROLE_PERMISSIONS = [
@@ -164,6 +172,13 @@ class BizFlowRolePermissionSeeder extends Seeder
         'settings.view',
         'settings.update',
         'settings.update_logo',
+
+        'employee_item_requests.view',
+        'employee_item_requests.create',
+        'employee_item_requests.approve',
+        'employee_item_requests.issue',
+        'employee_item_requests.return',
+        'employee_item_requests.manage',
     ],
 
     'Administrator' => [
@@ -232,6 +247,13 @@ class BizFlowRolePermissionSeeder extends Seeder
         'settings.view',
         'settings.update',
         'settings.update_logo',
+
+        'employee_item_requests.view',
+        'employee_item_requests.create',
+        'employee_item_requests.approve',
+        'employee_item_requests.issue',
+        'employee_item_requests.return',
+        'employee_item_requests.manage',
     ],
 
     'Manager' => [
@@ -280,6 +302,9 @@ class BizFlowRolePermissionSeeder extends Seeder
 
         // Business Settings
         'settings.view',
+
+        'employee_item_requests.view',
+        'employee_item_requests.create',
     ],
 
     'Salesperson' => [
@@ -301,6 +326,8 @@ class BizFlowRolePermissionSeeder extends Seeder
 
         // Categories
         'categories.view',
+
+        'employee_item_requests.view',
     ],
 
     'Cashier' => [
@@ -344,6 +371,11 @@ class BizFlowRolePermissionSeeder extends Seeder
 
         // Categories
         'categories.view',
+
+        'employee_item_requests.view',
+        'employee_item_requests.issue',
+        'employee_item_requests.return',
+        'employee_item_requests.manage',
     ],
 
     'Accountant' => [

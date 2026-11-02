@@ -5,6 +5,7 @@ namespace App\Models;
 use App\EmploymentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Employee extends Model
@@ -40,5 +41,13 @@ class Employee extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    public function itemRequests(): HasMany
+    {
+        return $this->hasMany(
+            EmployeeItemRequest::class,
+            'requested_by_employee_id'
+        );
     }
 }
