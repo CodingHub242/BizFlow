@@ -564,4 +564,111 @@ class InventoryService
         });
     }
 
+
+    /**
+     * Ensure legacy aggregate stock is represented by batches before consuming it.
+     */
+    private function ensureBatchCoverage(Inventory $inventory, CatalogItem $catalogItem): void
+    {
+        $batchQuantity = (float) \\App\\Models\\InventoryBatch::query()
+            ->where('tenant_id', $inventory->tenant_id)
+            ->where('branch_id', $inventory->branch_id)
+            ->where('catalog_item_id', $inventory->catalog_item_id)
+            ->sum('quantity_remaining');
+
+        $difference = round((float) $inventory->quantity - $batchQuantity, 3);
+
+        if ($difference < -0.001) {
+            throw new RuntimeException('Inventory batch quantities exceed the aggregate stock balance.');
+        }
+
+        if ($difference > 0.001) {
+            $batch = \\App\\Models\\InventoryBatch::create([
+                'tenant_id' => $inventory->tenant_id,
+                'branch_id' => $inventory->branch_id,
+                'catalog_item_id' => $inventory->catalog_item_id,
+                'batch_number' => 'LEGACY-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                'quantity_received' => $difference,
+                'quantity_remaining' => $difference,
+                'unit_cost' => null,
+                'selling_price' => null,
+                'received_at' => $inventory->created_at ?? now(),
+                'source_type' => 'opening',
+                'reference_type' => 'legacy_inventory',
+                'reference_id' => $inventory->id,
+                'created_by' => null,
+            ]);
+
+            $this->recordBatchMovement($batch, 'opening', $difference, 'legacy_inventory', (int) $inventory->id);
+        }
+    }
+
+    private function consumeBatches(
+        int $tenantId,
+        int $branchId,
+        int $catalogItemId,
+        float $quantity,
+        string $movementType,
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        ?string $notes = null
+    ): array {
+        $remaining = $quantity;
+        $consumed = [];
+
+        $batches = \\App\\Models\\InventoryBatch::query()
+            ->where('tenant_id', $tenantId)
+            ->where('branch_id', $branchId)
+            ->where('catalog_item_id', $catalogItemId)
+            ->where('quantity_remaining', '>', 0)
+            ->orderBy('received_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0.000001) {
+                break;
+            }
+
+            $take = min($remaining, (float) $batch->quantity_remaining);
+            if ($take <= 0) {
+                continue;
+            }
+
+            $batch->quantity_remaining = (float) $batch->quantity_remaining - $take;
+            $batch->save();
+            $this->recordBatchMovement($batch, $movementType, $take, $referenceType, $referenceId, $notes);
+            $consumed[] = ['inventory_batch_id' => $batch->id, 'quantity' => $take];
+            $remaining -= $take;
+        }
+
+        if ($remaining > 0.000001) {
+            throw new RuntimeException('Inventory batch quantities do not reconcile with the aggregate stock balance.');
+        }
+
+        return $consumed;
+    }
+
+    private function recordBatchMovement(
+        \\App\\Models\\InventoryBatch $batch,
+        string $type,
+        float $quantity,
+        ?string $referenceType = null,
+        ?int $referenceId = null,
+        ?string $notes = null
+    ): void {
+        \\App\\Models\\InventoryBatchMovement::create([
+            'tenant_id' => $batch->tenant_id,
+            'branch_id' => $batch->branch_id,
+            'catalog_item_id' => $batch->catalog_item_id,
+            'inventory_batch_id' => $batch->id,
+            'type' => $type,
+            'quantity' => $quantity,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'notes' => $notes,
+            'created_by' => auth()->id(),
+        ]);
+    }
 }
