@@ -82,38 +82,23 @@ class InventoryService
         ?string $notes = null,
         ?string $referenceType = null,
         ?int $referenceId = null
-        ): Inventory {
+    ): Inventory {
         if ($quantity <= 0) {
-            throw new RuntimeException(
-                'Received quantity must be greater than zero.'
-            );
+            throw new RuntimeException('Received quantity must be greater than zero.');
         }
 
-        
-
         return DB::transaction(function () use (
-            $tenantId,
-            $branchId,
-            $catalogItemId,
-            $quantity,
-            $notes,
-            $referenceType,
-            $referenceId
+            $tenantId, $branchId, $catalogItemId, $quantity,
+            $notes, $referenceType, $referenceId
         ) {
-            $branch = Branch::query()
-            ->where('tenant_id', $tenantId)
-            ->whereKey($branchId)
-            ->firstOrFail();
-
+            Branch::query()->where('tenant_id', $tenantId)->whereKey($branchId)->firstOrFail();
             $catalogItem = CatalogItem::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($catalogItemId)
                 ->firstOrFail();
 
             if (! $catalogItem->track_inventory) {
-                throw new RuntimeException(
-                    'This catalog item does not track inventory.'
-                );
+                throw new RuntimeException('This catalog item does not track inventory.');
             }
 
             $inventory = Inventory::query()
@@ -133,7 +118,27 @@ class InventoryService
                 ]);
             }
 
-            $inventory->quantity += $quantity;
+            $batch = \App\Models\InventoryBatch::create([
+                'tenant_id' => $tenantId,
+                'branch_id' => $branchId,
+                'catalog_item_id' => $catalogItemId,
+                'batch_number' => 'PUR-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
+                'quantity_received' => $quantity,
+                'quantity_remaining' => $quantity,
+                'unit_cost' => null,
+                'selling_price' => null,
+                'received_at' => now(),
+                'source_type' => 'purchase',
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'created_by' => auth()->id(),
+            ]);
+
+            $this->recordBatchMovement(
+                $batch, 'purchase', $quantity, $referenceType, $referenceId, $notes
+            );
+
+            $inventory->quantity = (float) $inventory->quantity + $quantity;
             $inventory->save();
 
             InventoryMovement::create([
@@ -151,12 +156,6 @@ class InventoryService
         });
     }
 
-    /**
-     * Sell stock from a branch.
-     *
-     * Returns the quantity that can actually be fulfilled and
-     * the remaining shortage.
-     */
     public function sellStock(
         int $tenantId,
         int $branchId,
@@ -164,20 +163,14 @@ class InventoryService
         float $requestedQuantity,
         ?string $referenceType = null,
         ?int $referenceId = null
-        ): array {
+    ): array {
         if ($requestedQuantity <= 0) {
-            throw new RuntimeException(
-                'Requested quantity must be greater than zero.'
-            );
+            throw new RuntimeException('Requested quantity must be greater than zero.');
         }
 
         return DB::transaction(function () use (
-            $tenantId,
-            $branchId,
-            $catalogItemId,
-            $requestedQuantity,
-            $referenceType,
-            $referenceId
+            $tenantId, $branchId, $catalogItemId, $requestedQuantity,
+            $referenceType, $referenceId
         ) {
             $catalogItem = CatalogItem::query()
                 ->where('tenant_id', $tenantId)
@@ -188,9 +181,11 @@ class InventoryService
                 return [
                     'requested_quantity' => $requestedQuantity,
                     'fulfilled_quantity' => $requestedQuantity,
-                    'shortfall_quantity' => 0,
-                    'remaining_quantity' => 0,
+                    'shortfall_quantity' => 0.0,
+                    'remaining_quantity' => 0.0,
                     'tracks_inventory' => false,
+                    'batch_allocations' => [],
+                    'weighted_unit_selling_price' => (float) $catalogItem->selling_price,
                 ];
             }
 
@@ -201,19 +196,84 @@ class InventoryService
                 ->lockForUpdate()
                 ->first();
 
-            $available = $inventory
-                ? (float) $inventory->quantity
-                : 0.0;
+            $available = $inventory ? (float) $inventory->quantity : 0.0;
+            $fulfilled = min($requestedQuantity, $available);
+            $shortfall = max(0.0, $requestedQuantity - $fulfilled);
+            $allocations = [];
+            $extendedSellingValue = 0.0;
+            $allocatedQuantity = 0.0;
 
-            $fulfilled = min(
-                $requestedQuantity,
-                $available
-            );
+            if ($fulfilled > 0 && $inventory) {
+                $this->ensureBatchCoverage($inventory, $catalogItem);
 
-            $shortfall = $requestedQuantity - $fulfilled;
+                $batches = \App\Models\InventoryBatch::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('branch_id', $branchId)
+                    ->where('catalog_item_id', $catalogItemId)
+                    ->where('quantity_remaining', '>', 0)
+                    ->orderBy('received_at')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
 
-            if ($fulfilled > 0) {
-                $inventory->quantity -= $fulfilled;
+                $remainingToAllocate = $fulfilled;
+
+                foreach ($batches as $batch) {
+                    if ($remainingToAllocate <= 0.000001) {
+                        break;
+                    }
+
+                    $take = min($remainingToAllocate, (float) $batch->quantity_remaining);
+                    if ($take <= 0) {
+                        continue;
+                    }
+
+                    $unitSellingPrice = $batch->selling_price !== null
+                        ? (float) $batch->selling_price
+                        : (float) $catalogItem->selling_price;
+
+                    $batch->quantity_remaining = (float) $batch->quantity_remaining - $take;
+                    $batch->save();
+
+                    $this->recordBatchMovement(
+                        $batch, 'sale', $take, $referenceType, $referenceId,
+                        $shortfall > 0 ? 'Partial fulfillment due to insufficient stock.' : null
+                    );
+
+                    if ($referenceId !== null) {
+                        \App\Models\InventoryBatchAllocation::create([
+                            'tenant_id' => $tenantId,
+                            'branch_id' => $branchId,
+                            'catalog_item_id' => $catalogItemId,
+                            'inventory_batch_id' => $batch->id,
+                            'source_type' => $referenceType ?: 'sale',
+                            'source_id' => $referenceId,
+                            'source_item_id' => null,
+                            'quantity' => $take,
+                            'unit_cost_snapshot' => $batch->unit_cost,
+                            'unit_selling_price_snapshot' => $unitSellingPrice,
+                        ]);
+                    }
+
+                    $allocations[] = [
+                        'inventory_batch_id' => $batch->id,
+                        'batch_number' => $batch->batch_number,
+                        'quantity' => $take,
+                        'unit_cost' => $batch->unit_cost,
+                        'unit_selling_price' => $unitSellingPrice,
+                    ];
+                    $extendedSellingValue += $take * $unitSellingPrice;
+                    $allocatedQuantity += $take;
+                    $remainingToAllocate -= $take;
+                }
+
+                if ($remainingToAllocate > 0.000001) {
+                    throw new RuntimeException(
+                        'Inventory batch quantities do not reconcile with the aggregate stock balance.'
+                    );
+                }
+
+                $inventory->quantity = max(0.0, $available - $fulfilled);
                 $inventory->save();
 
                 InventoryMovement::create([
@@ -234,11 +294,12 @@ class InventoryService
                 'requested_quantity' => $requestedQuantity,
                 'fulfilled_quantity' => $fulfilled,
                 'shortfall_quantity' => $shortfall,
-                'remaining_quantity' => max(
-                    0,
-                    $requestedQuantity - $fulfilled
-                ),
+                'remaining_quantity' => $shortfall,
                 'tracks_inventory' => true,
+                'batch_allocations' => $allocations,
+                'weighted_unit_selling_price' => $allocatedQuantity > 0
+                    ? round($extendedSellingValue / $allocatedQuantity, 2)
+                    : (float) $catalogItem->selling_price,
             ];
         });
     }
