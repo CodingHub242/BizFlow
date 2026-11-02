@@ -133,6 +133,9 @@ class InventoryService
                 ]);
             }
 
+            // Represent any pre-existing aggregate stock before adding the new receipt.
+            $this->ensureBatchCoverage($inventory, $catalogItem);
+
             $inventory->quantity += $quantity;
             $inventory->save();
 
