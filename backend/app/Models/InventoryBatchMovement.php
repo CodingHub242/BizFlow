@@ -13,6 +13,7 @@ class InventoryBatchMovement extends Model
     protected $fillable = [ 
         "tenant_id", 
         "branch_id", 
+        "catalog_item_id", 
         "inventory_batch_id", 
         "type", 
         "quantity", 
