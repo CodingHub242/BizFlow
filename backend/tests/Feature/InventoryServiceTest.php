@@ -552,4 +552,180 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
     $this->assertDatabaseCount('inventory_movements', 0);
 }
 
+
+    public function test_receiving_stock_creates_a_batch_and_batch_movement(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $branch = Branch::factory()->create(['tenant_id' => $tenant->id]);
+        $product = CatalogItem::factory()->product()->create([
+            'tenant_id' => $tenant->id,
+            'track_inventory' => true,
+        ]);
+
+        $this->inventoryService->receiveStock($tenant->id, $branch->id, $product->id, 12);
+
+        $this->assertDatabaseHas('inventory_batches', [
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'quantity_received' => 12,
+            'quantity_remaining' => 12,
+            'source_type' => 'purchase',
+        ]);
+        $this->assertDatabaseHas('inventory_batch_movements', [
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'type' => 'purchase',
+            'quantity' => 12,
+        ]);
+    }
+
+    public function test_sale_consumes_batches_in_fifo_order_and_returns_weighted_price(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $branch = Branch::factory()->create(['tenant_id' => $tenant->id]);
+        $product = CatalogItem::factory()->product()->create([
+            'tenant_id' => $tenant->id,
+            'track_inventory' => true,
+            'selling_price' => 20,
+        ]);
+
+        $inventory = Inventory::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'quantity' => 10,
+            'reorder_level' => 0,
+        ]);
+
+        $first = \\App\\Models\\InventoryBatch::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'batch_number' => 'FIFO-001',
+            'quantity_received' => 4,
+            'quantity_remaining' => 4,
+            'unit_cost' => 5,
+            'selling_price' => 15,
+            'received_at' => now()->subDay(),
+            'source_type' => 'purchase',
+        ]);
+        $second = \\App\\Models\\InventoryBatch::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'batch_number' => 'FIFO-002',
+            'quantity_received' => 6,
+            'quantity_remaining' => 6,
+            'unit_cost' => 8,
+            'selling_price' => 25,
+            'received_at' => now(),
+            'source_type' => 'purchase',
+        ]);
+
+        $result = $this->inventoryService->sellStock(
+            $tenant->id, $branch->id, $product->id, 5, 'test_sale', 999
+        );
+
+        $this->assertSame(5.0, $result['fulfilled_quantity']);
+        $this->assertSame(23.0, $result['weighted_unit_selling_price']);
+        $this->assertEquals(0, (float) $first->fresh()->quantity_remaining);
+        $this->assertEquals(5, (float) $second->fresh()->quantity_remaining);
+        $this->assertEquals(5, (float) $inventory->fresh()->quantity);
+        $this->assertDatabaseHas('inventory_batch_allocations', [
+            'inventory_batch_id' => $first->id,
+            'source_type' => 'test_sale',
+            'source_id' => 999,
+            'quantity' => 4,
+        ]);
+        $this->assertDatabaseHas('inventory_batch_allocations', [
+            'inventory_batch_id' => $second->id,
+            'source_type' => 'test_sale',
+            'source_id' => 999,
+            'quantity' => 1,
+        ]);
+    }
+
+    public function test_positive_adjustment_adds_a_batch_and_negative_adjustment_consumes_fifo(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $branch = Branch::factory()->create(['tenant_id' => $tenant->id]);
+        $product = CatalogItem::factory()->product()->create([
+            'tenant_id' => $tenant->id,
+            'track_inventory' => true,
+        ]);
+        Inventory::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'quantity' => 5,
+            'reorder_level' => 0,
+        ]);
+
+        $this->inventoryService->adjustStock($tenant->id, $branch->id, $product->id, 3, 'count gain');
+        $this->assertEquals(8, (float) Inventory::where('catalog_item_id', $product->id)->value('quantity'));
+        $this->assertDatabaseHas('inventory_batches', [
+            'catalog_item_id' => $product->id,
+            'source_type' => 'adjustment',
+            'quantity_remaining' => 3,
+        ]);
+
+        $this->inventoryService->adjustStock($tenant->id, $branch->id, $product->id, -2, 'count loss');
+        $this->assertEquals(6, (float) Inventory::where('catalog_item_id', $product->id)->value('quantity'));
+        $this->assertEquals(
+            6,
+            (float) \\App\\Models\\InventoryBatch::where('tenant_id', $tenant->id)
+                ->where('branch_id', $branch->id)
+                ->where('catalog_item_id', $product->id)
+                ->sum('quantity_remaining')
+        );
+    }
+
+    public function test_transfer_preserves_batch_cost_price_and_lineage(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $from = Branch::factory()->create(['tenant_id' => $tenant->id]);
+        $to = Branch::factory()->create(['tenant_id' => $tenant->id]);
+        $product = CatalogItem::factory()->product()->create([
+            'tenant_id' => $tenant->id,
+            'track_inventory' => true,
+        ]);
+        Inventory::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $from->id,
+            'catalog_item_id' => $product->id,
+            'quantity' => 5,
+            'reorder_level' => 0,
+        ]);
+        $source = \\App\\Models\\InventoryBatch::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $from->id,
+            'catalog_item_id' => $product->id,
+            'batch_number' => 'TRANSFER-SOURCE',
+            'quantity_received' => 5,
+            'quantity_remaining' => 5,
+            'unit_cost' => 7.5,
+            'selling_price' => 18,
+            'received_at' => now()->subDay(),
+            'source_type' => 'purchase',
+        ]);
+
+        $result = $this->inventoryService->transferStock(
+            $tenant->id, $from->id, $to->id, $product->id, 3
+        );
+
+        $destinationBatch = \\App\\Models\\InventoryBatch::where('branch_id', $to->id)
+            ->where('catalog_item_id', $product->id)
+            ->firstOrFail();
+
+        $this->assertEquals(2, (float) $source->fresh()->quantity_remaining);
+        $this->assertEquals(3, (float) $destinationBatch->quantity_remaining);
+        $this->assertEquals(7.5, (float) $destinationBatch->unit_cost);
+        $this->assertEquals(18, (float) $destinationBatch->selling_price);
+        $this->assertEquals($source->id, $destinationBatch->origin_batch_id);
+        $this->assertEquals(2, (float) $result['from_inventory']->quantity);
+        $this->assertEquals(3, (float) $result['to_inventory']->quantity);
+    }
+
 }
