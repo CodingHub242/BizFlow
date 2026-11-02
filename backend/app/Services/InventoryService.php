@@ -304,35 +304,18 @@ class InventoryService
         });
     }
 
-    public function adjustStock(int $tenantId,int $branchId,int $catalogItemId,float $quantity,?string $notes = null): Inventory 
+    public function adjustStock(int $tenantId, int $branchId, int $catalogItemId, float $quantity, ?string $notes = null): Inventory
     {
         if ($quantity === 0.0) {
-            throw new RuntimeException(
-                'Adjustment quantity cannot be zero.'
-            );
+            throw new RuntimeException('Adjustment quantity cannot be zero.');
         }
 
-        return DB::transaction(function () use (
-            $tenantId,
-            $branchId,
-            $catalogItemId,
-            $quantity,
-            $notes
-        ) {
-            $branch = Branch::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($branchId)
-                ->firstOrFail();
-
-            $catalogItem = CatalogItem::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($catalogItemId)
-                ->firstOrFail();
+        return DB::transaction(function () use ($tenantId, $branchId, $catalogItemId, $quantity, $notes) {
+            Branch::query()->where('tenant_id', $tenantId)->whereKey($branchId)->firstOrFail();
+            $catalogItem = CatalogItem::query()->where('tenant_id', $tenantId)->whereKey($catalogItemId)->firstOrFail();
 
             if (! $catalogItem->track_inventory) {
-                throw new RuntimeException(
-                    'This catalog item does not track inventory.'
-                );
+                throw new RuntimeException('This catalog item does not track inventory.');
             }
 
             $inventory = Inventory::query()
@@ -343,20 +326,37 @@ class InventoryService
                 ->first();
 
             if (! $inventory) {
-                throw new RuntimeException(
-                    'Inventory record not found.'
-                );
+                throw new RuntimeException('Inventory record not found.');
             }
 
-            $newQuantity = $inventory->quantity + $quantity;
-
-            if ($newQuantity < 0) {
-                throw new RuntimeException(
-                    'Stock adjustment cannot result in negative inventory.'
-                );
+            $this->ensureBatchCoverage($inventory, $catalogItem);
+            $newQuantity = (float) $inventory->quantity + $quantity;
+            if ($newQuantity < -0.000001) {
+                throw new RuntimeException('Stock adjustment cannot result in negative inventory.');
             }
 
-            $inventory->quantity = $newQuantity;
+            if ($quantity > 0) {
+                $batch = \\App\\Models\\InventoryBatch::create([
+                    'tenant_id' => $tenantId,
+                    'branch_id' => $branchId,
+                    'catalog_item_id' => $catalogItemId,
+                    'batch_number' => 'ADJ-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                    'quantity_received' => $quantity,
+                    'quantity_remaining' => $quantity,
+                    'unit_cost' => null,
+                    'selling_price' => null,
+                    'received_at' => now(),
+                    'source_type' => 'adjustment',
+                    'reference_type' => 'inventory_adjustment',
+                    'reference_id' => null,
+                    'created_by' => auth()->id(),
+                ]);
+                $this->recordBatchMovement($batch, 'adjustment_in', $quantity, 'inventory_adjustment', null, $notes);
+            } else {
+                $this->consumeBatches($tenantId, $branchId, $catalogItemId, abs($quantity), 'adjustment_out', 'inventory_adjustment', null, $notes);
+            }
+
+            $inventory->quantity = max(0.0, $newQuantity);
             $inventory->save();
 
             InventoryMovement::create([
@@ -372,75 +372,43 @@ class InventoryService
         });
     }
 
-    public function transferStock(int $tenantId,int $fromBranchId,int $toBranchId,int $catalogItemId,float $quantity,?string $notes = null): array 
+    public function transferStock(int $tenantId, int $fromBranchId, int $toBranchId, int $catalogItemId, float $quantity, ?string $notes = null): array
     {
         if ($quantity <= 0) {
-            throw new RuntimeException(
-                'Transfer quantity must be greater than zero.'
-            );
+            throw new RuntimeException('Transfer quantity must be greater than zero.');
         }
-
         if ($fromBranchId === $toBranchId) {
-            throw new RuntimeException(
-                'Source and destination branches must be different.'
-            );
+            throw new RuntimeException('Source and destination branches must be different.');
         }
 
-        return DB::transaction(function () use (
-            $tenantId,
-            $fromBranchId,
-            $toBranchId,
-            $catalogItemId,
-            $quantity,
-            $notes
-        ) {
-            $fromBranch = Branch::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($fromBranchId)
-                ->firstOrFail();
-
-            $toBranch = Branch::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($toBranchId)
-                ->firstOrFail();
-
-            $catalogItem = CatalogItem::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($catalogItemId)
-                ->firstOrFail();
+        return DB::transaction(function () use ($tenantId, $fromBranchId, $toBranchId, $catalogItemId, $quantity, $notes) {
+            Branch::query()->where('tenant_id', $tenantId)->whereKey($fromBranchId)->firstOrFail();
+            Branch::query()->where('tenant_id', $tenantId)->whereKey($toBranchId)->firstOrFail();
+            $catalogItem = CatalogItem::query()->where('tenant_id', $tenantId)->whereKey($catalogItemId)->firstOrFail();
 
             if (! $catalogItem->track_inventory) {
-                throw new RuntimeException(
-                    'This catalog item does not track inventory.'
-                );
+                throw new RuntimeException('This catalog item does not track inventory.');
             }
 
-            $fromInventory = Inventory::query()
+            $inventories = Inventory::query()
                 ->where('tenant_id', $tenantId)
-                ->where('branch_id', $fromBranchId)
+                ->whereIn('branch_id', [$fromBranchId, $toBranchId])
                 ->where('catalog_item_id', $catalogItemId)
+                ->orderBy('branch_id')
                 ->lockForUpdate()
-                ->first();
+                ->get()
+                ->keyBy('branch_id');
 
+            $fromInventory = $inventories->get($fromBranchId);
             if (! $fromInventory) {
-                throw new RuntimeException(
-                    'Source inventory record not found.'
-                );
+                throw new RuntimeException('Source inventory record not found.');
+            }
+            if ((float) $fromInventory->quantity < $quantity) {
+                throw new RuntimeException('Insufficient stock for transfer.');
             }
 
-            if ($fromInventory->quantity < $quantity) {
-                throw new RuntimeException(
-                    'Insufficient stock for transfer.'
-                );
-            }
-
-            $toInventory = Inventory::query()
-                ->where('tenant_id', $tenantId)
-                ->where('branch_id', $toBranchId)
-                ->where('catalog_item_id', $catalogItemId)
-                ->lockForUpdate()
-                ->first();
-
+            $this->ensureBatchCoverage($fromInventory, $catalogItem);
+            $toInventory = $inventories->get($toBranchId);
             if (! $toInventory) {
                 $toInventory = Inventory::create([
                     'tenant_id' => $tenantId,
@@ -451,10 +419,57 @@ class InventoryService
                 ]);
             }
 
-            $fromInventory->quantity -= $quantity;
-            $fromInventory->save();
+            $remaining = $quantity;
+            $batches = \\App\\Models\\InventoryBatch::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $fromBranchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->where('quantity_remaining', '>', 0)
+                ->orderBy('received_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
 
-            $toInventory->quantity += $quantity;
+            foreach ($batches as $sourceBatch) {
+                if ($remaining <= 0.000001) {
+                    break;
+                }
+                $moved = min($remaining, (float) $sourceBatch->quantity_remaining);
+                if ($moved <= 0) {
+                    continue;
+                }
+
+                $sourceBatch->quantity_remaining = (float) $sourceBatch->quantity_remaining - $moved;
+                $sourceBatch->save();
+                $this->recordBatchMovement($sourceBatch, 'transfer_out', $moved, 'inventory_transfer', null, $notes);
+
+                $destinationBatch = \\App\\Models\\InventoryBatch::create([
+                    'tenant_id' => $tenantId,
+                    'branch_id' => $toBranchId,
+                    'catalog_item_id' => $catalogItemId,
+                    'batch_number' => 'TRF-' . strtoupper((string) \\Illuminate\\Support\\Str::uuid()),
+                    'quantity_received' => $moved,
+                    'quantity_remaining' => $moved,
+                    'unit_cost' => $sourceBatch->unit_cost,
+                    'selling_price' => $sourceBatch->selling_price,
+                    'received_at' => $sourceBatch->received_at,
+                    'source_type' => 'transfer',
+                    'reference_type' => 'inventory_transfer',
+                    'reference_id' => null,
+                    'origin_batch_id' => $sourceBatch->origin_batch_id ?: $sourceBatch->id,
+                    'created_by' => auth()->id(),
+                ]);
+                $this->recordBatchMovement($destinationBatch, 'transfer_in', $moved, 'inventory_transfer', null, $notes);
+                $remaining -= $moved;
+            }
+
+            if ($remaining > 0.000001) {
+                throw new RuntimeException('Inventory batch quantities do not reconcile with the aggregate stock balance.');
+            }
+
+            $fromInventory->quantity = (float) $fromInventory->quantity - $quantity;
+            $fromInventory->save();
+            $toInventory->quantity = (float) $toInventory->quantity + $quantity;
             $toInventory->save();
 
             InventoryMovement::create([
@@ -464,8 +479,8 @@ class InventoryService
                 'type' => InventoryMovementType::TRANSFER_OUT,
                 'quantity' => $quantity,
                 'notes' => $notes,
+                'reference_type' => 'inventory_transfer',
             ]);
-
             InventoryMovement::create([
                 'tenant_id' => $tenantId,
                 'branch_id' => $toBranchId,
@@ -473,6 +488,7 @@ class InventoryService
                 'type' => InventoryMovementType::TRANSFER_IN,
                 'quantity' => $quantity,
                 'notes' => $notes,
+                'reference_type' => 'inventory_transfer',
             ]);
 
             return [
@@ -482,13 +498,6 @@ class InventoryService
         });
     }
 
-
-    /**
-     * Record opening stock for a product at a branch.
-     *
-     * This operation is intended for initial inventory setup,
-     * not routine stock receipts.
-     */
     public function setOpeningStock(int $tenantId,int $branchId,int $catalogItemId,float $quantity,?string $notes = null,?string $referenceType = null,?int $referenceId = null): Inventory 
     {
         if ($quantity < 0) {
