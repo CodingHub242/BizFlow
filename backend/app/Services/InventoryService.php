@@ -183,7 +183,8 @@ class InventoryService
         int $catalogItemId,
         float $requestedQuantity,
         ?string $referenceType = null,
-        ?int $referenceId = null
+        ?int $referenceId = null,
+        ?int $sourceItemId = null
         ): array {
         if ($requestedQuantity <= 0) {
             throw new RuntimeException(
@@ -197,7 +198,8 @@ class InventoryService
             $catalogItemId,
             $requestedQuantity,
             $referenceType,
-            $referenceId
+            $referenceId,
+            $sourceItemId
         ) {
             $catalogItem = CatalogItem::query()
                 ->where('tenant_id', $tenantId)
@@ -277,7 +279,7 @@ class InventoryService
                         'inventory_batch_id' => $batch->id,
                         'source_type' => $referenceType ?? 'sale',
                         'source_id' => $referenceId ?? 0,
-                        'source_item_id' => null,
+                        'source_item_id' => $sourceItemId,
                         'quantity' => $allocated,
                         'unit_cost_snapshot' => $batch->unit_cost,
                         'unit_selling_price_snapshot' => $unitSellingPrice,

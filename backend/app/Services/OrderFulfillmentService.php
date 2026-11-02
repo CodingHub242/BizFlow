@@ -140,6 +140,7 @@ class OrderFulfillmentService
                     requestedQuantity: $remainingQuantity,
                     referenceType: Order::class,
                     referenceId: (int) $order->id,
+                    sourceItemId: (int) $item->id,
                 );
 
                 $cumulativeFulfilled = min(
@@ -155,6 +156,10 @@ class OrderFulfillmentService
 
                 $request->requested_quantity = $requestedQuantity;
                // $request->available_quantity = $cumulativeFulfilled;
+            //    $request->available_quantity = max(
+            //         0,
+            //         (float) $request->available_quantity
+            //     ) + (float) $result['fulfilled_quantity'];
                 $request->fulfilled_quantity = $cumulativeFulfilled;
                 $request->shortfall_quantity = $shortfall;
 

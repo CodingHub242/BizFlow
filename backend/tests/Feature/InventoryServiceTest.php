@@ -624,9 +624,15 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
             'source_type' => 'purchase',
         ]);
 
-        $result = $this->inventoryService->sellStock(
-            $tenant->id, $branch->id, $product->id, 5, 'test_sale', 999
-        );
+       $result = $this->inventoryService->sellStock(
+                $tenant->id,
+                $branch->id,
+                $product->id,
+                5,
+                'test_sale',
+                999,
+                12345 // source order item ID
+            );
 
         $this->assertSame(5.0, $result['fulfilled_quantity']);
         $this->assertSame(17.0, $result['weighted_unit_selling_price']);
@@ -637,12 +643,15 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
             'inventory_batch_id' => $first->id,
             'source_type' => 'test_sale',
             'source_id' => 999,
+            'source_item_id' => 12345,
             'quantity' => 4,
         ]);
+
         $this->assertDatabaseHas('inventory_batch_allocations', [
             'inventory_batch_id' => $second->id,
             'source_type' => 'test_sale',
             'source_id' => 999,
+            'source_item_id' => 12345,
             'quantity' => 1,
         ]);
     }

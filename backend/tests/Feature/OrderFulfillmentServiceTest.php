@@ -14,6 +14,7 @@ use App\Models\Inventory;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\Tenant;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Services\OrderFulfillmentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,7 +69,7 @@ class OrderFulfillmentServiceTest extends TestCase
             'total' => 750,
         ]);
 
-        $order->items()->create([
+        $orderItem = $order->items()->create([
             'tenant_id' => $tenant->id,
             'catalog_item_id' => $product->id,
             'quantity' => 5,
@@ -84,6 +85,16 @@ class OrderFulfillmentServiceTest extends TestCase
             OrderStatus::FULFILLED,
             $result->status
         );
+
+        $this->assertDatabaseHas('inventory_batch_allocations', [
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $product->id,
+            'source_type' => Order::class,
+            'source_id' => $order->id,
+            'source_item_id' => $orderItem->id,
+            'quantity' => 5,
+        ]);
 
         $this->assertDatabaseHas('inventories', [
             'tenant_id' => $tenant->id,
@@ -107,7 +118,7 @@ class OrderFulfillmentServiceTest extends TestCase
             'order_id' => $order->id,
             'order_item_id' => $order->items()->first()->id,
             'requested_quantity' => 5,
-            'available_quantity' => 5,
+            'available_quantity' => 0,
             'fulfilled_quantity' => 5,
             'shortfall_quantity' => 0,
             'status' => FulfillmentStatus::FULFILLED->value,
@@ -166,6 +177,16 @@ class OrderFulfillmentServiceTest extends TestCase
             $result->status
         );
 
+        $this->assertDatabaseHas('inventory_batch_allocations', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'source_type' => Order::class,
+        'source_id' => $order->id,
+        'source_item_id' => $orderItem->id,
+        'quantity' => 5,
+    ]);
+
         $this->assertDatabaseHas('inventories', [
             'tenant_id' => $tenant->id,
             'branch_id' => $branch->id,
@@ -186,7 +207,7 @@ class OrderFulfillmentServiceTest extends TestCase
             'order_id' => $order->id,
             'order_item_id' => $orderItem->id,
             'requested_quantity' => 8,
-            'available_quantity' => 5,
+            'available_quantity' => 0,
             'fulfilled_quantity' => 5,
             'shortfall_quantity' => 3,
             'status' => FulfillmentStatus::PARTIALLY_FULFILLED->value,
@@ -519,6 +540,18 @@ class OrderFulfillmentServiceTest extends TestCase
         'shortfall_quantity' => 0,
         'status' => FulfillmentStatus::FULFILLED->value,
     ]);
+
+    $this->assertDatabaseCount('inventory_batch_allocations', 1);
+
+    $this->assertDatabaseHas('inventory_batch_allocations', [
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'catalog_item_id' => $product->id,
+        'source_type' => Order::class,
+        'source_id' => $order->id,
+        'source_item_id' => $item->id,
+        'quantity' => 5,
+    ]);
 }
 public function test_partial_fulfillment_only_deducts_remaining_quantity_after_restock(): void
 {
@@ -573,9 +606,13 @@ public function test_partial_fulfillment_only_deducts_remaining_quantity_after_r
     );
 
     // Simulate receiving the remaining stock.
-    $inventory->refresh();
-    $inventory->quantity = 3;
-    $inventory->save();
+   app(InventoryService::class)->receiveStock(
+    tenantId: (int) $tenant->id,
+    branchId: (int) $branch->id,
+    catalogItemId: (int) $product->id,
+    quantity: 3,
+    notes: 'Restock for fulfillment retry',
+);
 
     $secondResult = $this->fulfillmentService->fulfill($order);
 
@@ -591,18 +628,30 @@ public function test_partial_fulfillment_only_deducts_remaining_quantity_after_r
         'quantity' => 0,
     ]);
 
-    $this->assertDatabaseCount('inventory_movements', 2);
+    $this->assertDatabaseCount('inventory_movements', 3);
 
     $this->assertDatabaseHas('fulfillment_requests', [
         'tenant_id' => $tenant->id,
         'order_id' => $order->id,
         'order_item_id' => $item->id,
         'requested_quantity' => 8,
-        'available_quantity' => 8,
+        'available_quantity' => 0,
         'fulfilled_quantity' => 8,
         'shortfall_quantity' => 0,
         'status' => FulfillmentStatus::FULFILLED->value,
     ]);
+
+    $this->assertDatabaseCount('inventory_batch_allocations', 2);
+
+$this->assertEquals(
+    8.0,
+    (float) DB::table('inventory_batch_allocations')
+        ->where('tenant_id', $tenant->id)
+        ->where('source_type', Order::class)
+        ->where('source_id', $order->id)
+        ->where('source_item_id', $item->id)
+        ->sum('quantity')
+);
 }
 
     public function test_fulfillment_respects_tenant_boundaries(): void
