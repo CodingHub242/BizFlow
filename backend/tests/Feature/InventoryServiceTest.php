@@ -599,7 +599,7 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
             'reorder_level' => 0,
         ]);
 
-        $first = \\App\\Models\\InventoryBatch::create([
+        $first = \App\Models\InventoryBatch::create([
             'tenant_id' => $tenant->id,
             'branch_id' => $branch->id,
             'catalog_item_id' => $product->id,
@@ -611,7 +611,7 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
             'received_at' => now()->subDay(),
             'source_type' => 'purchase',
         ]);
-        $second = \\App\\Models\\InventoryBatch::create([
+        $second = \App\Models\InventoryBatch::create([
             'tenant_id' => $tenant->id,
             'branch_id' => $branch->id,
             'catalog_item_id' => $product->id,
@@ -675,7 +675,7 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
         $this->assertEquals(6, (float) Inventory::where('catalog_item_id', $product->id)->value('quantity'));
         $this->assertEquals(
             6,
-            (float) \\App\\Models\\InventoryBatch::where('tenant_id', $tenant->id)
+            (float) \App\Models\InventoryBatch::where('tenant_id', $tenant->id)
                 ->where('branch_id', $branch->id)
                 ->where('catalog_item_id', $product->id)
                 ->sum('quantity_remaining')
@@ -698,7 +698,7 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
             'quantity' => 5,
             'reorder_level' => 0,
         ]);
-        $source = \\App\\Models\\InventoryBatch::create([
+        $source = \App\Models\InventoryBatch::create([
             'tenant_id' => $tenant->id,
             'branch_id' => $from->id,
             'catalog_item_id' => $product->id,
@@ -715,7 +715,7 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
             $tenant->id, $from->id, $to->id, $product->id, 3
         );
 
-        $destinationBatch = \\App\\Models\\InventoryBatch::where('branch_id', $to->id)
+        $destinationBatch = \App\Models\InventoryBatch::where('branch_id', $to->id)
             ->where('catalog_item_id', $product->id)
             ->firstOrFail();
 
