@@ -75,102 +75,134 @@ class InventoryService
     /**
      * Receive physical stock into a branch.
      */
-    public function receiveStock(
-        int $tenantId,
-        int $branchId,
-        int $catalogItemId,
-        float $quantity,
-        ?string $notes = null,
-        ?string $referenceType = null,
-        ?int $referenceId = null
-        ): Inventory {
-        if ($quantity <= 0) {
-            throw new RuntimeException(
-                'Received quantity must be greater than zero.'
-            );
-        }
+    
+public function receiveStock(
+    int $tenantId,
+    int $branchId,
+    int $catalogItemId,
+    float $quantity,
+    ?string $notes = null,
+    ?string $referenceType = null,
+    ?int $referenceId = null,
+    ?string $batchNumber = null,
+    ?float $unitCost = null,
+    ?float $sellingPrice = null
+): Inventory {
+    if ($quantity <= 0) {
+        throw new RuntimeException(
+            'Received quantity must be greater than zero.'
+        );
+    }
 
-        
-
-        return DB::transaction(function () use (
-            $tenantId,
-            $branchId,
-            $catalogItemId,
-            $quantity,
-            $notes,
-            $referenceType,
-            $referenceId
-        ) {
-            $branch = Branch::query()
+    return DB::transaction(function () use (
+        $tenantId,
+        $branchId,
+        $catalogItemId,
+        $quantity,
+        $notes,
+        $referenceType,
+        $referenceId,
+        $batchNumber,
+        $unitCost,
+        $sellingPrice
+    ) {
+        $branch = Branch::query()
             ->where('tenant_id', $tenantId)
             ->whereKey($branchId)
             ->firstOrFail();
 
-            $catalogItem = CatalogItem::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($catalogItemId)
-                ->firstOrFail();
+        $catalogItem = CatalogItem::query()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($catalogItemId)
+            ->firstOrFail();
 
-            if (! $catalogItem->track_inventory) {
-                throw new RuntimeException(
-                    'This catalog item does not track inventory.'
-                );
-            }
+        if (! $catalogItem->track_inventory) {
+            throw new RuntimeException(
+                'This catalog item does not track inventory.'
+            );
+        }
 
-            $inventory = Inventory::query()
-                ->where('tenant_id', $tenantId)
-                ->where('branch_id', $branchId)
-                ->where('catalog_item_id', $catalogItemId)
-                ->lockForUpdate()
-                ->first();
+        $inventory = Inventory::query()
+            ->where('tenant_id', $tenantId)
+            ->where('branch_id', $branchId)
+            ->where('catalog_item_id', $catalogItemId)
+            ->lockForUpdate()
+            ->first();
 
-            if (! $inventory) {
-                $inventory = Inventory::create([
-                    'tenant_id' => $tenantId,
-                    'branch_id' => $branchId,
-                    'catalog_item_id' => $catalogItemId,
-                    'quantity' => 0,
-                    'reorder_level' => 0,
-                ]);
-            }
-
-            // Represent any pre-existing aggregate stock before adding the new receipt.
-            $this->ensureBatchCoverage($inventory, $catalogItem);
-
-            $inventory->quantity += $quantity;
-            $inventory->save();
-
-            $batch = \App\Models\InventoryBatch::create([
+        if (! $inventory) {
+            $inventory = Inventory::create([
                 'tenant_id' => $tenantId,
                 'branch_id' => $branchId,
                 'catalog_item_id' => $catalogItemId,
-                'batch_number' => 'PUR-' . strtoupper((string) \Illuminate\Support\Str::uuid()),
-                'quantity_received' => $quantity,
-                'quantity_remaining' => $quantity,
-                'unit_cost' => null,
-                'selling_price' => null,
-                'received_at' => now(),
-                'source_type' => 'purchase',
-                'reference_type' => $referenceType,
-                'reference_id' => $referenceId,
-                'created_by' => auth()->id(),
+                'quantity' => 0,
+                'reorder_level' => 0,
             ]);
-            $this->recordBatchMovement($batch, 'purchase', $quantity, $referenceType, $referenceId, $notes);
+        }
 
-            InventoryMovement::create([
-                'tenant_id' => $tenantId,
-                'branch_id' => $branchId,
-                'catalog_item_id' => $catalogItemId,
-                'type' => InventoryMovementType::PURCHASE,
-                'quantity' => $quantity,
-                'notes' => $notes,
-                'reference_type' => $referenceType,
-                'reference_id' => $referenceId,
-            ]);
+        // Represent any pre-existing aggregate stock before adding the new receipt.
+        $this->ensureBatchCoverage($inventory, $catalogItem);
 
-            return $inventory->fresh();
-        });
-    }
+        // Generate a batch number when one is not supplied.
+        $resolvedBatchNumber = $batchNumber
+            ?: 'PUR-' . strtoupper((string) \Illuminate\Support\Str::uuid());
+
+        // Prevent duplicate batch numbers for this product at this branch.
+        $duplicateBatch = InventoryBatch::query()
+            ->where('tenant_id', $tenantId)
+            ->where('branch_id', $branchId)
+            ->where('catalog_item_id', $catalogItemId)
+            ->where('batch_number', $resolvedBatchNumber)
+            ->exists();
+
+        if ($duplicateBatch) {
+            throw new RuntimeException(
+                'This batch number already exists for this product at this branch.'
+            );
+        }
+
+        $inventory->quantity += $quantity;
+        $inventory->save();
+
+        $batch = InventoryBatch::create([
+            'tenant_id' => $tenantId,
+            'branch_id' => $branchId,
+            'catalog_item_id' => $catalogItemId,
+            'batch_number' => $resolvedBatchNumber,
+            'quantity_received' => $quantity,
+            'quantity_remaining' => $quantity,
+            'unit_cost' => $unitCost,
+            'selling_price' => $sellingPrice,
+            'received_at' => now(),
+            'source_type' => 'purchase',
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+            'created_by' => auth()->id(),
+        ]);
+
+        $this->recordBatchMovement(
+            $batch,
+            'purchase',
+            $quantity,
+            $referenceType,
+            $referenceId,
+            $notes
+        );
+
+        InventoryMovement::create([
+            'tenant_id' => $tenantId,
+            'branch_id' => $branchId,
+            'catalog_item_id' => $catalogItemId,
+            'type' => InventoryMovementType::PURCHASE,
+            'quantity' => $quantity,
+            'notes' => $notes,
+            'reference_type' => $referenceType,
+            'reference_id' => $referenceId,
+        ]);
+
+        return $inventory->fresh();
+    });
+}
+
 
     /**
      * Sell stock from a branch.

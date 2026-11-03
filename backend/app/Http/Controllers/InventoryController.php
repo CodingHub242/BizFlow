@@ -144,6 +144,10 @@ class InventoryController extends Controller
             'notes' => ['nullable', 'string'],
             'reference_type' => ['nullable', 'string', 'max:255'],
             'reference_id' => ['nullable', 'integer', 'min:1'],
+
+            'batch_number' => ['nullable', 'string', 'max:100'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         try{
@@ -156,6 +160,13 @@ class InventoryController extends Controller
                 $request->input('reference_type'),
                 $request->has('reference_id')
                     ? $request->integer('reference_id')
+                    : null,
+                $request->input('batch_number'),
+                $request->has('unit_cost')
+                    ? (float) $request->input('unit_cost')
+                    : null,
+                $request->has('selling_price')
+                    ? (float) $request->input('selling_price')
                     : null,
             );
         } catch (\RuntimeException $e) {

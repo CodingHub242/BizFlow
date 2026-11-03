@@ -118,6 +118,10 @@ export interface ReceiveStockRequest {
   reference_type?: string | null;
   reference_id?: number | null;
   notes?: string | null;
+
+   batch_number?: string;
+  unit_cost?: number | null;
+  selling_price?: number | null;
 }
 
 export interface AdjustStockRequest {
@@ -192,6 +196,91 @@ export interface InventoryExportParams {
   branchId?: number;
   search?: string;
   stockStatus?: 'in-stock' | 'low-stock' | 'out-of-stock';
+}
+
+export interface InventoryBatch {
+  id: number;
+  branch_id: number;
+  catalog_item_id: number;
+  batch_number: string;
+
+  quantity_received: number | string;
+  quantity_remaining: number | string;
+
+  unit_cost: number | string | null;
+  selling_price: number | string | null;
+
+  received_at: string;
+  source_type: string;
+
+  reference_type: string | null;
+  reference_id: number | null;
+
+  origin_batch_id: number | null;
+
+  branch?: {
+    id: number;
+    name: string;
+    code?: string | null;
+  } | null;
+
+  catalog_item?: {
+    id: number;
+    name: string;
+    sku?: string | null;
+    type: string;
+  } | null;
+
+  origin_batch?: {
+    id: number;
+    batch_number: string;
+  } | null;
+
+  movements?: InventoryBatchMovement[];
+  allocations?: InventoryBatchAllocation[];
+}
+
+export interface InventoryBatchMovement {
+  id: number;
+  type: string;
+  quantity: number | string;
+  reference_type: string | null;
+  reference_id: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface InventoryBatchAllocation {
+  id: number;
+  source_type: string;
+  source_id: number;
+  source_item_id: number | null;
+  quantity: number | string;
+  unit_cost_snapshot: number | string | null;
+  unit_selling_price_snapshot: number | string;
+}
+
+export interface InventoryBatchListResponse {
+  success: boolean;
+  data: InventoryBatch[];
+  meta: InventoryPagination;
+}
+
+export interface InventoryBatchResponse {
+  success: boolean;
+  data: InventoryBatch;
+}
+
+export interface InventoryBatchListParams {
+  page?: number;
+  branchId?: number;
+  catalogItemId?: number;
+  search?: string;
+  sourceType?: string;
+  status?: 'available' | 'depleted';
+  receivedFrom?: string;
+  receivedTo?: string;
+  perPage?: number;
 }
 
 @Injectable({
@@ -353,4 +442,82 @@ export class InventoryApi {
       observe: 'response',
     });
   }
+
+  batches(
+  params?: InventoryBatchListParams,
+): Observable<InventoryBatchListResponse> {
+  const queryParams: Record<string, string> = {};
+
+  if (params?.page !== undefined) {
+    queryParams['page'] = String(params.page);
+  }
+
+  if (params?.branchId !== undefined) {
+    queryParams['branch_id'] = String(params.branchId);
+  }
+
+  if (params?.catalogItemId !== undefined) {
+    queryParams['catalog_item_id'] = String(params.catalogItemId);
+  }
+
+  if (params?.search) {
+    queryParams['search'] = params.search;
+  }
+
+  if (params?.sourceType) {
+    queryParams['source_type'] = params.sourceType;
+  }
+
+  if (params?.status) {
+    queryParams['status'] = params.status;
+  }
+
+  if (params?.receivedFrom) {
+    queryParams['received_from'] = params.receivedFrom;
+  }
+
+  if (params?.receivedTo) {
+    queryParams['received_to'] = params.receivedTo;
+  }
+
+  if (params?.perPage !== undefined) {
+    queryParams['per_page'] = String(params.perPage);
+  }
+
+  return this.http.get<InventoryBatchListResponse>(
+    `${this.apiUrl}/inventory/batches`,
+    { params: queryParams },
+  );
+}
+
+getBatch(id: number): Observable<InventoryBatchResponse> {
+  return this.http.get<InventoryBatchResponse>(
+    `${this.apiUrl}/inventory/batches/${id}`,
+  );
+}
+
+
+inventoryBatches(
+  inventoryId: number,
+  params?: {
+    page?: number;
+    perPage?: number;
+  }
+): Observable<InventoryBatchListResponse> {
+  const queryParams: Record<string, string> = {};
+
+  if (params?.page !== undefined) {
+    queryParams['page'] = String(params.page);
+  }
+
+  if (params?.perPage !== undefined) {
+    queryParams['per_page'] = String(params.perPage);
+  }
+
+  return this.http.get<InventoryBatchListResponse>(
+    `${this.apiUrl}/inventory/${inventoryId}/batches`,
+    { params: queryParams }
+  );
+}
+
 }

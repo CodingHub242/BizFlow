@@ -31,6 +31,9 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
   branchId: number | null = null;
   catalogItemId: number | null = null;
   quantity: number | null = null;
+  batchNumber = '';
+  unitCost: number | null = null;
+  sellingPrice: number | null = null;
 
   referenceType = '';
   referenceId: number | null = null;
@@ -137,11 +140,39 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (
+    this.unitCost !== null &&
+    (!Number.isFinite(this.unitCost) || this.unitCost < 0)
+    ) {
+      this.error = 'Unit cost must be zero or greater.';
+      return;
+    }
+
+    if (
+      this.sellingPrice !== null &&
+      (!Number.isFinite(this.sellingPrice) || this.sellingPrice < 0)
+    ) {
+      this.error = 'Selling price must be zero or greater.';
+      return;
+    }
+
     const payload: ReceiveStockRequest = {
       branch_id: this.branchId,
       catalog_item_id: this.catalogItemId,
       quantity: this.quantity,
     };
+
+    if (this.batchNumber.trim()) {
+      payload.batch_number = this.batchNumber.trim();
+    }
+
+    if (this.unitCost !== null) {
+      payload.unit_cost = this.unitCost;
+    }
+
+    if (this.sellingPrice !== null) {
+      payload.selling_price = this.sellingPrice;
+    }
 
     if (this.referenceType.trim()) {
       payload.reference_type = this.referenceType.trim();
@@ -174,12 +205,16 @@ export class ReceiveStockComponent implements OnInit, OnDestroy {
            this.branchId = null;
           this.catalogItemId = null;
           this.quantity = null;
+
+          this.batchNumber = '';
+          this.unitCost = null;
+          this.sellingPrice = null;
         },
         error: () => {
           this.loading = false;
           this.error =
             'Unable to receive stock. Please try again.';
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         },
       });
   }
