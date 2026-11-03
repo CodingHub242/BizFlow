@@ -6,6 +6,7 @@ use App\InventoryMovementType;
 use App\Models\Branch;
 use App\Models\CatalogItem;
 use App\Models\Inventory;
+use App\Models\InventoryBatch;
 use App\Models\InventoryMovement;
 use App\Models\Tenant;
 use App\Services\InventoryService;
@@ -735,6 +736,89 @@ public function test_set_opening_stock_allows_zero_without_movement(): void
         $this->assertEquals($source->id, $destinationBatch->origin_batch_id);
         $this->assertEquals(2, (float) $result['from_inventory']->quantity);
         $this->assertEquals(3, (float) $result['to_inventory']->quantity);
+    }
+
+    public function test_usable_return_restores_original_batch_and_inventory(): void
+    {
+        // Arrange:
+        // Create tenant, branch, catalog item and inventory.
+        $tenant = Tenant::factory()->create();
+        $branch = Branch::factory()->create(['tenant_id' => $tenant->id]);
+        
+        $catalogItem = CatalogItem::factory()->product()->create([
+            'tenant_id' => $tenant->id,
+            'track_inventory' => true,
+        ]);
+        $inventory = Inventory::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'quantity' => 6,
+            'reorder_level' => 0,
+        ]);
+         $batch = \App\Models\InventoryBatch::create([
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'batch_number' => 'TRANSFER-SOURCE',
+            'quantity_received' => 10,
+            'quantity_remaining' => 6,
+            'unit_cost' => 7.5,
+            'selling_price' => 18,
+            'received_at' => now()->subDay(),
+            'source_type' => 'purchase',
+        ]);
+        // Create an original batch with quantity_received = 10
+        // and quantity_remaining = 6.
+        $returnItemId = 2;
+
+        // Act:
+        // Restore 2 units against that original batch.
+
+       // Capture the original aggregate quantity.
+        $originalInventoryQuantity = (float) $inventory->quantity;
+
+        // Act: restore 2 units against the original batch.
+        $result = $this->inventoryService->restoreReturnedStock(
+            $tenant->id,
+            $branch->id,
+            $catalogItem->id,
+            $batch->id,
+            2,
+            $returnItemId,
+            'Usable returned stock'
+        );
+
+        // Assert: original batch quantity increases.
+        $this->assertEquals(
+            8.0,
+            (float) $batch->fresh()->quantity_remaining
+        );
+
+        // Assert: aggregate inventory increases by 2.
+        $this->assertEquals(
+            $originalInventoryQuantity + 2,
+            (float) $result->fresh()->quantity
+        );
+
+        // Assert: one legacy RETURN movement exists.
+        $this->assertDatabaseHas('inventory_movements', [
+            'tenant_id' => $tenant->id,
+            'branch_id' => $branch->id,
+            'catalog_item_id' => $catalogItem->id,
+            'type' => InventoryMovementType::RETURN->value,
+            'reference_type' => 'employee_item_request_return_item',
+            'reference_id' => $returnItemId,
+        ]);
+
+        // Assert: one batch RETURN movement exists.
+        $this->assertDatabaseHas('inventory_batch_movements', [
+            'tenant_id' => $tenant->id,
+            'inventory_batch_id' => $batch->id,
+            'type' => 'return',
+            'reference_type' => 'employee_item_request_return_item',
+            'reference_id' => $returnItemId,
+        ]);
     }
 
 }

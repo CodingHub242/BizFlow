@@ -6,6 +6,7 @@ use App\InventoryMovementType;
 use App\Models\CatalogItem;
 use App\Models\Branch;
 use App\Models\Inventory;
+use App\Models\InventoryBatch;
 use App\Models\InventoryMovement;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -717,5 +718,120 @@ class InventoryService
             'notes' => $notes,
             'created_by' => auth()->id(),
         ]);
+    }
+
+    public function restoreReturnedStock(
+        int $tenantId,
+        int $branchId,
+        int $catalogItemId,
+        int $batchId,
+        float $quantity,
+        int $returnItemId,
+        ?string $notes = null
+    ): Inventory 
+    {
+        if ($quantity <= 0) {
+            throw new RuntimeException(
+                'Returned quantity must be greater than zero.'
+            );
+        }
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $branchId,
+            $catalogItemId,
+            $batchId,
+            $quantity,
+            $returnItemId,
+            $notes
+        ) {
+            Branch::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($branchId)
+                ->firstOrFail();
+
+            $catalogItem = CatalogItem::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($catalogItemId)
+                ->firstOrFail();
+
+            if (! $catalogItem->track_inventory) {
+                throw new RuntimeException(
+                    'This catalog item does not track inventory.'
+                );
+            }
+
+            $batch = \App\Models\InventoryBatch::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $branchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->whereKey($batchId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Idempotency protection.
+            $alreadyRestored = \App\Models\InventoryBatchMovement::query()
+                ->where('tenant_id', $tenantId)
+                ->where('inventory_batch_id', $batch->id)
+                ->where('type', 'return')
+                ->where('reference_type', 'employee_item_request_return_item')
+                ->where('reference_id', $returnItemId)
+                ->exists();
+
+            if ($alreadyRestored) {
+                throw new RuntimeException(
+                    'Stock for this return item has already been restored.'
+                );
+            }
+
+            $inventory = Inventory::query()
+                ->where('tenant_id', $tenantId)
+                ->where('branch_id', $branchId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $newBatchQuantity =
+                (float) $batch->quantity_remaining + $quantity;
+
+            if (
+                $newBatchQuantity >
+                (float) $batch->quantity_received + 0.000001
+            ) {
+                throw new RuntimeException(
+                    'Returned quantity exceeds the original batch quantity.'
+                );
+            }
+
+            $batch->quantity_remaining = $newBatchQuantity;
+            $batch->save();
+
+            $this->recordBatchMovement(
+                $batch,
+                'return',
+                $quantity,
+                'employee_item_request_return_item',
+                $returnItemId,
+                $notes
+            );
+
+            $inventory->quantity =
+                (float) $inventory->quantity + $quantity;
+
+            $inventory->save();
+
+            InventoryMovement::create([
+                'tenant_id' => $tenantId,
+                'branch_id' => $branchId,
+                'catalog_item_id' => $catalogItemId,
+                'type' => InventoryMovementType::RETURN,
+                'quantity' => $quantity,
+                'reference_type' => 'employee_item_request_return_item',
+                'reference_id' => $returnItemId,
+                'notes' => $notes,
+            ]);
+
+            return $inventory->fresh();
+        });
     }
 }

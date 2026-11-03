@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Branch;
+use App\Models\CatalogItem;
 
 class InventoryBatch extends Model
 {
@@ -45,5 +47,15 @@ class InventoryBatch extends Model
 
     public function originBatch(): BelongsTo { 
         return $this->belongsTo(self::class, "origin_batch_id"); 
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function catalogItem(): BelongsTo
+    {
+        return $this->belongsTo(CatalogItem::class);
     }
 }

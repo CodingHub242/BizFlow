@@ -17,6 +17,7 @@ use App\Http\Controllers\QuickBooksCreditMemoApplicationsReconcileController;
 use App\Http\Controllers\QuickBooksCustomerImportController;
 use App\Http\Controllers\QuickBooksMigrationCatalogController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\EmployeeItemRequestController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\QuickBooksExpensesImportController;
 use App\Http\Controllers\QuickBooksCatalogItemsImportController;
@@ -308,6 +309,21 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/inventory/opening-stock-candidates',[InventoryController::class, 'openingStockCandidates']
     )->middleware('permission:inventory.receive');
 
+    // INVENTORY BATCHES
+    Route::get('/inventory/batches', [InventoryController::class, 'batches'])
+        ->middleware('permission:inventory.view');
+
+    Route::get('/inventory/batches/{batchId}', [InventoryController::class, 'showBatch'])
+        ->whereNumber('batchId')
+        ->middleware('permission:inventory.view');
+
+    Route::get('/inventory/{inventoryId}/batches', [
+        InventoryController::class,
+        'inventoryBatches',
+    ])
+    ->whereNumber('inventoryId')
+    ->middleware('permission:inventory.view');
+
     Route::get('/inventory/{inventory}', [InventoryController::class, 'show'])
         ->middleware('permission:inventory.view');
 
@@ -525,4 +541,30 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
         AuthController::class,
         'resetPassword',
     ])->middleware('throttle:5,1');
+
+
+    Route::prefix('employee-item-requests')
+    ->name('employee-item-requests.')
+    ->controller(EmployeeItemRequestController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/', 'store')->name('store');
+
+        Route::get('/{requestId}', 'show')->name('show');
+
+        Route::post('/{requestId}/approve', 'approve')
+            ->name('approve');
+
+        Route::post('/{requestId}/reject', 'reject')
+            ->name('reject');
+
+        Route::post('/{requestId}/cancel', 'cancel')
+            ->name('cancel');
+
+        Route::post('/{requestId}/issue', 'issue')
+            ->name('issue');
+
+        Route::post('/{requestId}/returns', 'returnItems')
+            ->name('returns.store');
+    });
 });

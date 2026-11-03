@@ -8,14 +8,23 @@ use App\Models\Branch;
 use App\Models\CatalogItem;
 use App\Models\Employee;
 use App\Models\EmployeeItemRequest;
+use App\Services\InventoryService;
 use App\Models\EmployeeItemRequestItem;
 use App\Models\User;
+use App\Models\EmployeeItemRequestReturn;
+use App\Models\EmployeeItemRequestIssueItem;
+use App\Models\EmployeeItemRequestReturnItem;
+use App\Models\InventoryBatch;
+use App\Models\InventoryBatchAllocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class EmployeeItemRequestService
 {
+    public function __construct(
+    private readonly InventoryService $inventoryService
+) {}
     /**
      * Create a request for the authenticated employee.
      *
@@ -105,14 +114,37 @@ class EmployeeItemRequestService
             }
 
             foreach ($items as $index => $item) {
-                $quantity = (float) ($item['quantity_requested'] ?? 0);
-
-                if ($quantity <= 0) {
+                 if (
+                    ! is_array($item) ||
+                    ! isset($item['catalog_item_id']) ||
+                    ! is_numeric($item['catalog_item_id']) ||
+                    (int) $item['catalog_item_id'] <= 0
+                ) {
                     throw ValidationException::withMessages([
-                        "items.{$index}.quantity_requested" =>
-                            'Requested quantity must be greater than zero.',
+                        "items.{$index}.catalog_item_id" => 'A valid catalog item is required.',
                     ]);
                 }
+
+                if (
+                    ! isset($item['quantity_requested']) ||
+                    ! is_numeric($item['quantity_requested']) ||
+                    (float) $item['quantity_requested'] <= 0
+                ) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.quantity_requested" => 'Requested quantity must be greater than zero.',
+                    ]);
+                }
+
+                // $quantity = (float) ($item['quantity_requested'] ?? 0);
+
+                // if ($quantity <= 0) {
+                //     throw ValidationException::withMessages([
+                //         "items.{$index}.quantity_requested" =>
+                //             'Requested quantity must be greater than zero.',
+                //     ]);
+                // }
+
+               
             }
 
             $catalogItems = CatalogItem::query()
@@ -218,6 +250,28 @@ class EmployeeItemRequestService
                 ]);
             }
 
+             if ($approvedQuantities !== null) {
+                $validItemIds = $requestItems->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+
+                $submittedItemIds = array_map(
+                    'intval',
+                    array_keys($approvedQuantities)
+                );
+
+                $invalidItemIds = array_diff(
+                    $submittedItemIds,
+                    $validItemIds
+                );
+
+                if (! empty($invalidItemIds)) {
+                    throw ValidationException::withMessages([
+                        'approved_quantities' => 'One or more items do not belong to this request.',
+                    ]);
+                }
+            }
+
             $approvedCount = 0;
             $fullyApproved = true;
 
@@ -320,14 +374,14 @@ class EmployeeItemRequestService
             }
 
             $request->status = EmployeeItemRequestStatus::REJECTED;
-            $request->approved_by_user_id = $actor->id;
-            $request->approved_at = now();
+            $request->rejected_by_user_id = $actor->id;
+            $request->rejected_at = now();
             $request->rejection_reason = $reason;
             $request->save();
 
             return $request->fresh([
                 'employee.user:id,name,email',
-                'approvedBy:id,name,email',
+                'rejectedBy:id,name,email',
                 'items.catalogItem',
             ]);
         });
@@ -380,6 +434,8 @@ class EmployeeItemRequestService
             }
 
             $request->status = EmployeeItemRequestStatus::CANCELLED;
+            $request->cancelled_by_user_id = $actor->id;
+            $request->cancelled_at = now();
             $request->save();
 
             return $request->fresh([
@@ -415,5 +471,415 @@ class EmployeeItemRequestService
     private function generateRequestNumber(): string
     {
         return 'EIR-' . now()->format('Ymd') . '-' . Str::upper(Str::random(8));
+    }
+
+    /**
+ * Issue approved quantities from an employee item request.
+ *
+ * $items is keyed by employee item request item ID:
+ * [
+ *     15 => 3,
+ *     16 => 2,
+ * ]
+ */
+    public function issueItems(
+        int $tenantId,
+        User $actor,
+        int $requestId,
+        array $items,
+        ?int $branchId = null,
+        ?string $notes = null
+    ): EmployeeItemRequest 
+    {
+       $this->assertActorTenant($actor, $tenantId);
+
+        $this->assertPermission(
+            $actor,
+            $tenantId,
+            'employee_item_requests.issue'
+        );
+
+        if (empty($items)) {
+            throw ValidationException::withMessages([
+                'items' => 'At least one item must be supplied for issuance.',
+            ]);
+        }
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $actor,
+            $requestId,
+            $items,
+            $branchId,
+            $notes
+        ) {
+            $request = EmployeeItemRequest::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($requestId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! in_array($request->status, [
+                EmployeeItemRequestStatus::APPROVED,
+                EmployeeItemRequestStatus::PARTIALLY_APPROVED,
+                EmployeeItemRequestStatus::PARTIALLY_ISSUED,
+            ], true)) {
+                throw ValidationException::withMessages([
+                    'request' => 'Only approved requests can be issued.',
+                ]);
+            }
+
+            // Use the request branch unless an explicit branch is supplied.
+            $resolvedBranchId = $branchId ?? $request->branch_id;
+
+            if (! $resolvedBranchId) {
+                throw ValidationException::withMessages([
+                    'branch_id' => 'A branch is required to issue inventory.',
+                ]);
+            }
+
+            // Do not allow issuance from a different branch.
+            if (
+                $request->branch_id !== null &&
+                (int) $request->branch_id !== (int) $resolvedBranchId
+            ) {
+                throw ValidationException::withMessages([
+                    'branch_id' => 'Items must be issued from the request branch.',
+                ]);
+            }
+
+            Branch::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($resolvedBranchId)
+                ->firstOrFail();
+
+            $requestItems = EmployeeItemRequestItem::query()
+                ->where('tenant_id', $tenantId)
+                ->where('employee_item_request_id', $request->id)
+                ->whereIn('id', array_keys($items))
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
+            if ($requestItems->count() !== count($items)) {
+                throw ValidationException::withMessages([
+                    'items' => 'One or more supplied items do not belong to this request.',
+                ]);
+            }
+
+            // Create the issue header.
+            $issue = \App\Models\EmployeeItemRequestIssue::create([
+                'tenant_id' => $tenantId,
+                'employee_item_request_id' => $request->id,
+                'branch_id' => $resolvedBranchId,
+                'issue_number' => 'EII-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6)),
+                'issued_by_user_id' => $actor->id,
+                'issued_at' => now(),
+                'notes' => $notes,
+            ]);
+
+            foreach ($items as $requestItemId => $quantity) {
+                $requestItem = $requestItems->get($requestItemId);
+
+                $quantity = (float) $quantity;
+
+                if ($quantity <= 0) {
+                    throw ValidationException::withMessages([
+                        "items.{$requestItemId}" => 'Issue quantity must be greater than zero.',
+                    ]);
+                }
+
+                // Calculate quantities already issued for this request item.
+                $previouslyIssued = (float)
+                    \App\Models\EmployeeItemRequestIssueItem::query()
+                        ->where('tenant_id', $tenantId)
+                        ->where('employee_item_request_item_id', $requestItem->id)
+                        ->whereHas('issue', function ($query) use ($request) {
+                            $query->where(
+                                'employee_item_request_id',
+                                $request->id
+                            );
+                        })
+                        ->sum('quantity_issued');
+
+                $approvedQuantity = (float) $requestItem->quantity_approved;
+                $remainingApproved = $approvedQuantity - $previouslyIssued;
+
+                if ($quantity > $remainingApproved + 0.000001) {
+                    throw ValidationException::withMessages([
+                        "items.{$requestItemId}" =>
+                            'Issue quantity exceeds the remaining approved quantity.',
+                    ]);
+                }
+
+                $catalogItem = CatalogItem::query()
+                    ->where('tenant_id', $tenantId)
+                    ->whereKey($requestItem->catalog_item_id)
+                    ->firstOrFail();
+
+                // Create the issue item first because its ID is used
+                // as the inventory allocation reference.
+                $issueItem = \App\Models\EmployeeItemRequestIssueItem::create([
+                    'tenant_id' => $tenantId,
+                    'employee_item_request_issue_id' => $issue->id,
+                    'employee_item_request_item_id' => $requestItem->id,
+                    'catalog_item_id' => $catalogItem->id,
+                    'quantity_issued' => $quantity,
+                    'tracks_inventory' => (bool) $catalogItem->track_inventory,
+                    'notes' => $requestItem->notes,
+                ]);
+
+                // InventoryService handles FIFO batch consumption and
+                // records cost and selling-price snapshots.
+                $result = $this->inventoryService->sellStock(
+                    $tenantId,
+                    $resolvedBranchId,
+                    $catalogItem->id,
+                    $quantity,
+                    'employee_item_request_issue_item',
+                    $issueItem->id,
+                    $requestItem->id
+                );
+
+                // Issuance is all-or-nothing for each submitted line.
+                // A shortage rolls back the entire issue transaction.
+                if (
+                    abs((float) $result['fulfilled_quantity'] - $quantity)
+                    > 0.000001
+                ) {
+                    throw ValidationException::withMessages([
+                        "items.{$requestItemId}" =>
+                            'Insufficient stock to complete this issuance.',
+                    ]);
+                }
+            }
+
+            // Recalculate the request's overall issuance status.
+            $approvedItems = EmployeeItemRequestItem::query()
+                ->where('tenant_id', $tenantId)
+                ->where('employee_item_request_id', $request->id)
+                ->where('quantity_approved', '>', 0)
+                ->get();
+
+            $allFullyIssued = true;
+            $anyIssued = false;
+
+            foreach ($approvedItems as $approvedItem) {
+                $issuedQuantity = (float)
+                    \App\Models\EmployeeItemRequestIssueItem::query()
+                        ->where('tenant_id', $tenantId)
+                        ->where('employee_item_request_item_id', $approvedItem->id)
+                        ->whereHas('issue', function ($query) use ($request) {
+                            $query->where(
+                                'employee_item_request_id',
+                                $request->id
+                            );
+                        })
+                        ->sum('quantity_issued');
+
+                $approvedQuantity = (float) $approvedItem->quantity_approved;
+
+                if ($issuedQuantity > 0) {
+                    $anyIssued = true;
+                }
+
+                if ($issuedQuantity + 0.000001 < $approvedQuantity) {
+                    $allFullyIssued = false;
+                }
+            }
+
+            if ($allFullyIssued && $approvedItems->isNotEmpty()) {
+                $request->status = EmployeeItemRequestStatus::ISSUED;
+            } elseif ($anyIssued) {
+                $request->status = EmployeeItemRequestStatus::PARTIALLY_ISSUED;
+            }
+
+            $request->save();
+
+            return $request->fresh([
+                'employee.user:id,name,email',
+                'branch',
+                'items.catalogItem',
+                'issues.issuedBy',
+                'issues.items.catalogItem',
+            ]);
+        });
+    }
+
+    public function returnItems(
+        int $tenantId,
+        User $actor,
+        int $requestId,
+        array $items,
+        ?string $notes = null
+    ): EmployeeItemRequestReturn 
+    {
+      $this->assertActorTenant($actor, $tenantId);
+
+        $this->assertPermission(
+            $actor,
+            $tenantId,
+            'employee_item_requests.return'
+        );
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $actor,
+            $requestId,
+            $items,
+            $notes
+        ) {
+            $request = EmployeeItemRequest::query()
+                ->where('tenant_id', $tenantId)
+                ->lockForUpdate()
+                ->findOrFail($requestId);
+
+            if (!in_array($request->status, [
+                EmployeeItemRequestStatus::ISSUED,
+                EmployeeItemRequestStatus::PARTIALLY_ISSUED,
+            ], true)) {
+                throw ValidationException::withMessages([
+                    'request' => 'Only issued requests can receive returns.',
+                ]);
+            }
+
+            if (empty($items)) {
+                throw ValidationException::withMessages([
+                    'items' => 'At least one return item is required.',
+                ]);
+            }
+
+            $returnNumber = 'EIRTN-' . now()->format('Ymd') . '-'
+                . Str::upper(Str::random(6));
+
+            $return = EmployeeItemRequestReturn::create([
+                'tenant_id' => $tenantId,
+                'employee_item_request_id' => $request->id,
+                'return_number' => $returnNumber,
+                'received_by_user_id' => $actor->id,
+                'returned_at' => now(),
+                'notes' => $notes,
+            ]);
+
+            foreach ($items as $item) {
+                $issueItemId = (int) ($item['issue_item_id'] ?? 0);
+                $batchId = (int) ($item['inventory_batch_id'] ?? 0);
+                $quantity = (float) ($item['quantity_returned'] ?? 0);
+                $condition = $item['return_condition'] ?? null;
+
+                if ($issueItemId <= 0 || $batchId <= 0 || $quantity <= 0) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Each return must have a valid issue item, batch and positive quantity.',
+                    ]);
+                }
+
+                if (!in_array($condition, [
+                    'restockable',
+                    'damaged',
+                    'unusable',
+                ], true)) {
+                    throw ValidationException::withMessages([
+                        'return_condition' => 'Invalid return condition.',
+                    ]);
+                }
+
+                $issueItem = EmployeeItemRequestIssueItem::query()
+                    ->where('tenant_id', $tenantId)
+                    ->whereKey($issueItemId)
+                    ->whereHas('issue', function ($query) use ($request) {
+                        $query->where(
+                            'employee_item_request_id',
+                            $request->id
+                        );
+                    })
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (!$issueItem->tracks_inventory) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Service items cannot be returned as inventory.',
+                    ]);
+                }
+
+                $issue = $issueItem->issue;
+
+                $batch = InventoryBatch::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('branch_id', $issue->branch_id)
+                    ->where('catalog_item_id', $issueItem->catalog_item_id)
+                    ->whereKey($batchId)
+                    ->firstOrFail();
+
+                // Confirm that this batch was actually allocated
+                // to this particular issue item.
+                $allocatedQuantity = InventoryBatchAllocation::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where(
+                        'source_type',
+                        'employee_item_request_issue_item'
+                    )
+                    ->where('source_id', $issueItem->id)
+                    ->where('inventory_batch_id', $batchId)
+                    ->sum('quantity');
+
+                if ($allocatedQuantity <= 0) {
+                    throw ValidationException::withMessages([
+                        'inventory_batch_id' => 'This batch was not allocated to the selected issue item.',
+                    ]);
+                }
+
+                // Calculate previously returned quantity for
+                // this issue item and original inventory batch.
+                $previouslyReturned = EmployeeItemRequestReturnItem::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('employee_item_request_issue_item_id', $issueItem->id)
+                    ->where('inventory_batch_id', $batchId)
+                    ->whereHas('employeeItemRequestReturn', function ($query) use ($request) {
+                        $query->where(
+                            'employee_item_request_id',
+                            $request->id
+                        );
+                    })
+                    ->sum('quantity_returned');
+
+                $remainingReturnable = (float) $allocatedQuantity
+                    - (float) $previouslyReturned;
+
+                if ($quantity > $remainingReturnable + 0.000001) {
+                    throw ValidationException::withMessages([
+                        'quantity_returned' => 'Returned quantity exceeds the outstanding quantity issued from this batch.',
+                    ]);
+                }
+
+                $returnItem = EmployeeItemRequestReturnItem::create([
+                    'tenant_id' => $tenantId,
+                    'employee_item_request_return_id' => $return->id,
+                    'employee_item_request_issue_item_id' => $issueItem->id,
+                    'inventory_batch_id' => $batchId,
+                    'quantity_returned' => $quantity,
+                    'return_condition' => $condition,
+                    'notes' => $item['notes'] ?? null,
+                ]);
+
+                if ($condition === 'restockable') {
+                    $this->inventoryService->restoreReturnedStock(
+                        $tenantId,
+                        $issue->branch_id,
+                        $issueItem->catalog_item_id,
+                        $batchId,
+                        $quantity,
+                        $returnItem->id,
+                        $item['notes'] ?? null
+                    );
+                }
+            }
+
+            return $return->fresh([
+                'employeeItemRequest',
+                'receivedBy',
+                'items.issueItem.catalogItem',
+                'items.inventoryBatch',
+            ]);
+        });
     }
 }

@@ -9,6 +9,8 @@ use App\Models\InventoryMovement;
 use App\Services\InventoryService;
 use App\Models\Branch;
 use App\Models\CatalogItem;
+use App\Models\InventoryBatch;
+use App\Http\Resources\InventoryBatchResource;
 use App\InventoryMovementType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -408,6 +410,135 @@ class InventoryController extends Controller
             'last_page' => $products->lastPage(),
             'per_page' => $products->perPage(),
             'total' => $products->total(),
+        ],
+    ]);
+}
+
+public function batches(Request $request): JsonResponse
+{
+    $this->authorizeSettings($request, 'inventory.view');
+
+    $validated = $request->validate([
+        'branch_id' => ['sometimes', 'integer', 'min:1'],
+        'catalog_item_id' => ['sometimes', 'integer', 'min:1'],
+        'search' => ['sometimes', 'string', 'max:255'],
+        'source_type' => ['sometimes', 'string', 'max:100'],
+        'status' => ['sometimes', 'in:available,depleted'],
+        'received_from' => ['sometimes', 'date'],
+        'received_to' => ['sometimes', 'date', 'after_or_equal:received_from'],
+        'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        'page' => ['sometimes', 'integer', 'min:1'],
+    ]);
+
+    $query = InventoryBatch::query()
+        ->where('tenant_id', $request->user()->tenant_id)
+        ->with(['branch', 'catalogItem', 'originBatch']);
+
+    if (! empty($validated['branch_id'])) {
+        $query->where('branch_id', $validated['branch_id']);
+    }
+
+    if (! empty($validated['catalog_item_id'])) {
+        $query->where('catalog_item_id', $validated['catalog_item_id']);
+    }
+
+    if (! empty($validated['source_type'])) {
+        $query->where('source_type', $validated['source_type']);
+    }
+
+    if (($validated['status'] ?? null) === 'available') {
+        $query->where('quantity_remaining', '>', 0);
+    } elseif (($validated['status'] ?? null) === 'depleted') {
+        $query->where('quantity_remaining', '<=', 0);
+    }
+
+    if (! empty($validated['received_from'])) {
+        $query->whereDate('received_at', '>=', $validated['received_from']);
+    }
+
+    if (! empty($validated['received_to'])) {
+        $query->whereDate('received_at', '<=', $validated['received_to']);
+    }
+
+    if (! empty($validated['search'])) {
+        $search = trim($validated['search']);
+
+        $query->where(function ($q) use ($search) {
+            $q->where('batch_number', 'ilike', "%{$search}%")
+                ->orWhereHas('catalogItem', function ($catalogQuery) use ($search) {
+                    $catalogQuery
+                        ->where('name', 'ilike', "%{$search}%")
+                        ->orWhere('sku', 'ilike', "%{$search}%");
+                });
+        });
+    }
+
+    $batches = $query
+        ->orderByDesc('received_at')
+        ->orderByDesc('id')
+        ->paginate($validated['per_page'] ?? 15);
+
+    return response()->json([
+        'success' => true,
+        'data' => InventoryBatchResource::collection($batches->items()),
+        'meta' => [
+            'current_page' => $batches->currentPage(),
+            'last_page' => $batches->lastPage(),
+            'per_page' => $batches->perPage(),
+            'total' => $batches->total(),
+        ],
+    ]);
+}
+public function showBatch(Request $request, int $batchId): JsonResponse
+{
+    $this->authorizeSettings($request, 'inventory.view');
+
+    $batch = InventoryBatch::query()
+        ->where('tenant_id', $request->user()->tenant_id)
+        ->with([
+            'branch',
+            'catalogItem',
+            'originBatch',
+            'movements' => fn ($query) => $query->latest('created_at')
+                ->latest('id'),
+            'allocations' => fn ($query) => $query->latest('created_at')
+                ->latest('id'),
+        ])
+        ->findOrFail($batchId);
+
+    return response()->json([
+        'success' => true,
+        'data' => new InventoryBatchResource($batch),
+    ]);
+}
+
+public function inventoryBatches(
+    Request $request,
+    int $inventoryId
+): JsonResponse {
+    $this->authorizeSettings($request, 'inventory.view');
+
+    $inventory = Inventory::query()
+        ->where('tenant_id', $request->user()->tenant_id)
+        ->findOrFail($inventoryId);
+
+    $batches = InventoryBatch::query()
+        ->where('tenant_id', $request->user()->tenant_id)
+        ->where('branch_id', $inventory->branch_id)
+        ->where('catalog_item_id', $inventory->catalog_item_id)
+        ->with(['branch', 'catalogItem', 'originBatch'])
+        ->orderBy('received_at')
+        ->orderBy('id')
+        ->paginate($request->integer('per_page', 15));
+
+    return response()->json([
+        'success' => true,
+        'data' => InventoryBatchResource::collection($batches->items()),
+        'meta' => [
+            'current_page' => $batches->currentPage(),
+            'last_page' => $batches->lastPage(),
+            'per_page' => $batches->perPage(),
+            'total' => $batches->total(),
         ],
     ]);
 }

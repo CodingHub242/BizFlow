@@ -68,4 +68,14 @@ class EmployeeItemRequest extends Model
     {
         return $this->belongsTo(User::class, 'cancelled_by_user_id');
     }
+
+    public function issues(): HasMany
+    {
+        return $this->hasMany(EmployeeItemRequestIssue::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(EmployeeItemRequestReturn::class);
+    }
 }
