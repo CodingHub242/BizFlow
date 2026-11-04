@@ -409,37 +409,106 @@ class BizFlowRolePermissionSeeder extends Seeder
     ],
 ];
 
-    public function run(): void
-    {
-        foreach (self::PERMISSIONS as $permission) {
-            Permission::findOrCreate($permission, 'web');
-        }
+public function run(): void
+{
+    foreach (self::PERMISSIONS as $permission) {
+        Permission::findOrCreate($permission, 'web');
     }
 
+    // Global templates are platform-owned.
+    setPermissionsTeamId(null);
 
-    public function provisionTenantRoles(int $tenantId): void
-    {
-        foreach (self::PERMISSIONS as $permission) {
-            Permission::findOrCreate($permission, 'web');
+    foreach (self::DEFAULT_ROLES as $roleName) {
+        $role = Role::query()->firstOrCreate([
+            'tenant_id' => null,
+            'name' => $roleName,
+            'guard_name' => 'web',
+        ]);
+
+        // The platform seeder defines the initial template permissions.
+        $role->syncPermissions(
+            self::ROLE_PERMISSIONS[$roleName] ?? []
+        );
+    }
+}
+
+public function provisionTenantRoles(int $tenantId): void
+{
+    foreach (self::PERMISSIONS as $permission) {
+        Permission::findOrCreate($permission, 'web');
+    }
+
+    // Read the global templates outside the tenant context.
+    setPermissionsTeamId(null);
+
+    $templates = Role::query()
+        ->whereNull('tenant_id')
+        ->where('guard_name', 'web')
+        ->whereIn('name', self::DEFAULT_ROLES)
+        ->with('permissions')
+        ->get()
+        ->keyBy('name');
+
+    foreach (self::DEFAULT_ROLES as $roleName) {
+        $template = $templates->get($roleName);
+
+        if (!$template) {
+            throw new \RuntimeException(
+                "Global role template [{$roleName}] has not been seeded."
+            );
         }
 
+        $templatePermissions = $template->permissions
+            ->pluck('name')
+            ->all();
+
+        // Switch to the business context before creating the tenant role.
         setPermissionsTeamId($tenantId);
 
-        foreach (self::DEFAULT_ROLES as $roleName) {
-            $role = Role::query()->firstOrCreate([
-                'tenant_id' => $tenantId,
-                'name' => $roleName,
-                'guard_name' => 'web',
-            ]);
+        $tenantRole = Role::query()->firstOrCreate([
+            'tenant_id' => $tenantId,
+            'name' => $roleName,
+            'guard_name' => 'web',
+        ]);
 
-            // Initialize permissions for each newly created role.
-            if ($role->wasRecentlyCreated) {
-                $role->syncPermissions(
-                    self::ROLE_PERMISSIONS[$roleName] ?? []
-                );
-            }
+        // Copy permissions only when the tenant role is first created.
+        if ($tenantRole->wasRecentlyCreated) {
+            $tenantRole->syncPermissions($templatePermissions);
         }
     }
+}
+
+    // public function run(): void
+    // {
+    //     foreach (self::PERMISSIONS as $permission) {
+    //         Permission::findOrCreate($permission, 'web');
+    //     }
+    // }
+
+
+    // public function provisionTenantRoles(int $tenantId): void
+    // {
+    //     foreach (self::PERMISSIONS as $permission) {
+    //         Permission::findOrCreate($permission, 'web');
+    //     }
+
+    //     setPermissionsTeamId($tenantId);
+
+    //     foreach (self::DEFAULT_ROLES as $roleName) {
+    //         $role = Role::query()->firstOrCreate([
+    //             'tenant_id' => $tenantId,
+    //             'name' => $roleName,
+    //             'guard_name' => 'web',
+    //         ]);
+
+    //         // Initialize permissions for each newly created role.
+    //         if ($role->wasRecentlyCreated) {
+    //             $role->syncPermissions(
+    //                 self::ROLE_PERMISSIONS[$roleName] ?? []
+    //             );
+    //         }
+    //     }
+    // }
 
 
     // public function provisionTenantRoles(int $tenantId): void

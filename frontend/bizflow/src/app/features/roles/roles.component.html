@@ -11,7 +11,7 @@
       type="button"
       class="btn btn-primary"
       (click)="openCreateForm()"
-      [disabled]="showCreateForm"
+      [disabled]="showCreateForm || !!editingRole"
     >
       + Create custom role
     </button>
@@ -25,6 +25,7 @@
     {{ successMessage }}
   </div>
 
+  <!-- CREATE CUSTOM ROLE -->
   <section *ngIf="showCreateForm" class="panel create-panel">
     <div class="section-heading">
       <div>
@@ -36,6 +37,7 @@
     <form (ngSubmit)="createRole()" #roleForm="ngForm" novalidate>
       <div class="form-field">
         <label for="role-name">Role name</label>
+
         <input
           id="role-name"
           name="roleName"
@@ -59,9 +61,7 @@
       <div class="permission-heading">
         <div>
           <h3>Permissions</h3>
-          <p>
-            {{ selectedPermissions.size }} permission(s) selected.
-          </p>
+          <p>{{ selectedPermissions.size }} permission(s) selected.</p>
         </div>
       </div>
 
@@ -140,12 +140,113 @@
     </form>
   </section>
 
+  <!-- EDIT EXISTING ROLE PERMISSIONS -->
+  <section *ngIf="editingRole" class="panel edit-panel">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">EDIT ROLE</span>
+        <h2>{{ editingRole.name }}</h2>
+        <p>
+          Update the permissions assigned to this role.
+          Changes apply only to your business.
+        </p>
+      </div>
+    </div>
+
+    <div class="permission-heading">
+      <div>
+        <h3>Permissions</h3>
+        <p>
+          {{ editingPermissions.size }} permission(s) selected.
+        </p>
+      </div>
+    </div>
+
+    <div *ngIf="permissionGroups.length === 0" class="loading-state">
+      Loading permission catalogue…
+    </div>
+
+    <div class="permission-groups">
+      <section
+        *ngFor="let group of permissionGroups; trackBy: trackGroup"
+        class="permission-group"
+      >
+        <div class="permission-group__header">
+          <h4>{{ group.label }}</h4>
+
+          <label class="select-all">
+            <input
+              type="checkbox"
+              [checked]="isGroupFullySelected(group, 'edit')"
+              (change)="
+                toggleGroup(
+                  group,
+                  $any($event.target).checked,
+                  'edit'
+                )
+              "
+              [disabled]="savingPermissions"
+            />
+            Select all
+          </label>
+        </div>
+
+        <div class="permission-list">
+          <label
+            *ngFor="let permission of group.permissions"
+            class="permission-option"
+          >
+            <input
+              type="checkbox"
+              [checked]="isPermissionSelected(permission.name, 'edit')"
+              (change)="
+                togglePermission(
+                  permission.name,
+                  $any($event.target).checked,
+                  'edit'
+                )
+              "
+              [disabled]="savingPermissions"
+            />
+
+            <span>{{ permission.name }}</span>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <div *ngIf="editError" class="alert alert-error" role="alert">
+      {{ editError }}
+    </div>
+
+    <div class="form-actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="cancelEdit()"
+        [disabled]="savingPermissions"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="saveRolePermissions()"
+        [disabled]="savingPermissions || permissionGroups.length === 0"
+      >
+        {{ savingPermissions ? 'Saving…' : 'Save permissions' }}
+      </button>
+    </div>
+  </section>
+
+  <!-- AVAILABLE ROLES -->
   <section class="panel roles-panel">
     <div class="section-heading">
       <div>
         <h2>Available roles</h2>
         <p>
-          Global roles and roles created for your business.
+          Default roles and custom roles configured for your business.
         </p>
       </div>
 
@@ -180,8 +281,10 @@
           <tr>
             <th>Role</th>
             <th>Type</th>
+            <th>Permissions</th>
             <th>Guard</th>
             <th>Created</th>
+            <th *ngIf="canUpdateRoles">Actions</th>
           </tr>
         </thead>
 
@@ -190,17 +293,43 @@
             <td>
               <strong>{{ role.name }}</strong>
             </td>
+
             <td>
               <span
                 class="role-type"
                 [class.role-type--system]="isSystemRole(role)"
               >
-                {{ isSystemRole(role) ? 'System role' : 'Custom role' }}
+                {{ isSystemRole(role) ? 'Default role' : 'Custom role' }}
               </span>
             </td>
-            <td>{{ role.guard_name }}</td>
+
             <td>
-              {{ role.created_at ? (role.created_at | date:'mediumDate') : '—' }}
+              {{ role.permissions?.length ?? 0 }}
+            </td>
+
+            <td>{{ role.guard_name }}</td>
+
+            <td>
+              {{
+                role.created_at
+                  ? (role.created_at | date:'mediumDate')
+                  : '—'
+              }}
+            </td>
+
+            <td *ngIf="canUpdateRoles">
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                (click)="openEditPermissions(role)"
+                [disabled]="
+                  savingPermissions ||
+                  saving ||
+                  editingRole?.id === role.id
+                "
+              >
+                {{ editingRole?.id === role.id ? 'Editing…' : 'Edit permissions' }}
+              </button>
             </td>
           </tr>
         </tbody>

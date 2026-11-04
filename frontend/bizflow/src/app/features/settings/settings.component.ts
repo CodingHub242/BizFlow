@@ -218,9 +218,10 @@ uploadLogo(): void {
   get canViewRoles(): boolean{
      return this.authService.hasPermission('roles.view');
   }
-  get canManageRoles(): boolean{
-     return this.authService.hasPermission('roles.create');
-  }
+ get canManageRoles(): boolean {
+  return this.authService.hasPermission('roles.create') ||
+         this.authService.hasPermission('roles.update');
+}
   get canManageEmployees(): boolean {
   return this.authService.hasPermission('employees.view');
 }

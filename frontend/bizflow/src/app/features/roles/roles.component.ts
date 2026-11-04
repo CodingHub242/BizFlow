@@ -1,9 +1,20 @@
 import { CommonModule } from '@angular/common';
-import {ChangeDetectorRef,Component,DestroyRef,OnInit,inject} from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnInit,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize } from 'rxjs';
-import {RoleApi,Role,PermissionGroup} from '../../core/services/role-api';
+
+import {
+  RoleApi,
+  Role,
+  PermissionGroup,
+} from '../../core/services/role-api';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -21,19 +32,28 @@ export class RolesComponent implements OnInit {
 
   roles: Role[] = [];
   permissionGroups: PermissionGroup[] = [];
-  selectedPermissions = new Set<string>();
 
+  // Custom role creation state
+  selectedPermissions = new Set<string>();
   roleName = '';
+  showCreateForm = false;
+
+  // Existing role editing state
+  editingRole: Role | null = null;
+  editingPermissions = new Set<string>();
+
   loading = false;
   saving = false;
-  showCreateForm = false;
+  savingPermissions = false;
 
   errorMessage = '';
   successMessage = '';
   formError = '';
+  editError = '';
 
   readonly canViewRoles = this.auth.hasPermission('roles.view');
   readonly canCreateRoles = this.auth.hasPermission('roles.create');
+  readonly canUpdateRoles = this.auth.hasPermission('roles.update');
 
   ngOnInit(): void {
     if (!this.canViewRoles) {
@@ -42,7 +62,10 @@ export class RolesComponent implements OnInit {
     }
 
     this.loadRoles();
-    this.loadPermissionCatalog();
+
+    if (this.canCreateRoles || this.canUpdateRoles) {
+      this.loadPermissionCatalog();
+    }
   }
 
   loadRoles(): void {
@@ -89,46 +112,95 @@ export class RolesComponent implements OnInit {
       });
   }
 
-  togglePermission(name: string, checked: boolean): void {
+  // Shared permission selection helpers
+
+  togglePermission(
+    name: string,
+    checked: boolean,
+    target: 'create' | 'edit' = 'create',
+  ): void {
+    const permissions =
+      target === 'edit'
+        ? this.editingPermissions
+        : this.selectedPermissions;
+
     if (checked) {
-      this.selectedPermissions.add(name);
+      permissions.add(name);
     } else {
-      this.selectedPermissions.delete(name);
+      permissions.delete(name);
     }
 
-    // Trigger change detection for the updated Set.
-    this.selectedPermissions = new Set(this.selectedPermissions);
+    if (target === 'edit') {
+      this.editingPermissions = new Set(permissions);
+    } else {
+      this.selectedPermissions = new Set(permissions);
+    }
   }
 
-  isPermissionSelected(name: string): boolean {
-    return this.selectedPermissions.has(name);
+  isPermissionSelected(
+    name: string,
+    target: 'create' | 'edit' = 'create',
+  ): boolean {
+    const permissions =
+      target === 'edit'
+        ? this.editingPermissions
+        : this.selectedPermissions;
+
+    return permissions.has(name);
   }
 
-  isGroupFullySelected(group: PermissionGroup): boolean {
+  isGroupFullySelected(
+    group: PermissionGroup,
+    target: 'create' | 'edit' = 'create',
+  ): boolean {
+    const permissions =
+      target === 'edit'
+        ? this.editingPermissions
+        : this.selectedPermissions;
+
     return (
       group.permissions.length > 0 &&
       group.permissions.every(permission =>
-        this.selectedPermissions.has(permission.name),
+        permissions.has(permission.name),
       )
     );
   }
 
-  toggleGroup(group: PermissionGroup, checked: boolean): void {
+  toggleGroup(
+    group: PermissionGroup,
+    checked: boolean,
+    target: 'create' | 'edit' = 'create',
+  ): void {
+    const permissions =
+      target === 'edit'
+        ? this.editingPermissions
+        : this.selectedPermissions;
+
     for (const permission of group.permissions) {
       if (checked) {
-        this.selectedPermissions.add(permission.name);
+        permissions.add(permission.name);
       } else {
-        this.selectedPermissions.delete(permission.name);
+        permissions.delete(permission.name);
       }
     }
 
-    this.selectedPermissions = new Set(this.selectedPermissions);
+    if (target === 'edit') {
+      this.editingPermissions = new Set(permissions);
+    } else {
+      this.selectedPermissions = new Set(permissions);
+    }
   }
 
-  openCreateForm(): void {
-    if (!this.canCreateRoles) return;
+  // Custom role creation
 
-    this.resetForm();
+  openCreateForm(): void {
+    if (!this.canCreateRoles || this.saving || this.savingPermissions) {
+      return;
+    }
+
+    this.cancelEdit();
+
+    this.resetCreateForm();
     this.showCreateForm = true;
     this.errorMessage = '';
     this.successMessage = '';
@@ -138,7 +210,7 @@ export class RolesComponent implements OnInit {
     if (this.saving) return;
 
     this.showCreateForm = false;
-    this.resetForm();
+    this.resetCreateForm();
   }
 
   createRole(): void {
@@ -177,7 +249,7 @@ export class RolesComponent implements OnInit {
             response.message || 'Role created successfully.';
 
           this.showCreateForm = false;
-          this.resetForm();
+          this.resetCreateForm();
           this.loadRoles();
           this.cdr.detectChanges();
         },
@@ -193,8 +265,106 @@ export class RolesComponent implements OnInit {
       });
   }
 
+  // Existing role permission editing
+
+  openEditPermissions(role: Role): void {
+    if (
+      !this.canUpdateRoles ||
+      this.saving ||
+      this.savingPermissions
+    ) {
+      return;
+    }
+
+    this.showCreateForm = false;
+    this.resetCreateForm();
+
+    this.editingRole = role;
+    this.editingPermissions = new Set(role.permissions ?? []);
+
+    this.editError = '';
+    this.errorMessage = '';
+    this.successMessage = '';
+  }
+
+  cancelEdit(): void {
+    if (this.savingPermissions) return;
+
+    this.editingRole = null;
+    this.editingPermissions = new Set();
+    this.editError = '';
+  }
+
+  saveRolePermissions(): void {
+    if (
+      !this.canUpdateRoles ||
+      !this.editingRole ||
+      this.savingPermissions
+    ) {
+      return;
+    }
+
+    const roleId = this.editingRole.id;
+    const permissions = [...this.editingPermissions];
+
+    this.savingPermissions = true;
+    this.editError = '';
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.roleApi
+      .updatePermissions(roleId, { permissions })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.savingPermissions = false;
+          this.cdr.detectChanges();
+        }),
+      )
+      .subscribe({
+        next: response => {
+          const updatedRole = response.data;
+
+          this.roles = this.roles.map(role =>
+            role.id === updatedRole.id ? updatedRole : role,
+          );
+
+          this.editingRole = null;
+          this.editingPermissions = new Set();
+
+          this.successMessage =
+            response.message || 'Role permissions updated successfully.';
+
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          const validationErrors = error?.error?.errors;
+
+          this.editError = validationErrors
+            ? Object.values(validationErrors).flat().join(' ')
+            : error?.error?.message ??
+              'Unable to update role permissions.';
+
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  // Display helpers
+
   isSystemRole(role: Role): boolean {
-    return role.tenant_id === null;
+    return (
+      role.tenant_id !== null &&
+      [
+        'Owner',
+        'Administrator',
+        'Manager',
+        'Salesperson',
+        'Cashier',
+        'Inventory Officer',
+        'Accountant',
+      ].includes(role.name)
+    );
   }
 
   trackGroup(_index: number, group: PermissionGroup): string {
@@ -205,7 +375,7 @@ export class RolesComponent implements OnInit {
     return role.id;
   }
 
-  private resetForm(): void {
+  private resetCreateForm(): void {
     this.roleName = '';
     this.selectedPermissions = new Set<string>();
     this.formError = '';

@@ -528,6 +528,10 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::post('/roles', [RoleController::class, 'store']);
 
+    Route::put('/roles/{roleId}/permissions',[RoleController::class, 'updatePermissions']
+    )->whereNumber('roleId')
+    ->middleware('permission:roles.update');
+
     //UpdateProfile
     Route::put('/user/profile', [AuthController::class, 'updateProfile']);
 

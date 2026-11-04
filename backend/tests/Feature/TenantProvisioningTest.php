@@ -6,11 +6,19 @@ use App\Models\Tenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use App\Services\Tenant\TenantProvisioningService;
+use Database\Seeders\BizFlowRolePermissionSeeder;
 use Tests\TestCase;
 
 class TenantProvisioningTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+{
+    parent::setUp();
+
+    $this->seed(BizFlowRolePermissionSeeder::class);
+}
 
     public function test_creating_a_tenant_provisions_default_roles(): void
     {
@@ -119,11 +127,8 @@ public function test_role_assignments_are_isolated_between_tenants(): void
     $provisioning->provision($tenantOne);
     $provisioning->provision($tenantTwo);
 
-    setPermissionsTeamId($tenantOne->id);
-    $userOne->assignRole('Owner');
-
-    setPermissionsTeamId($tenantTwo->id);
-    $userTwo->assignRole('Owner');
+   $provisioning->assignOwner($tenantOne, $userOne);
+$provisioning->assignOwner($tenantTwo, $userTwo);
 
     $tenantOneOwnerRole = Role::where('name', 'Owner')
         ->where('guard_name', 'web')

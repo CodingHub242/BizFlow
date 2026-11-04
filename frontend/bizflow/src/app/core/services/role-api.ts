@@ -9,15 +9,14 @@ export interface Role {
   tenant_id: number | null;
   name: string;
   guard_name: string;
+  permissions: string[];
   created_at: string;
 }
 
 export interface RoleResponse {
   success: boolean;
-  message: string;
-   data: Role & {
-    permissions: string[];
-  };
+  message?: string;
+  data: Role;
 }
 
 export interface CreateRoleRequest {
@@ -25,7 +24,7 @@ export interface CreateRoleRequest {
   permissions: string[];
 }
 
-export interface RoleListResponse {
+export interface RolesListResponse {
   success: boolean;
   data: Role[];
 }
@@ -39,6 +38,11 @@ export interface AssignEmployeeRoleResponse {
   message: string;
 }
 
+export interface PermissionItem {
+  name: string;
+  module: string;
+}
+
 export interface PermissionOption {
   name: string;
   module: string;
@@ -47,12 +51,16 @@ export interface PermissionOption {
 export interface PermissionGroup {
   key: string;
   label: string;
-  permissions: PermissionOption[];
+  permissions: PermissionItem[];
 }
 
 export interface PermissionCatalogResponse {
   success: boolean;
   data: PermissionGroup[];
+}
+
+export interface UpdateRolePermissionsRequest {
+  permissions: string[];
 }
 
 @Injectable({
@@ -62,8 +70,8 @@ export class RoleApi {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = API_URL;
 
-  list(): Observable<RoleListResponse> {
-  return this.http.get<RoleListResponse>(
+  list(): Observable<RolesListResponse> {
+  return this.http.get<RolesListResponse>(
     `${this.apiUrl}/roles`,
   );
 }
@@ -87,4 +95,14 @@ export class RoleApi {
         `${this.apiUrl}/roles/permissions`,
     );
   }
+
+updatePermissions(
+  roleId: number,
+  payload: UpdateRolePermissionsRequest
+): Observable<RoleResponse> {
+  return this.http.put<RoleResponse>(
+    `${this.apiUrl}/roles/${roleId}/permissions`,
+    payload
+  );
+}
 }

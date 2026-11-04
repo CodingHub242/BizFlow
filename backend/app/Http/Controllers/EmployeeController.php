@@ -149,48 +149,55 @@ class EmployeeController extends Controller
         ], 201);
     }
 
-    public function assignRole(Request $request,int $employee,EmployeeRoleService $employeeRoleService): JsonResponse 
-    {
-        $user = $request->user();
-        $tenantId = (int) $user->tenant_id;
+   public function assignRole(
+    Request $request,
+    int $employee,
+    EmployeeRoleService $employeeRoleService
+): JsonResponse {
+    $user = $request->user();
 
-        setPermissionsTeamId($tenantId);
+    $tenantId = (int) $user->tenant_id;
 
-        abort_unless(
-            $user->hasPermissionTo('employees.manage_roles', 'web'),
-            403,
-            'You do not have permission to manage employee roles.'
-        );
+    abort_unless(
+        $tenantId > 0,
+        403,
+        'A valid tenant context is required.'
+    );
 
-        $validated = $request->validate([
-            'role' => [
-                'required',
-                'string',
-                Rule::exists('roles', 'name')
-                    ->where('guard_name', 'web')
-                    ->where(function ($query) use ($tenantId) {
-                        $query->whereNull('tenant_id')
-                            ->orWhere('tenant_id', $tenantId);
-                    }),
-                Rule::notIn(['Owner', 'Administrator']),
-            ],
-        ]);
+    setPermissionsTeamId($tenantId);
 
-        $employeeRecord = Employee::query()
-            ->where('tenant_id', $tenantId)
-            ->with('user')
-            ->findOrFail($employee);
+    abort_unless(
+        $user->hasPermissionTo('employees.manage_roles', 'web'),
+        403,
+        'You do not have permission to manage employee roles.'
+    );
 
-        $employeeRoleService->assign(
-            $employeeRecord,
-            $validated['role'],
-            $tenantId,
-        );
+    $validated = $request->validate([
+        'role' => [
+            'required',
+            'string',
+            Rule::exists('roles', 'name')
+                ->where('tenant_id', $tenantId)
+                ->where('guard_name', 'web'),
+            Rule::notIn(['Owner', 'Administrator']),
+        ],
+    ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Employee role updated successfully.',
-        ]);
-    }
+    $employeeRecord = Employee::query()
+        ->where('tenant_id', $tenantId)
+        ->with('user')
+        ->findOrFail($employee);
+
+    $employeeRoleService->assign(
+        $employeeRecord,
+        $validated['role'],
+        $tenantId,
+    );
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Employee role updated successfully.',
+    ]);
+}
 
 }

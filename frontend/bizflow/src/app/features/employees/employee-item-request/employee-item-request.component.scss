@@ -1,0 +1,153 @@
+.page-heading {
+  margin-bottom: 20px;
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+
+  p {
+    color: var(--ion-color-medium);
+    margin: 0;
+  }
+}
+
+.summary-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: var(--ion-card-background, #fff);
+  border: 1px solid var(--ion-color-light-shade);
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  span {
+    color: var(--ion-color-medium);
+    font-size: 13px;
+  }
+
+  strong {
+    font-size: 26px;
+  }
+
+  ion-icon {
+    font-size: 30px;
+    color: var(--ion-color-primary);
+  }
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  ion-searchbar {
+    flex: 1;
+    min-width: 220px;
+    padding: 0;
+  }
+
+  ion-item {
+    width: 200px;
+    --background: var(--ion-item-background, transparent);
+  }
+}
+
+.request-card {
+  margin: 0 0 12px;
+  border-radius: 12px;
+  box-shadow: none;
+  border: 1px solid var(--ion-color-light-shade);
+}
+
+.request-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+
+  strong {
+    font-size: 15px;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: var(--ion-color-medium);
+  }
+}
+
+.request-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 18px;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--ion-color-medium);
+  }
+}
+
+.request-purpose {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--ion-color-medium-shade);
+}
+
+.loading-state,
+.empty-state {
+  text-align: center;
+  padding: 45px 15px;
+  color: var(--ion-color-medium);
+}
+
+.empty-state ion-icon {
+  font-size: 48px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+
+  span {
+    font-size: 13px;
+    color: var(--ion-color-medium);
+  }
+}
+
+@media (max-width: 576px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+
+    ion-item {
+      width: 100%;
+    }
+  }
+
+  .request-top {
+    flex-direction: column;
+  }
+
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
