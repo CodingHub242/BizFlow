@@ -28,6 +28,12 @@ interface LineAvailabilityState {
   result: InventoryAvailability | null;
 }
 
+interface LinePricingState {
+  loading: boolean;
+  error: string | null;
+  unitPrice: number | null;
+}
+
 @Component({
   selector: 'app-sales',
   templateUrl: './sales.component.html',
@@ -50,6 +56,7 @@ export class SalesComponent implements OnInit {
   alternativeBranchesLoading = false;
   alternativeBranchesError = '';
   alternativeBranchResults: AlternativeBranchStock[] = [];
+  linePricing: Record<number, LinePricingState> = {};
   orders: SalesOrder[] = [];
   branches: Branch[] = [];
   customers: Customer[] = [];
@@ -348,44 +355,170 @@ stockActionError = '';
   }
 
   removeOrderItem(index: number): void {
-    this.orderItems.splice(index, 1);
+   this.orderItems.splice(index, 1);
+
+  this.lineAvailability = {};
+  this.linePricing = {};
+
+  this.orderItems.forEach((_, i) => {
+    this.checkLineAvailability(i);
+    this.checkLinePrice(i);
+  });
   }
 
   getCatalogItem(id: number): CatalogItem | undefined {
     return this.catalogItems.find((item) => item.id === Number(id));
   }
 
-  getLineTotal(item: {
+ getLineUnitPrice(
+  item: {
+    catalog_item_id: number;
+    quantity: number;
+  },
+  index: number,
+): number {
+  const product = this.getCatalogItem(item.catalog_item_id);
+
+  if (!product) {
+    return 0;
+  }
+
+  // Services and non-inventory products use catalogue pricing.
+  if (!product.track_inventory) {
+    return Number(product.selling_price);
+  }
+
+  return this.linePricing[index]?.unitPrice
+    ?? Number(product.selling_price);
+}
+
+getLineTotal(
+  item: {
     catalog_item_id: number;
     quantity: number;
     discount: number;
     tax: number;
-  }): number {
-    const product = this.getCatalogItem(item.catalog_item_id);
+  },
+  index: number,
+): number {
+  const unitPrice = this.getLineUnitPrice(item, index);
 
-    if (!product) {
-      return 0;
-    }
-
-    return Math.max(
-      0,
-      Number(product.selling_price) * Number(item.quantity) -
-        Number(item.discount || 0) +
-        Number(item.tax || 0),
-    );
-  }
+  return Math.max(
+    0,
+    unitPrice * Number(item.quantity)
+      - Number(item.discount || 0)
+      + Number(item.tax || 0),
+  );
+}
 
   get estimatedTotal(): number {
     return Math.max(
       0,
       this.orderItems.reduce(
-        (sum, item) => sum + this.getLineTotal(item),
+        (sum, item) => sum + this.getLineTotal(item, this.orderItems.indexOf(item)),
         0,
       ) -
         Number(this.orderForm.discount || 0) +
         Number(this.orderForm.tax || 0),
     );
   }
+
+  checkLinePrice(index: number): void {
+  const item = this.orderItems[index];
+
+  const product = item
+    ? this.getCatalogItem(item.catalog_item_id)
+    : undefined;
+
+  const branchId = Number(this.orderForm.branch_id);
+  const catalogItemId = Number(item?.catalog_item_id);
+  const quantity = Number(item?.quantity);
+
+  if (!item || !product) {
+    delete this.linePricing[index];
+    return;
+  }
+
+  // Services do not require batch pricing.
+  if (!product.track_inventory) {
+    this.linePricing[index] = {
+      loading: false,
+      error: null,
+      unitPrice: Number(product.selling_price),
+    };
+    return;
+  }
+
+  if (
+    !Number.isInteger(branchId) ||
+    branchId <= 0 ||
+    !Number.isInteger(catalogItemId) ||
+    catalogItemId <= 0 ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0
+  ) {
+    delete this.linePricing[index];
+    return;
+  }
+
+  this.linePricing[index] = {
+    loading: true,
+    error: null,
+    unitPrice: null,
+  };
+
+  this.salesService.quotePrice({
+    branch_id: branchId,
+    catalog_item_id: catalogItemId,
+    quantity,
+  })
+  .pipe(takeUntilDestroyed(this.destroyRef))
+  .subscribe({
+    next: response => {
+      const current = this.orderItems[index];
+
+      // Ignore stale responses if the user changed the line.
+      if (
+        !current ||
+        Number(this.orderForm.branch_id) !== branchId ||
+        Number(current.catalog_item_id) !== catalogItemId ||
+        Number(current.quantity) !== quantity
+      ) {
+        return;
+      }
+
+      this.linePricing[index] = {
+        loading: false,
+        error: null,
+        unitPrice: Number(response.data.unit_price),
+      };
+
+      //this.cdr.markForCheck();
+      this.cdr.detectChanges();
+    },
+
+    error: error => {
+      const current = this.orderItems[index];
+
+      if (
+        !current ||
+        Number(this.orderForm.branch_id) !== branchId ||
+        Number(current.catalog_item_id) !== catalogItemId ||
+        Number(current.quantity) !== quantity
+      ) {
+        return;
+      }
+
+      this.linePricing[index] = {
+        loading: false,
+        error: error?.error?.message || 'Unable to calculate batch price.',
+        unitPrice: null,
+      };
+
+      this.cdr.markForCheck();
+    },
+  });
+}
 
  openCreateForm(): void {
   this.errorMessage = '';
@@ -414,6 +547,24 @@ stockActionError = '';
   createOrder(): void {
     this.errorMessage = '';
     this.successMessage = '';
+
+    const pendingPrice = this.orderItems.some((item, index) => {
+      const product = this.getCatalogItem(item.catalog_item_id);
+
+      return product?.track_inventory &&
+        (
+          !this.linePricing[index] ||
+          this.linePricing[index].loading ||
+          this.linePricing[index].unitPrice === null ||
+          !!this.linePricing[index].error
+        );
+    });
+
+    if (pendingPrice) {
+      this.errorMessage =
+        'Please wait for all inventory batch prices to finish calculating.';
+      return;
+    }
 
     if (!this.orderForm.order_number.trim()) {
       this.errorMessage = 'Enter an order number.';
@@ -518,6 +669,14 @@ openEditForm(order: SalesOrder): void {
   this.errorMessage = '';
   this.successMessage = '';
 
+  this.linePricing = {};
+  this.lineAvailability = {};
+
+  this.orderItems.forEach((_, index) => {
+    this.checkLineAvailability(index);
+    this.checkLinePrice(index);
+  });
+
   if (!this.canEditOrder(order)) {
     this.errorMessage =
       'Only draft, unpaid orders without payments can be edited.';
@@ -579,6 +738,24 @@ updateOrder(): void {
   if (orderId === null || this.saving) {
     return;
   }
+
+  const pendingPrice = this.orderItems.some((item, index) => {
+  const product = this.getCatalogItem(item.catalog_item_id);
+
+      return product?.track_inventory &&
+        (
+          !this.linePricing[index] ||
+          this.linePricing[index].loading ||
+          this.linePricing[index].unitPrice === null ||
+          !!this.linePricing[index].error
+        );
+    });
+
+    if (pendingPrice) {
+      this.errorMessage =
+        'Please wait for all inventory batch prices to finish calculating.';
+      return;
+    }
 
   this.errorMessage = '';
   this.successMessage = '';
@@ -897,21 +1074,25 @@ fulfillmentProgress(request: FulfillmentRequest): number {
 
 onBranchChanged(): void {
   this.lineAvailability = {};
+   this.linePricing = {};
   this.alternativeBranchLineIndex = null;
   this.alternativeBranchResults = [];
   this.alternativeBranchesError = '';
 
   this.orderItems.forEach((_, index) => {
     this.checkLineAvailability(index);
+     this.checkLinePrice(index);
   });
 }
 
 onCatalogItemChanged(index: number): void {
   this.checkLineAvailability(index);
+   this.checkLinePrice(index);
 }
 
 onQuantityChanged(index: number): void {
   this.checkLineAvailability(index);
+   this.checkLinePrice(index);
 }
 
 hasAvailableStock(value: number | string | null | undefined): boolean {

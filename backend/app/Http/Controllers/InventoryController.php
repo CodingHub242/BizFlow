@@ -97,19 +97,46 @@ class InventoryController extends Controller
 
     public function show(Request $request, Inventory $inventory): JsonResponse
     {
-         $this->authorizeSettings($request, 'inventory.view');
+         $startedAt = microtime(true);
 
-        if ($inventory->tenant_id !== $request->user()->tenant_id) {
-            abort(404);
-        }
+    $this->authorizeSettings($request, 'inventory.view');
 
-        //load the relationship data
-        $inventory->load(['branch','catalogItem']);
+    $afterAuthorization = microtime(true);
 
-        return response()->json([
-            'success' => true,
-            'data' => new InventoryResource($inventory),
-        ]);
+    if ($inventory->tenant_id !== $request->user()->tenant_id) {
+        abort(404);
+    }
+
+    $afterTenantCheck = microtime(true);
+
+    $inventory->load(['branch', 'catalogItem']);
+
+    $afterRelationships = microtime(true);
+
+    \Log::info('Inventory show performance', [
+        'inventory_id' => $inventory->id,
+        'authorization_ms' => round(
+            ($afterAuthorization - $startedAt) * 1000,
+            2
+        ),
+        'tenant_check_ms' => round(
+            ($afterTenantCheck - $afterAuthorization) * 1000,
+            2
+        ),
+        'relationships_ms' => round(
+            ($afterRelationships - $afterTenantCheck) * 1000,
+            2
+        ),
+        'total_controller_ms' => round(
+            ($afterRelationships - $startedAt) * 1000,
+            2
+        ),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'data' => new InventoryResource($inventory),
+    ]);
     }
 
     public function availability(Request $request,InventoryService $inventoryService): JsonResponse 
@@ -339,6 +366,8 @@ class InventoryController extends Controller
             'notes' => ['nullable', 'string'],
             'reference_type' => ['nullable', 'string', 'max:255'],
             'reference_id' => ['nullable', 'integer', 'min:1'],
+            'unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         try {
@@ -351,6 +380,14 @@ class InventoryController extends Controller
                 $validated['reference_type'] ?? null,
                 isset($validated['reference_id'])
                     ? (int) $validated['reference_id']
+                    : null,
+
+                isset($validated['unit_cost'])
+                    ? (float) $validated['unit_cost']
+                    : null,
+
+                isset($validated['selling_price'])
+                    ? (float) $validated['selling_price']
                     : null,
             );
         } catch (ModelNotFoundException $e) {

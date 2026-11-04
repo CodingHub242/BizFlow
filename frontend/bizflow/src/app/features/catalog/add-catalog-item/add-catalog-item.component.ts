@@ -50,6 +50,7 @@ export class AddCatalogItemComponent implements OnInit, OnDestroy {
   selling_price: number | null = null;
 
   tax_rate: number | null = 0;
+  unit_cost?: number | null;
 
   track_inventory = true;
 
@@ -184,6 +185,8 @@ export class AddCatalogItemComponent implements OnInit, OnDestroy {
           branch_id: this.openingBranchId,
           catalog_item_id: createdItem.id,
           quantity: this.openingQuantity,
+          unit_cost: this.cost_price,
+          selling_price: this.selling_price,
           notes: 'Opening stock during product creation',
         }).subscribe({
           next: () => {

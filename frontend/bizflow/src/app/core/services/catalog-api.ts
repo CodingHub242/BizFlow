@@ -21,6 +21,8 @@ export interface CatalogItem {
   created_at?: string | null;
   updated_at?: string | null;
   deleted_at?: string | null;
+
+  unit_cost?: number | null;
 }
 
 export interface CatalogPagination {
@@ -55,6 +57,8 @@ export interface CreateCatalogItemRequest {
   tax_rate?: number | null;
   track_inventory?: boolean;
   is_active?: boolean;
+
+  unit_cost?: number | null;
 }
 
 export interface UpdateCatalogItemRequest {
@@ -68,6 +72,8 @@ export interface UpdateCatalogItemRequest {
   tax_rate?: number | null;
   track_inventory?: boolean;
   is_active?: boolean;
+
+  unit_cost?: number | null;
 }
 
 export interface CatalogItemResponse {
@@ -245,7 +251,7 @@ export class CatalogApi {
     );
   }
 
- setOpeningStock(data: {branch_id: number;catalog_item_id: number;quantity: number;notes?: string;
+ setOpeningStock(data: {branch_id: number;catalog_item_id: number;quantity: number;notes?: string;unit_cost?:number | null;selling_price: number | null;
 }): Observable<OpeningStockResponse> {
   return this.http.post<OpeningStockResponse>(
     `${this.apiUrl}/inventory/opening-stock`,

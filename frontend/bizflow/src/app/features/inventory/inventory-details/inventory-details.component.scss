@@ -693,3 +693,58 @@
     flex-direction: column;
   }
 }
+
+/* Batch History */
+
+.batch-history-card {
+  margin-top: 20px;
+}
+
+.batch-table {
+  min-width: 1050px;
+}
+
+.batch-number {
+  display: block;
+  color: #25313c;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.batch-origin {
+  display: block;
+  margin-top: 5px;
+  color: #7a858f;
+  font-size: 11px;
+}
+
+.batch-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+
+  &.available {
+    background: #ecfdf3;
+    color: #15803d;
+  }
+
+  &.depleted {
+    background: #fef2f2;
+    color: #dc2626;
+  }
+}
+
+@media (max-width: 600px) {
+  .batch-history-card {
+    padding: 16px;
+  }
+
+  .batch-table {
+    min-width: 1050px;
+  }
+}

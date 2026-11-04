@@ -57,6 +57,8 @@
           <div class="product-icon">
             @if (inventory.catalog_item?.image_url) {
               <img
+                loading="lazy"
+                decoding="async"
                 [src]="inventory.catalog_item.image_url"
                 [alt]="inventory.catalog_item.name"
               />
@@ -177,6 +179,160 @@
       </div>
 
     </div>
+
+    <section class="movement-card batch-history-card">
+
+      <div class="movement-header">
+        <div>
+          <h2>Inventory Batch History</h2>
+          <p>
+            View stock receipts, batch quantities and pricing information.
+          </p>
+        </div>
+
+        <span class="movement-count">
+          {{ batchTotal }} batches
+        </span>
+      </div>
+
+      @if (batchesLoading) {
+        <div class="movement-state">
+          <div class="loading-spinner"></div>
+          <p>Loading inventory batches...</p>
+        </div>
+      } @else if (batchesError) {
+        <div class="movement-state movement-error">
+          <p>{{ batchesError }}</p>
+
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="loadBatches(batchPage)"
+          >
+            Try Again
+          </button>
+        </div>
+      } @else if (batches.length === 0) {
+        <div class="movement-state">
+          <p>
+            No inventory batches have been recorded for this product
+            at this branch.
+          </p>
+        </div>
+      } @else {
+
+      <div class="movement-table-wrapper">
+        <table class="movement-table batch-table">
+
+          <thead>
+            <tr>
+              <th>Batch Number</th>
+              <th>Source</th>
+              <th>Date Received</th>
+              <th>Qty Received</th>
+              <th>Qty Remaining</th>
+              <th>Unit Cost</th>
+              <th>Selling Price</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @for (batch of batches; track batch.id) {
+              <tr>
+
+                <td>
+                  <strong class="batch-number">
+                    {{ batch.batch_number }}
+                  </strong>
+
+                  @if (batch.origin_batch?.batch_number) {
+                    <small class="batch-origin">
+                      From: {{ batch.origin_batch.batch_number }}
+                    </small>
+                  }
+                </td>
+
+                <td>
+                  <span
+                    class="movement-type-badge"
+                    [class]="batch.source_type.toLowerCase().replace('_', '-')"
+                  >
+                    {{ getBatchSourceLabel(batch.source_type) }}
+                  </span>
+                </td>
+
+                <td>
+                  {{ formatMovementDate(batch.received_at) }}
+                </td>
+
+                <td>
+                  {{ formatQuantity(batch.quantity_received) }}
+                </td>
+
+                <td>
+                  <strong>
+                    {{ formatQuantity(batch.quantity_remaining) }}
+                  </strong>
+                </td>
+
+                <td>
+                  {{ formatBatchPrice(batch.unit_cost) }}
+                </td>
+
+                <td>
+                  {{ formatBatchPrice(batch.selling_price) }}
+                </td>
+
+                <td>
+                  <span
+                    class="batch-status"
+                    [class.available]="getBatchStatus(batch) === 'Available'"
+                    [class.depleted]="getBatchStatus(batch) === 'Depleted'"
+                  >
+                    {{ getBatchStatus(batch) }}
+                  </span>
+                </td>
+
+              </tr>
+            }
+          </tbody>
+
+        </table>
+      </div>
+
+        @if (batchLastPage > 1) {
+          <div class="movement-pagination">
+
+            <span>
+              Page {{ batchPage }} of {{ batchLastPage }}
+            </span>
+
+            <div>
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="batchPage <= 1 || batchesLoading"
+                (click)="loadBatchPage(batchPage - 1)"
+              >
+                Previous
+              </button>
+
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="batchPage >= batchLastPage || batchesLoading"
+                (click)="loadBatchPage(batchPage + 1)"
+              >
+                Next
+              </button>
+            </div>
+
+          </div>
+        }
+      }
+
+    </section>
 
     <section class="movement-card">
       <div class="movement-header">

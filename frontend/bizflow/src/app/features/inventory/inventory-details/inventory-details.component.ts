@@ -2,7 +2,7 @@ import {ChangeDetectorRef,Component,OnDestroy,OnInit,inject} from '@angular/core
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
-import {Inventory,InventoryApi,InventoryMovement} from '../../../core/services/inventory-api.service';
+import {Inventory,InventoryApi,InventoryMovement,InventoryBatch} from '../../../core/services/inventory-api.service';
 
 @Component({
   selector: 'app-inventory-details',
@@ -33,6 +33,15 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
     movementTotal = 0;
     movementPerPage = 10;
 
+    // Batch history
+    batches: InventoryBatch[] = [];
+    batchesLoading = false;
+    batchesError = '';
+    batchPage = 1;
+    batchLastPage = 1;
+    batchTotal = 0;
+    batchPerPage = 10;
+
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
 
@@ -56,9 +65,15 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
           this.inventory = response.data;
           this.loading = false;
 
+         
           this.loadMovements(1);
+        
 
-          this.cdr.markForCheck();
+          
+          this.loadBatches(1);
+         
+
+         // this.cdr.markForCheck();
 
           this.cdr.detectChanges();
         },
@@ -69,7 +84,7 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
           this.error =
             'Unable to load inventory details. Please try again.';
 
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         },
       });
   }
@@ -79,7 +94,7 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    console.log(this.inventory.branch_id);
+    //console.log(this.inventory.branch_id);
 
     this.movementsLoading = true;
     this.movementsError = '';
@@ -100,7 +115,7 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
           this.movementTotal = response.meta.total;
           this.movementsLoading = false;
 
-          this.cdr.markForCheck();
+          this.cdr.detectChanges();
         },
         error: () => {
           this.movements = [];
@@ -108,7 +123,7 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
           this.movementsError =
             'Unable to load stock movement history. Please try again.';
 
-          this.cdr.markForCheck();
+         // this.cdr.markForCheck();
 
           this.cdr.detectChanges();
         },
@@ -127,6 +142,85 @@ export class InventoryDetailsComponent implements OnInit, OnDestroy {
 
     this.loadMovements(page);
   }
+
+  loadBatches(page = 1): void {
+  if (!this.inventory) {
+    return;
+  }
+
+  this.batchesLoading = true;
+  this.batchesError = '';
+
+ this.inventoryApi
+  .inventoryBatches(this.inventory.id, {
+    page,
+    perPage: this.batchPerPage,
+  })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: (response) => {
+        this.batches = response.data;
+        this.batchPage = response.meta.current_page;
+        this.batchLastPage = response.meta.last_page;
+        this.batchTotal = response.meta.total;
+        this.batchesLoading = false;
+
+        this.cdr.detectChanges();
+      },
+
+      error: () => {
+        this.batches = [];
+        this.batchesLoading = false;
+        this.batchesError =
+          'Unable to load inventory batch history. Please try again.';
+
+        //this.cdr.markForCheck();
+        this.cdr.detectChanges();
+      },
+    });
+}
+
+loadBatchPage(page: number): void {
+  if (
+    this.batchesLoading ||
+    page < 1 ||
+    page > this.batchLastPage ||
+    page === this.batchPage
+  ) {
+    return;
+  }
+
+  this.loadBatches(page);
+}
+
+getBatchSourceLabel(sourceType: string): string {
+  const labels: Record<string, string> = {
+    purchase: 'Purchase',
+    opening: 'Opening Stock',
+    adjustment: 'Adjustment',
+    transfer: 'Transfer',
+    return: 'Stock Return',
+  };
+
+  return labels[sourceType.toLowerCase()] ??
+    sourceType.replace(/_/g, ' ');
+}
+
+getBatchStatus(batch: InventoryBatch): string {
+  return Number(batch.quantity_remaining) > 0
+    ? 'Available'
+    : 'Depleted';
+}
+
+formatBatchPrice(
+  value: number | string | null | undefined,
+): string {
+  if (value === null || value === undefined || value === '') {
+    return '—';
+  }
+
+  return `GH₵${Number(value).toFixed(2)}`;
+}
 
 formatMovementDate(value?: string | null): string {
   if (!value) {

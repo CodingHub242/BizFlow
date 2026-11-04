@@ -348,6 +348,11 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/sales', [OrderController::class, 'store'])
         ->middleware('permission:sales.create');
 
+    Route::post('/sales/price-quote', [
+        OrderController::class,
+        'quotePrice',
+    ])->middleware('permission:sales.view');
+
     Route::post('/sales/{order}/payments', [OrderController::class,'storePayment',
     ])->middleware('permission:sales.update');
 

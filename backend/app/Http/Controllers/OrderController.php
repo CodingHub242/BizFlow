@@ -299,4 +299,31 @@ class OrderController extends Controller
         ]);
     }
 
+    public function quotePrice(
+    Request $request,
+    \App\Services\InventoryService $inventoryService
+): JsonResponse {
+    $validated = $request->validate([
+        'branch_id' => ['nullable', 'integer', 'min:1'],
+        'catalog_item_id' => ['required', 'integer', 'min:1'],
+        'quantity' => ['required', 'numeric', 'gt:0', 'decimal:0,3'],
+    ]);
+
+    $unitPrice = $inventoryService->quoteOrderUnitSellingPrice(
+        tenantId: (int) $request->user()->tenant_id,
+        catalogItemId: (int) $validated['catalog_item_id'],
+        requestedQuantity: (float) $validated['quantity'],
+        branchId: isset($validated['branch_id'])
+            ? (int) $validated['branch_id']
+            : null,
+    );
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'unit_price' => $unitPrice,
+        ],
+    ]);
+}
+
 }

@@ -198,6 +198,13 @@ export interface SalesFulfillmentResponse {
   fulfillment: SalesFulfillmentSummary;
 }
 
+export interface SalesPriceQuoteResponse {
+  success: boolean;
+  data: {
+    unit_price: number;
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -296,4 +303,15 @@ export class SalesService {
         `${this.apiUrl}/sales/${id}`,
     );
     }
+
+    quotePrice(data: {
+    branch_id: number | null;
+    catalog_item_id: number;
+    quantity: number;
+  }): Observable<SalesPriceQuoteResponse> {
+    return this.http.post<SalesPriceQuoteResponse>(
+      `${this.apiUrl}/sales/price-quote`,
+      data,
+    );
+  }
 }

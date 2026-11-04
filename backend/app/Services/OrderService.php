@@ -101,7 +101,18 @@ class OrderService
                     ]);
                 }
 
-                $unitPrice = (float) $catalogItem->selling_price;
+                // $unitPrice = (float) $catalogItem->selling_price;
+                $unitPrice = $catalogItem->track_inventory
+                    ? app(\App\Services\InventoryService::class)
+                        ->quoteOrderUnitSellingPrice(
+                            tenantId: (int) $tenantId,
+                            catalogItemId: (int) $catalogItem->id,
+                            requestedQuantity: $quantity,
+                            branchId: $branchId !== null
+                                ? (int) $branchId
+                                : null,
+                        )
+                    : (float) $catalogItem->selling_price;
 
                 $discount = (float) ($itemData['discount'] ?? 0);
                 $tax = (float) ($itemData['tax'] ?? 0);
@@ -245,7 +256,19 @@ class OrderService
                     ]);
                 }
 
-                $unitPrice = (float) $catalogItem->selling_price;
+                //$unitPrice = (float) $catalogItem->selling_price;
+                $unitPrice = $catalogItem->track_inventory
+                    ? app(\App\Services\InventoryService::class)
+                        ->quoteOrderUnitSellingPrice(
+                            tenantId: (int) $tenantId,
+                            catalogItemId: (int) $catalogItem->id,
+                            requestedQuantity: $quantity,
+                            branchId: $branchId !== null
+                                ? (int) $branchId
+                                : null,
+                        )
+                    : (float) $catalogItem->selling_price;
+                    
                 $discount = (float) ($itemData['discount'] ?? 0);
                 $tax = (float) ($itemData['tax'] ?? 0);
                 $lineTotal = ($quantity * $unitPrice) - $discount + $tax;

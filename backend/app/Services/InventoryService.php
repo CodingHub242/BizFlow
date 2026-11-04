@@ -204,6 +204,131 @@ public function receiveStock(
 }
 
 
+/**
+ * Quote and lock the selling price for an order line.
+ *
+ * Uses FIFO batch selling prices for available stock.
+ * Uses the catalogue selling price for batches without
+ * a selling-price override and for any unstocked quantity.
+ *
+ * This method does not reserve or deduct stock.
+ */
+public function quoteOrderUnitSellingPrice(
+    int $tenantId,
+    int $catalogItemId,
+    float $requestedQuantity,
+    ?int $branchId = null
+): float {
+    if ($requestedQuantity <= 0) {
+        throw new RuntimeException(
+            'Order quantity must be greater than zero.'
+        );
+    }
+
+    return DB::transaction(function () use (
+        $tenantId,
+        $catalogItemId,
+        $requestedQuantity,
+        $branchId
+    ) {
+        $catalogItem = CatalogItem::query()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($catalogItemId)
+            ->firstOrFail();
+
+        $catalogPrice = (float) $catalogItem->selling_price;
+
+        if (! $catalogItem->track_inventory) {
+            return $catalogPrice;
+        }
+
+        // Infer the branch only when stock exists at one branch.
+        if ($branchId === null) {
+            $branchIds = Inventory::query()
+                ->where('tenant_id', $tenantId)
+                ->where('catalog_item_id', $catalogItemId)
+                ->where('quantity', '>', 0)
+                ->distinct()
+                ->orderBy('branch_id')
+                ->limit(2)
+                ->pluck('branch_id');
+
+            if ($branchIds->count() > 1) {
+                throw new RuntimeException(
+                    'This product has stock at multiple branches. '
+                    . 'Select a branch before creating the order.'
+                );
+            }
+
+            $branchId = $branchIds->first()
+                ? (int) $branchIds->first()
+                : null;
+        }
+
+        if ($branchId === null) {
+            return $catalogPrice;
+        }
+
+        $inventory = Inventory::query()
+            ->where('tenant_id', $tenantId)
+            ->where('branch_id', $branchId)
+            ->where('catalog_item_id', $catalogItemId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $inventory || (float) $inventory->quantity <= 0) {
+            return $catalogPrice;
+        }
+
+        $this->ensureBatchCoverage($inventory, $catalogItem);
+
+        $remaining = $requestedQuantity;
+        $totalSellingValue = 0.0;
+
+        $batches = InventoryBatch::query()
+            ->where('tenant_id', $tenantId)
+            ->where('branch_id', $branchId)
+            ->where('catalog_item_id', $catalogItemId)
+            ->where('quantity_remaining', '>', 0)
+            ->orderBy('received_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0.000001) {
+                break;
+            }
+
+            $allocated = min(
+                $remaining,
+                (float) $batch->quantity_remaining
+            );
+
+            if ($allocated <= 0) {
+                continue;
+            }
+
+            $unitPrice = $batch->selling_price !== null
+                ? (float) $batch->selling_price
+                : $catalogPrice;
+
+            $totalSellingValue += $allocated * $unitPrice;
+            $remaining -= $allocated;
+        }
+
+        // Preserve the existing partial-fulfillment workflow.
+        // Price any quantity not currently in stock at catalogue price.
+        if ($remaining > 0.000001) {
+            $totalSellingValue += $remaining * $catalogPrice;
+        }
+
+        return round(
+            $totalSellingValue / $requestedQuantity,
+            2
+        );
+    });
+}
     /**
      * Sell stock from a branch.
      *
@@ -552,7 +677,8 @@ public function receiveStock(
         });
     }
 
-    public function setOpeningStock(int $tenantId,int $branchId,int $catalogItemId,float $quantity,?string $notes = null,?string $referenceType = null,?int $referenceId = null): Inventory 
+    public function setOpeningStock(int $tenantId,int $branchId,int $catalogItemId,float $quantity,?string $notes = null,?string $referenceType = null,?int $referenceId = null, ?float $unitCost = null,
+    ?float $sellingPrice = null): Inventory 
     {
         if ($quantity < 0) {
             throw new RuntimeException(
@@ -567,7 +693,9 @@ public function receiveStock(
             $quantity,
             $notes,
             $referenceType,
-            $referenceId
+            $referenceId,
+            $unitCost,
+            $sellingPrice
         ) {
             $branch = Branch::query()
                 ->where('tenant_id', $tenantId)
@@ -624,6 +752,8 @@ public function receiveStock(
                     'source_type' => 'opening',
                     'reference_type' => $referenceType,
                     'reference_id' => $referenceId,
+                    'unit_cost' => $unitCost,
+                    'selling_price' => $sellingPrice,
                     'created_by' => auth()->id(),
                 ]);
                 $this->recordBatchMovement($batch, 'opening', $quantity, $referenceType, $referenceId, $notes);

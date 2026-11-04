@@ -807,6 +807,8 @@ initializeOpeningStock(): void {
             branch_id: this.openingStockBranchId!,
             catalog_item_id: product.id,
             quantity,
+            selling_price: Number(product.selling_price),
+            unit_cost: product.unit_cost,
             notes: 'Opening inventory initialized from QuickBooks Migration Center',
           }).pipe(
             map((response) => ({

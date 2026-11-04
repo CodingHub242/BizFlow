@@ -512,6 +512,8 @@
             />
           </div>
 
+         
+
         <label>
           Quantity
           <input
@@ -549,7 +551,21 @@
 
         <div class="line-total">
           <span>Line total</span>
-          <strong>{{ formatAmount(getLineTotal(item)) }}</strong>
+
+          <strong>
+            {{ formatAmount(getLineTotal(item, i)) }}
+          </strong>
+
+          <small *ngIf="linePricing[i]?.loading">
+            Calculating batch price...
+          </small>
+
+          <small
+            *ngIf="linePricing[i]?.error"
+            class="stock-error"
+          >
+            {{ linePricing[i]?.error }}
+          </small>
         </div>
 
         <button
@@ -561,6 +577,20 @@
         >
           Remove
         </button>
+         <div
+            class="line-price"
+            *ngIf="getCatalogItem(item.catalog_item_id)"
+          style="font-size: small;gap: 10px;display:flex;top: -10px;position: relative;">
+            <span>Unit selling price</span>
+
+            <strong>
+              GHS {{ formatAmount(getLineUnitPrice(item, i)) }}
+            </strong>
+
+            <small *ngIf="linePricing[i]?.loading">
+              Updating price...
+            </small>
+          </div>
         <div
             class="line-availability"
             *ngIf="lineAvailability[i] as availability">
