@@ -82,7 +82,7 @@ class RoleService
         });
     }
 
-  public function assignPermissions(
+ public function assignPermissions(
     Role $role,
     int $tenantId,
     array $permissions
@@ -121,6 +121,28 @@ class RoleService
             ]);
         }
 
+        // Never allow the tenant Owner role to lose essential
+        // role administration access.
+        if ($tenantRole->name === 'Owner') {
+            $requiredPermissions = [
+                'roles.view',
+                'roles.update',
+            ];
+
+            $missingPermissions = array_diff(
+                $requiredPermissions,
+                $permissions,
+            );
+
+            if ($missingPermissions !== []) {
+                throw ValidationException::withMessages([
+                    'permissions' => [
+                        'The Owner role must retain roles.view and roles.update.',
+                    ],
+                ]);
+            }
+        }
+
         $permissionRecords = Permission::query()
             ->where('guard_name', 'web')
             ->whereIn('name', $permissions)
@@ -135,6 +157,26 @@ class RoleService
         }
 
         $tenantRole->syncPermissions($permissionRecords);
+
+        // Ensure at least one assigned user in this tenant can
+        // continue managing roles after this change.
+        $hasRoleManager = Role::query()
+            ->where('tenant_id', $tenantId)
+            ->where('guard_name', 'web')
+            ->whereHas('permissions', function ($query) {
+                $query->where('name', 'roles.update')
+                    ->where('guard_name', 'web');
+            })
+            ->whereHas('users')
+            ->exists();
+
+        if (!$hasRoleManager) {
+            throw ValidationException::withMessages([
+                'permissions' => [
+                    'This change would remove role management access from every assigned user in your business.',
+                ],
+            ]);
+        }
 
         return $tenantRole->fresh()->load('permissions');
     });

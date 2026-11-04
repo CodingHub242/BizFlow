@@ -1,0 +1,254 @@
+<ion-content class="requests-content">
+  <div class="page-shell">
+
+    <!-- Page heading -->
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">TEAM MANAGEMENT</span>
+        <h1>Employee Item Requests</h1>
+        <p>Manage and track requests for company items.</p>
+      </div>
+
+      <ion-button
+        class="create-button"
+        (click)="createRequest()"
+      >
+        <ion-icon name="add-outline" slot="start"></ion-icon>
+        New Request
+      </ion-button>
+    </div>
+
+    <!-- Summary -->
+    <section class="summary-card">
+      <div class="summary-icon">
+        <ion-icon name="document-text-outline"></ion-icon>
+      </div>
+
+      <div class="summary-info">
+        <span>Total requests</span>
+        <strong>{{ pagination.total }}</strong>
+        <small>Requests registered by your business</small>
+      </div>
+    </section>
+
+    <!-- Requests panel -->
+    <section class="requests-panel">
+
+      <div class="panel-heading">
+        <div>
+          <h2>All Requests</h2>
+          <p>Review employee requests and their current status.</p>
+        </div>
+
+        <ion-button
+          fill="outline"
+          color="medium"
+          class="refresh-button"
+          [disabled]="loading"
+          (click)="loadRequests(pagination.current_page)"
+        >
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          Refresh
+        </ion-button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-toolbar">
+
+        <div class="search-wrapper">
+          <ion-searchbar
+            [(ngModel)]="search"
+            placeholder="Search request number or employee"
+            debounce="400"
+            (ionInput)="onSearchChange()"
+          ></ion-searchbar>
+        </div>
+
+        <div class="status-filter">
+          <ion-select
+            label="Status"
+            labelPlacement="floating"
+            interface="popover"
+            [(ngModel)]="selectedStatus"
+            (ionChange)="onStatusChange()"
+          >
+            <ion-select-option value="">
+              All statuses
+            </ion-select-option>
+
+            <ion-select-option
+              *ngFor="let status of statuses"
+              [value]="status.value"
+            >
+              {{ status.label }}
+            </ion-select-option>
+          </ion-select>
+        </div>
+
+        <ion-button
+          fill="clear"
+          color="medium"
+          class="clear-button"
+          (click)="clearFilters()"
+          [disabled]="!search && !selectedStatus"
+        >
+          <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+          Clear filters
+        </ion-button>
+
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading" class="state-container">
+        <ion-spinner name="crescent"></ion-spinner>
+        <h3>Loading requests</h3>
+        <p>Please wait while we retrieve your requests.</p>
+      </div>
+
+      <!-- Empty -->
+      <div
+        *ngIf="!loading && requests.length === 0"
+        class="state-container empty-state"
+      >
+        <div class="empty-icon">
+          <ion-icon name="file-tray-outline"></ion-icon>
+        </div>
+
+        <h3>No requests found</h3>
+
+        <p *ngIf="search || selectedStatus">
+          Try changing your search or clearing the filters.
+        </p>
+
+        <p *ngIf="!search && !selectedStatus">
+          Employee item requests will appear here when submitted.
+        </p>
+
+        <ion-button
+          *ngIf="!search && !selectedStatus"
+          fill="outline-dark"
+          (click)="createRequest()"
+        >
+          <ion-icon name="add-outline" slot="start"></ion-icon>
+          Create first request
+        </ion-button>
+
+        <ion-button
+          *ngIf="search || selectedStatus"
+          fill="clear"
+          (click)="clearFilters()"
+        >
+          Clear filters
+        </ion-button>
+      </div>
+
+      <!-- Request list -->
+      <div
+        class="request-list"
+        *ngIf="!loading && requests.length > 0"
+      >
+        <article
+          class="request-card"
+          *ngFor="let request of requests"
+          (click)="openRequest(request)"
+          tabindex="0"
+          role="button"
+          (keydown.enter)="openRequest(request)"
+        >
+
+          <div class="request-main">
+
+            <div class="request-avatar">
+              <ion-icon name="cube-outline"></ion-icon>
+            </div>
+
+            <div class="request-information">
+              <div class="request-heading">
+                <h3>{{ request.request_number }}</h3>
+
+                <ion-badge
+                  [color]="getStatusColor(request.status)"
+                >
+                  {{ getStatusLabel(request.status) }}
+                </ion-badge>
+              </div>
+
+              <p class="employee-name">
+                {{ getEmployeeName(request) }}
+              </p>
+
+              <div class="request-meta">
+                <span>
+                  <ion-icon name="business-outline"></ion-icon>
+                  {{ request.branch?.name ?? 'No branch' }}
+                </span>
+
+                <span>
+                  <ion-icon name="layers-outline"></ion-icon>
+                  {{ getItemCount(request) }}
+                  {{ getItemCount(request) === 1 ? 'item' : 'items' }}
+                </span>
+
+                <span>
+                  <ion-icon name="calendar-outline"></ion-icon>
+                  {{ request.created_at | date:'mediumDate' }}
+                </span>
+              </div>
+
+              <p
+                *ngIf="request.purpose"
+                class="request-purpose"
+              >
+                {{ request.purpose }}
+              </p>
+            </div>
+
+            <div class="request-action">
+              <ion-icon name="chevron-forward-outline"></ion-icon>
+            </div>
+
+          </div>
+        </article>
+      </div>
+
+      <!-- Pagination -->
+      <div
+        class="pagination"
+        *ngIf="pagination.total > 0 && !loading"
+      >
+        <div class="pagination-info">
+          Showing page
+          <strong>{{ pagination.current_page }}</strong>
+          of
+          <strong>{{ pagination.last_page }}</strong>
+          <span>({{ pagination.total }} requests)</span>
+        </div>
+
+        <div class="pagination-actions">
+          <ion-button
+            fill="outline"
+            color="medium"
+            size="small"
+            [disabled]="pagination.current_page <= 1"
+            (click)="previousPage()"
+          >
+            <ion-icon name="chevron-back-outline" slot="start"></ion-icon>
+            Previous
+          </ion-button>
+
+          <ion-button
+            fill="outline"
+            color="medium"
+            size="small"
+            [disabled]="pagination.current_page >= pagination.last_page"
+            (click)="nextPage()"
+          >
+            Next
+            <ion-icon name="chevron-forward-outline" slot="end"></ion-icon>
+          </ion-button>
+        </div>
+      </div>
+
+    </section>
+  </div>
+</ion-content>

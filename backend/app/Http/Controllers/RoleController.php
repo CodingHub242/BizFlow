@@ -14,14 +14,14 @@ class RoleController extends Controller
     public function store(StoreRoleRequest $request,RoleService $roleService): JsonResponse 
     {
         $user = $request->user();
-        
-        $tenantId = (int) $user->tenant_id;
 
         abort_unless(
             $user && $user->tenant_id,
             403,
             'A valid tenant context is required.'
         );
+        
+        $tenantId = (int) $user->tenant_id;
 
         setPermissionsTeamId($tenantId);
 
@@ -49,13 +49,14 @@ class RoleController extends Controller
     public function permissionCatalog(Request $request): JsonResponse
     {
         $user = $request->user();
-        $tenantId = (int) $user->tenant_id;
 
         abort_unless(
             $user && $user->tenant_id,
             403,
             'A valid tenant context is required.'
         );
+
+        $tenantId = (int) $user->tenant_id;
 
         setPermissionsTeamId($tenantId);
 
@@ -103,13 +104,14 @@ class RoleController extends Controller
     public function index(Request $request): JsonResponse
 	{
 	    $user = $request->user();
-	    $tenantId = (int) $user->tenant_id;
 
         abort_unless(
             $user && $user->tenant_id,
             403,
             'A valid tenant context is required.'
         );
+
+	    $tenantId = (int) $user->tenant_id;
 	
 	    setPermissionsTeamId($tenantId);
 	
@@ -145,13 +147,14 @@ class RoleController extends Controller
     ]);
     
     $user = $request->user();
-    $tenantId = (int) $user->tenant_id;
 
     abort_unless(
             $user && $user->tenant_id,
             403,
             'A valid tenant context is required.'
         );
+        
+    $tenantId = (int) $user->tenant_id;
 
     setPermissionsTeamId($tenantId);
 

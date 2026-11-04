@@ -210,8 +210,8 @@ export const routes: Routes = [
     {
       path: 'employees-item',
       loadComponent: () =>
-        import('./features/employees/employee-item-request/employee-item-request.component')
-          .then(m => m.EmployeeItemRequestComponent),
+        import('./features/employees/employees-item-request/employees-item-request.component')
+          .then(m => m.EmployeesItemRequestComponent),
     },
     {
       path: 'employees/:id',

@@ -1,19 +1,4 @@
-// import { Component, OnInit } from '@angular/core';
-
-// @Component({
-//   selector: 'app-employee-item-request',
-//   templateUrl: './employee-item-request.component.html',
-//   styleUrls: ['./employee-item-request.component.scss'],
-//   imports: [],
-// })
-// export class EmployeeItemRequestComponent  implements OnInit {
-
-//   constructor() { }
-
-//   ngOnInit() {}
-
-// }
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular/lazy';
@@ -32,22 +17,45 @@ import {
   EmployeeItemRequestStatus,
   EmployeeItemRequestPagination,
 } from '../../../core/services/employee-item-request.models';
+import { addIcons } from 'ionicons';
+import {
+  arrowDownOutline,
+  addOutline,
+  refreshOutline,
+  cubeOutline,
+  businessOutline,
+  layersOutline,
+  documentTextOutline,
+  calendarOutline,
+  chevronForwardOutline,
+  chevronBackOutline,
+  closeCircleOutline,
+  fileTrayOutline,
+  peopleOutline,
+  cardOutline,
+  receiptOutline,
+  walletOutline,
+  alertCircleOutline,
+  arrowForwardOutline,
+  ellipsisHorizontalOutline,
+} from 'ionicons/icons';
+
 
 @Component({
-  selector: 'app-employee-item-request',
-  templateUrl: './employee-item-request.component.html',
-  styleUrls: ['./employee-item-request.component.scss'],
-  standalone: true,
+  selector: 'app-employees-item-request',
+  templateUrl: './employees-item-request.component.html',
+  styleUrls: ['./employees-item-request.component.scss'],
   imports: [
     CommonModule,
     FormsModule,
     IonicModule,
   ],
 })
-export class EmployeeItemRequestComponent implements OnInit {
-  private api = inject(EmployeeItemApiService);
+export class EmployeesItemRequestComponent  implements OnInit {
+ private api = inject(EmployeeItemApiService);
   private router = inject(Router);
   private alertController = inject(AlertController);
+  private cdr = inject(ChangeDetectorRef);
 
   requests: EmployeeItemRequest[] = [];
 
@@ -75,6 +83,31 @@ export class EmployeeItemRequestComponent implements OnInit {
     { value: 'CANCELLED', label: 'Cancelled' },
   ];
 
+   constructor() { 
+     addIcons({
+      arrowDownOutline,
+      refreshOutline,
+      addOutline,
+      closeCircleOutline,
+      chevronForwardOutline,
+      chevronBackOutline,
+      businessOutline,
+      layersOutline,
+      calendarOutline,
+      cubeOutline,
+      cardOutline,
+      receiptOutline,
+      fileTrayOutline,
+      documentTextOutline,
+      peopleOutline,
+      walletOutline,
+      alertCircleOutline,
+      arrowForwardOutline,
+      ellipsisHorizontalOutline,
+    });
+  }
+
+
   ngOnInit(): void {
     this.loadRequests();
   }
@@ -91,15 +124,20 @@ export class EmployeeItemRequestComponent implements OnInit {
       .pipe(finalize(() => this.loading = false))
       .subscribe({
         next: response => {
+          this.loading = false;
           this.requests = response.data ?? [];
           this.pagination = response.meta;
+
+          this.cdr.detectChanges();
         },
         error: error => {
+          this.loading = false;
           console.error('Failed to load employee item requests', error);
           this.showError(
             error?.error?.message ||
             'Unable to load employee item requests.'
           );
+          this.cdr.detectChanges();
         },
       });
   }
@@ -165,7 +203,7 @@ export class EmployeeItemRequestComponent implements OnInit {
   }
 
   createRequest(): void {
-    this.router.navigate(['/employee-item-requests/create']);
+    this.router.navigate(['/employees-item-request/create']);
   }
 
   async showError(message: string): Promise<void> {
