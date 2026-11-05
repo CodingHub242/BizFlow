@@ -19,6 +19,8 @@ class Customer extends Model
         'address',
         'status',
         'notes',
+        'city',
+        'country',
     ];
 
     protected function casts(): array

@@ -22,6 +22,7 @@ class UpdateCustomerRequest extends FormRequest
             'status' => ['sometimes', 'required', 'string', 'in:active,inactive'],
             'country' => ['sometimes', 'nullable', 'string', 'max:100'],
             'notes' => ['sometimes', 'nullable', 'string'],
+            'company_name' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }
 }

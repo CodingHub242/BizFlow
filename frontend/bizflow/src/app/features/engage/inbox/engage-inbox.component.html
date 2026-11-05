@@ -1,0 +1,306 @@
+<section class="engage-inbox">
+
+  <header class="inbox-heading">
+    <div>
+      <h1>Engage</h1>
+      <p>Connect with your customers on WhatsApp. Sell, support and automate.</p>
+    </div>
+  </header>
+
+ <section class="metrics">
+    <article class="metric-card">
+      <div class="metric-icon blue">♧</div>
+      <span>Total Contacts</span>
+      <strong>1,248</strong>
+      <small class="positive">↑ 12% vs last month</small>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-icon blue">▢</div>
+      <span>Conversations</span>
+      <strong>{{ conversations.length }}</strong>
+      <small class="positive">↑ 8% vs last month</small>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-icon blue">➤</div>
+      <span>Messages Sent</span>
+      <strong>4,520</strong>
+      <small class="positive">↑ 24% vs last month</small>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-icon green">🛒</div>
+      <span>Orders from Engage</span>
+      <strong>86</strong>
+      <small class="positive">↑ 35% vs last month</small>
+    </article>
+
+    <article class="metric-card">
+      <div class="metric-icon blue">▥</div>
+      <span>Revenue</span>
+      <strong>GH₵ 12,450.00</strong>
+      <small class="positive">↑ 28% vs last month</small>
+    </article>
+  </section>
+
+  <section class="inbox-layout">
+
+    <!-- Conversation list -->
+    <aside class="conversation-panel">
+
+      <div class="panel-heading">
+        <h2>Conversations</h2>
+        <button type="button" aria-label="Close panel">×</button>
+      </div>
+
+      <div class="conversation-filters">
+        <button
+          *ngFor="let filter of ['All', 'Unread', 'Open', 'Closed']"
+          type="button"
+          [class.active]="activeFilter === filter"
+          (click)="activeFilter = filter"
+        >
+          {{ filter }}
+
+          <span *ngIf="filter === 'All'">{{ conversations.length }}</span>
+          <span *ngIf="filter === 'Unread'">{{ unreadCount }}</span>
+          <span *ngIf="filter === 'Open'">{{ openCount }}</span>
+          <span *ngIf="filter === 'Closed'">{{ closedCount }}</span>
+        </button>
+      </div>
+
+      <input
+        class="conversation-search"
+        type="search"
+        placeholder="Search conversations..."
+        [(ngModel)]="searchTerm">
+
+      <div class="conversation-list">
+
+        <button
+          class="conversation-item"
+          *ngFor="let conversation of filteredConversations; trackBy: trackConversation"
+          type="button"
+          [class.selected]="selectedConversation.id === conversation.id"
+          (click)="selectConversation(conversation)">
+
+          <div class="contact-avatar">
+            {{ conversation.initials }}
+          </div>
+
+          <div class="conversation-info">
+            <div class="conversation-title">
+              <strong>{{ conversation.name }}</strong>
+              <small>{{ conversation.time }}</small>
+            </div>
+
+            <div class="conversation-preview">
+              {{ conversation.preview }}
+            </div>
+          </div>
+
+          <span
+            class="unread-badge"
+            *ngIf="conversation.unread">
+            {{ conversation.unread }}
+          </span>
+
+        </button>
+
+        <div class="empty-state" *ngIf="!filteredConversations.length">
+          No conversations found.
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- Chat panel -->
+    <section class="chat-panel" *ngIf="selectedConversation">
+
+      <header class="chat-header">
+        <div class="chat-contact">
+          <div class="contact-avatar large">
+            {{ selectedConversation.initials }}
+          </div>
+
+          <div>
+            <strong>{{ selectedConversation.name }}</strong>
+            <small>● {{ selectedConversation.phone }}</small>
+          </div>
+        </div>
+
+        <div class="chat-actions">
+          <button type="button" title="Star conversation">☆</button>
+          <button type="button" title="Labels">◇</button>
+          <button
+            type="button"
+            title="Close or reopen conversation"
+            (click)="toggleConversationStatus()">
+            {{ selectedConversation.status === 'open' ? 'Close' : 'Reopen' }}
+          </button>
+        </div>
+      </header>
+
+      <div class="messages-area">
+
+        <div
+          *ngFor="let message of selectedConversation.messages"
+          class="message-row"
+          [class.outgoing]="message.outgoing">
+
+          <div class="message-bubble">
+            <p>{{ message.text }}</p>
+            <small>
+              {{ message.time }}
+              <span *ngIf="message.outgoing"> ✓✓</span>
+            </small>
+          </div>
+
+        </div>
+
+      </div>
+
+      <form class="message-composer" (ngSubmit)="sendMessage()">
+        <button type="button" title="Emoji">☺</button>
+        <button type="button" title="Attach file">📎</button>
+
+        <input
+          type="text"
+          name="message"
+          placeholder="Type a message..."
+          [(ngModel)]="messageText">
+
+        <button
+          class="send-button"
+          type="submit"
+          [disabled]="!messageText.trim()">
+          ➤
+        </button>
+      </form>
+
+      <div class="quick-actions">
+        <strong>Quick Actions</strong>
+
+        <div>
+          <button type="button">＋ Create Invoice</button>
+          <button type="button">◇ Send Product</button>
+          <button type="button">▤ Send Template</button>
+          <button type="button">＋ Add Note</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Customer details -->
+    <aside class="customer-panel" *ngIf="selectedConversation">
+
+      <div class="panel-heading">
+        <h2>Customer Details</h2>
+        <button type="button">Edit</button>
+      </div>
+
+      <div class="customer-summary">
+        <div class="contact-avatar large">
+          {{ selectedConversation.initials }}
+        </div>
+
+        <div>
+          <strong>{{ selectedConversation.name }}</strong>
+          <small>{{ selectedConversation.phone }}</small>
+        </div>
+      </div>
+
+      <div class="customer-tabs">
+        <button class="active" type="button">Overview</button>
+        <button type="button">Orders</button>
+        <button type="button">Invoices</button>
+        <button type="button">Notes</button>
+      </div>
+
+      <div class="customer-fields">
+        <div>
+          <span>Email</span>
+          <strong>{{ selectedConversation.email }}</strong>
+        </div>
+
+        <div>
+          <span>Company</span>
+          <strong>{{ selectedConversation.company }}</strong>
+        </div>
+
+        <div>
+          <span>Location</span>
+          <strong>{{ selectedConversation.location }}</strong>
+        </div>
+
+        <div>
+          <span>Contact source</span>
+          <strong>WhatsApp</strong>
+        </div>
+      </div>
+
+      <section class="recent-activity">
+        <h3>Recent Activity</h3>
+
+        <div class="activity-item">
+          <span class="activity-icon">●</span>
+          <div>
+            <strong>Message from customer</strong>
+            <small>{{ selectedConversation.preview }}</small>
+          </div>
+        </div>
+
+        <div class="activity-item">
+          <span class="activity-icon">▣</span>
+          <div>
+            <strong>WhatsApp conversation</strong>
+            <small>Customer interaction</small>
+          </div>
+        </div>
+      </section>
+
+    </aside>
+
+  </section>
+
+  <section class="bottom-sections">
+
+    <div class="bottom-card">
+      <h3>Broadcast Campaigns</h3>
+      <p>Manage and monitor your customer campaigns.</p>
+
+      <div class="campaign-row">
+        <strong>New Arrivals</strong>
+        <span>Completed</span>
+      </div>
+
+      <div class="campaign-row">
+        <strong>Product Promotion</strong>
+        <span>Completed</span>
+      </div>
+
+      <div class="campaign-row">
+        <strong>Payment Reminder</strong>
+        <span>Completed</span>
+      </div>
+    </div>
+
+    <div class="bottom-card">
+      <h3>Engage Insights</h3>
+      <p>Monitor messages, customer engagement and conversions.</p>
+
+      <div class="insight-stat">
+        <strong>4,520</strong>
+        <span>Messages sent</span>
+      </div>
+
+      <div class="insight-stat">
+        <strong>86</strong>
+        <span>Orders generated</span>
+      </div>
+    </div>
+
+  </section>
+
+</section>

@@ -219,7 +219,23 @@ export const routes: Routes = [
         import('./features/employees/employee-item-request-create/employee-item-request-create.component')
           .then(m => m.EmployeeItemRequestCreateComponent),
     },
-     {
+    {
+      path: 'engage',
+      children: [
+        {
+          path: '',
+          redirectTo: 'inbox',
+          pathMatch: 'full',
+        },
+        {
+          path: 'inbox',
+          loadComponent: () =>
+            import('./features/engage/inbox/engage-inbox.component')
+              .then(m => m.EngageInboxComponent),
+        },
+      ],
+    },
+    {
       path: 'employee-item-requests/:id',
       loadComponent: () =>
         import('./features/employees/employee-item-request-details/employee-item-request-details.component')

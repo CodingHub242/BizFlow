@@ -1,5 +1,5 @@
 @let user = currentUser();
-<header class="topbar">
+<header class="topbar" [class.engage-topbar]="isEngageWorkspace()">
   <div class="page-context">
     <h1>Dashboard</h1>
       @if (user) {
@@ -14,6 +14,7 @@
       <kbd>⌘ K</kbd>
     </button>
 
+  
     <button
       class="icon-button"
       type="button"
@@ -22,6 +23,7 @@
       <ion-icon name="notifications-outline"></ion-icon>
       <span class="notification-dot"></span>
     </button>
+  
 
    <div class="profile-menu">
       <button

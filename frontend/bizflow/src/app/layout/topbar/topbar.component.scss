@@ -257,3 +257,32 @@
 .logout-item {
   color: #475569;
 }
+
+.topbar.engage-topbar {
+  height: 52px;
+  min-height: 52px;
+  justify-content: flex-start;
+  padding: 0 24px;
+}
+
+.topbar.engage-topbar .page-context {
+  display: none;
+}
+
+.topbar.engage-topbar .topbar-actions {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.topbar.engage-topbar .search-button {
+  width: 450px;
+  max-width: 55%;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+.topbar.engage-topbar .icon-button {
+  color: #475569;
+  display: none;
+}

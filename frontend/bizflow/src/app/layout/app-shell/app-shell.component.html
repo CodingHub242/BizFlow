@@ -1,5 +1,9 @@
-<div class="app-shell">
-  <app-sidebar />
+<div class="app-shell" [class.engage-shell]="isEngageWorkspace()">
+  @if (isEngageWorkspace()) {
+    <app-engage-sidebar />
+  } @else {
+    <app-sidebar />
+  }
 
   <div class="main-area">
     <app-topbar />

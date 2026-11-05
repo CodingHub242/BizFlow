@@ -34,18 +34,12 @@ class CustomerController extends Controller
     {
         $this->authorizeSettings($request, 'customers.create');
 
-        $customer = Customer::create([
-            'tenant_id' => $request->user()->tenant_id,
-            'name' => $request->validated('name'),
-            'email' => $request->validated('email'),
-            'phone' => $request->validated('phone'),
-            'address' => $request->validated('address'),
-            'company_name' => $request->validated('company_name'),
-            'city' => $request->validated('city'),
-            'status' => 'active',
-            'country' => $request->validated('country'),
-            'notes' => $request->validated('notes'),
-        ]);
+        $data = $request->validated();
+
+        $data['tenant_id'] = $request->user()->tenant_id;
+        $data['status'] = 'active';
+
+        $customer = Customer::create($data);
 
         return response()->json([
             'success' => true,
@@ -149,7 +143,7 @@ class CustomerController extends Controller
 
     public function restore(Request $request, Customer $customer): JsonResponse
     {
-         $this->authorizeSettings($request, 'customers.delete');
+         $this->authorizeSettings($request, 'customers.update');
         if ($customer->tenant_id !== $request->user()->tenant_id) {
             abort(404);
         }
