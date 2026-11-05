@@ -124,9 +124,8 @@
           Employee item requests will appear here when submitted.
         </p>
 
-        <ion-button
+        <ion-button class="create-buttone"
           *ngIf="!search && !selectedStatus"
-          fill="outline-dark"
           (click)="createRequest()"
         >
           <ion-icon name="add-outline" slot="start"></ion-icon>

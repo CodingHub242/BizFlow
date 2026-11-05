@@ -214,6 +214,18 @@ export const routes: Routes = [
           .then(m => m.EmployeesItemRequestComponent),
     },
     {
+      path: 'employees-item-request/create',
+      loadComponent: () =>
+        import('./features/employees/employee-item-request-create/employee-item-request-create.component')
+          .then(m => m.EmployeeItemRequestCreateComponent),
+    },
+     {
+      path: 'employee-item-requests/:id',
+      loadComponent: () =>
+        import('./features/employees/employee-item-request-details/employee-item-request-details.component')
+          .then(m => m.EmployeeItemRequestDetailsComponent),
+    },
+    {
       path: 'employees/:id',
       loadComponent: () =>
         import('./features/employees/employee-details/employee-details.component')

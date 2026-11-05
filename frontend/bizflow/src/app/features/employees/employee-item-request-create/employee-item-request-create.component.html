@@ -1,0 +1,228 @@
+<ion-content class="create-request-content">
+  <div class="page-shell">
+
+    <!-- Heading -->
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">TEAM MANAGEMENT</span>
+        <h1>New Item Request</h1>
+        <p>Submit a request for items required by your business.</p>
+      </div>
+
+      <ion-button
+        fill="outline"
+        color="medium"
+        class="back-button"
+        (click)="cancel()"
+      >
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Back to requests
+      </ion-button>
+    </div>
+
+    <div *ngIf="loading" class="loading-state">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading branches and catalog items...</p>
+    </div>
+
+    <ng-container *ngIf="!loading">
+
+      <!-- Request details -->
+      <section class="form-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Request information</h2>
+            <p>Provide the details of this request.</p>
+          </div>
+          <span class="step-number">01</span>
+        </div>
+
+        <div class="form-grid">
+
+          <div class="form-field">
+            <label for="branch">Branch</label>
+
+            <app-searchable-select
+              inputId="branch"
+              [options]="branchOptions"
+              placeholder="Select a branch (optional)"
+              searchPlaceholder="Search branches..."
+              noResultsText="No branches found"
+              [(ngModel)]="branchId"
+              name="branchId"
+            ></app-searchable-select>
+
+            <small>Leave blank if this request is not branch-specific.</small>
+          </div>
+
+          <div class="form-field full-width">
+            <label for="purpose">Purpose</label>
+            <ion-textarea
+              id="purpose"
+              name="purpose"
+              [(ngModel)]="purpose"
+              placeholder="Explain why these items are required..."
+              rows="3"
+              autoGrow="true"
+            ></ion-textarea>
+          </div>
+
+          <div class="form-field full-width">
+            <label for="requestNotes">Additional notes</label>
+            <ion-textarea
+              id="requestNotes"
+              name="requestNotes"
+              [(ngModel)]="notes"
+              placeholder="Any additional information..."
+              rows="2"
+              autoGrow="true"
+            ></ion-textarea>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Items -->
+      <section class="form-panel items-panel">
+
+        <div class="section-heading">
+          <div>
+            <h2>Requested items</h2>
+            <p>Add the items and quantities you need.</p>
+          </div>
+
+          <span class="step-number">02</span>
+        </div>
+
+        <div
+          *ngIf="catalogItems.length === 0"
+          class="empty-catalog"
+        >
+          <ion-icon name="cube-outline"></ion-icon>
+          <h3>No catalog items available</h3>
+          <p>There are currently no active catalog items to request.</p>
+        </div>
+
+        <div
+          class="item-row"
+          *ngFor="let item of items; let i = index"
+        >
+
+          <div class="item-row-heading">
+            <strong>Item {{ i + 1 }}</strong>
+
+            <ion-button
+              *ngIf="items.length > 1"
+              fill="clear"
+              color="danger"
+              size="small"
+              (click)="removeItem(i)"
+            >
+              <ion-icon name="trash-outline" slot="start"></ion-icon>
+              Remove
+            </ion-button>
+          </div>
+
+          <div class="item-fields">
+
+            <div class="form-field catalog-field">
+              <label>Catalog item</label>
+
+              <app-searchable-select
+                [inputId]="'catalog-item-' + i"
+                [options]="catalogOptions"
+                placeholder="Select an item"
+                searchPlaceholder="Search catalog..."
+                noResultsText="No matching catalog items"
+                [(ngModel)]="item.catalog_item_id"
+                [name]="'catalogItem' + i"
+                [required]="true"
+              ></app-searchable-select>
+
+              <small
+                class="field-error"
+                *ngIf="isDuplicateItem(i)"
+              >
+                This item has already been added.
+              </small>
+
+              <small
+                *ngIf="getSelectedCatalogItem(item.catalog_item_id) as selected"
+              >
+                {{ selected.sku ? 'SKU: ' + selected.sku : selected.type }}
+                <span *ngIf="selected.unit"> · {{ selected.unit }}</span>
+              </small>
+            </div>
+
+            <div class="form-field quantity-field">
+              <label>Quantity</label>
+              <ion-input
+                type="number"
+                min="1"
+                step="1"
+                inputmode="numeric"
+                [(ngModel)]="item.quantity_requested"
+                [name]="'quantity' + i"
+                placeholder="1"
+              ></ion-input>
+            </div>
+
+            <div class="form-field item-notes-field">
+              <label>Item notes</label>
+              <ion-input
+                [(ngModel)]="item.notes"
+                [name]="'itemNotes' + i"
+                placeholder="Optional notes"
+              ></ion-input>
+            </div>
+
+          </div>
+        </div>
+
+        <ion-button
+          fill="outline"
+          color="dark"
+          class="add-item-button"
+          [disabled]="catalogItems.length === 0"
+          (click)="addItem()"
+        >
+          <ion-icon name="add-outline" slot="start"></ion-icon>
+          Add another item
+        </ion-button>
+
+      </section>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <ion-button
+          fill="outline"
+          color="medium"
+          (click)="cancel()"
+          [disabled]="submitting"
+        >
+          Cancel
+        </ion-button>
+
+        <ion-button
+          class="submit-button"
+          (click)="submitRequest()"
+          [disabled]="!canSubmit || catalogItems.length === 0"
+        >
+          <ion-spinner
+            *ngIf="submitting"
+            name="crescent"
+          ></ion-spinner>
+
+          <ion-icon
+            *ngIf="!submitting"
+            name="send-outline"
+            slot="start"
+          ></ion-icon>
+
+          {{ submitting ? 'Submitting...' : 'Submit request' }}
+        </ion-button>
+      </div>
+
+    </ng-container>
+  </div>
+</ion-content>

@@ -1,0 +1,186 @@
+<ion-content class="request-details-content">
+  <div class="page-shell">
+
+    <div class="page-heading">
+      <div>
+        <span class="eyebrow">TEAM MANAGEMENT</span>
+        <h1>Request details</h1>
+        <p>Review the requested items and request status.</p>
+      </div>
+
+      <ion-button
+        fill="outline"
+        color="medium"
+        (click)="backToRequests()"
+      >
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Back to requests
+      </ion-button>
+    </div>
+
+    <div *ngIf="loading" class="state-container">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading request details...</p>
+    </div>
+
+    <ng-container *ngIf="!loading && request">
+
+      <section class="request-panel">
+        <div class="request-header">
+          <div>
+            <span class="eyebrow">REQUEST NUMBER</span>
+            <h2>{{ request.request_number }}</h2>
+          </div>
+
+          <ion-badge [color]="getStatusColor(request.status)">
+            {{ getStatusLabel(request.status) }}
+          </ion-badge>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span>Requested by</span>
+            <strong>{{ getEmployeeName() }}</strong>
+          </div>
+
+          <div class="summary-item">
+            <span>Branch</span>
+            <strong>{{ request.branch?.name ?? 'No branch assigned' }}</strong>
+          </div>
+
+          <div class="summary-item">
+            <span>Date submitted</span>
+            <strong>{{ request.created_at | date:'medium' }}</strong>
+          </div>
+
+          <div class="summary-item">
+            <span>Total items</span>
+            <strong>{{ request.items.length }}</strong>
+          </div>
+        </div>
+
+        <div class="description-block" *ngIf="request.purpose">
+          <label>Purpose</label>
+          <p>{{ request.purpose }}</p>
+        </div>
+
+        <div class="description-block" *ngIf="request.notes">
+          <label>Additional notes</label>
+          <p>{{ request.notes }}</p>
+        </div>
+      </section>
+
+      <section class="request-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Requested items</h2>
+            <p>Review each item and its requested quantity.</p>
+          </div>
+        </div>
+
+        <div class="item-table">
+          <div class="table-header">
+            <span>ITEM</span>
+            <span>REQUESTED</span>
+            <span>APPROVED</span>
+          </div>
+
+          <div
+            class="item-row"
+            *ngFor="let item of request.items"
+          >
+            <div class="item-information">
+              <strong>{{ getItemName(item) }}</strong>
+              <small>
+                {{ item.catalog_item?.sku || 'No SKU' }}
+              </small>
+
+              <p *ngIf="item.notes">{{ item.notes }}</p>
+            </div>
+
+            <div class="quantity-cell">
+              {{ item.quantity_requested }}
+            </div>
+
+            <div class="quantity-cell">
+              <ng-container *ngIf="isPending && canApprove; else approvedQuantity">
+                <ion-input
+                  type="number"
+                  min="0"
+                  [max]="item.quantity_requested"
+                  step="1"
+                  inputmode="numeric"
+                  [(ngModel)]="approvedQuantities[item.id]"
+                  [name]="'approved-' + item.id"
+                ></ion-input>
+              </ng-container>
+
+              <ng-template #approvedQuantity>
+                {{ item.quantity_approved ?? 0 }}
+              </ng-template>
+            </div>
+          </div>
+        </div>
+
+        <div class="totals">
+          <div>
+            <span>Total requested</span>
+            <strong>{{ getTotalRequested() }}</strong>
+          </div>
+
+          <div>
+            <span>Total approved</span>
+            <strong>
+              {{ isPending ? 'Pending' : getTotalApproved() }}
+            </strong>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="request-panel action-panel"
+        *ngIf="isPending && canApprove"
+      >
+        <div>
+          <h2>Review this request</h2>
+          <p>
+            You can approve the requested quantities or reject the
+            request with a reason.
+          </p>
+        </div>
+
+        <div class="action-buttons">
+          <ion-button
+            color="danger"
+            fill="outline"
+            (click)="rejectRequest()"
+            [disabled]="processing"
+          >
+            <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+            Reject
+          </ion-button>
+
+          <ion-button
+            class="approve-button"
+            (click)="approveRequest()"
+            [disabled]="processing"
+          >
+            <ion-spinner
+              *ngIf="processing"
+              name="crescent"
+            ></ion-spinner>
+
+            <ion-icon
+              *ngIf="!processing"
+              name="checkmark-circle-outline"
+              slot="start"
+            ></ion-icon>
+
+            {{ processing ? 'Processing...' : 'Approve request' }}
+          </ion-button>
+        </div>
+      </section>
+
+    </ng-container>
+  </div>
+</ion-content>

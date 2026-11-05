@@ -182,6 +182,13 @@ export class EmployeesItemRequestComponent  implements OnInit {
       PARTIALLY_ISSUED: 'secondary',
       ISSUED: 'success',
       CANCELLED: 'medium',
+      pending: 'warning',
+      approved: 'success',
+      partially_approved: 'tertiary',
+      rejected: 'danger',
+      partially_issued: 'secondary',
+      issued: 'success',
+      cancelled: 'medium',
     };
 
     return colors[status] ?? 'medium';

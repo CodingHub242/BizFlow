@@ -5,7 +5,14 @@ export type EmployeeItemRequestStatus =
   | 'REJECTED'
   | 'PARTIALLY_ISSUED'
   | 'ISSUED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'pending'
+  | 'approved'
+  | 'partially_approved'
+  | 'rejected'
+  | 'partially_issued'
+  | 'issued'
+  | 'cancelled';
 
 export interface EmployeeItemRequestEmployee {
   id: number;

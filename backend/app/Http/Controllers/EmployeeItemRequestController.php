@@ -177,6 +177,10 @@ class EmployeeItemRequestController extends Controller
         int $requestId,
         EmployeeItemRequestService $service
     ): JsonResponse {
+         $this->authorizeSettings(
+            $request,
+            'employee_item_requests.approve'
+        );
         $tenantId = (int) $request->user()->tenant_id;
 
         $itemRequest = $service->approve(
@@ -201,6 +205,10 @@ class EmployeeItemRequestController extends Controller
         int $requestId,
         EmployeeItemRequestService $service
     ): JsonResponse {
+         $this->authorizeSettings(
+            $request,
+            'employee_item_requests.approve'
+        );
         $tenantId = (int) $request->user()->tenant_id;
 
         $itemRequest = $service->reject(
@@ -225,6 +233,10 @@ class EmployeeItemRequestController extends Controller
         int $requestId,
         EmployeeItemRequestService $service
     ): JsonResponse {
+         $this->authorizeSettings(
+            $request,
+            'employee_item_requests.approve'
+        );
         $tenantId = (int) $request->user()->tenant_id;
 
         $itemRequest = $service->cancel(
@@ -248,6 +260,10 @@ class EmployeeItemRequestController extends Controller
         int $requestId,
         EmployeeItemRequestService $service
     ): JsonResponse {
+         $this->authorizeSettings(
+            $request,
+            'employee_item_requests.issue'
+        );
         $tenantId = (int) $request->user()->tenant_id;
         $validated = $request->validated();
 
@@ -275,6 +291,10 @@ class EmployeeItemRequestController extends Controller
         int $requestId,
         EmployeeItemRequestService $service
     ): JsonResponse {
+            $this->authorizeSettings(
+                $request,
+                'employee_item_requests.return'
+            );
         $tenantId = (int) $request->user()->tenant_id;
         $validated = $request->validated();
 

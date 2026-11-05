@@ -53,7 +53,16 @@
     text-transform: none;
   }
 }
-
+.create-buttone {
+    --background: #0a0b0f;
+    --background-hover: #292d35;
+    --border-radius: 8px;
+    --box-shadow: none;
+    --border: 1px solid #1e293b;
+    height: 43px;
+    font-weight: 600;
+    text-transform: none;
+  }
 .summary-card {
   display: flex;
   align-items: center;
