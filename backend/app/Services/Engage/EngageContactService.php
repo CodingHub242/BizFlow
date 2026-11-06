@@ -120,19 +120,23 @@ class EngageContactService
     /**
      * Find an existing Core customer using tenant-scoped phone matching.
      */
-    protected function findCoreCustomer(
-        int $tenantId,
-        string $normalizedPhone
-    ): ?Customer {
-        $digits = ltrim($normalizedPhone, '+');
-        $localNumber = '0' . substr($digits, 3);
-
-        return Customer::query()
-            ->where('tenant_id', $tenantId)
-            ->whereIn(
-                DB::raw("regexp_replace(phone, '[^0-9]', '', 'g')"),
-                [$digits, $localNumber]
-            )
-            ->first();
-    }
+    /**
+ * Find an existing Core customer using tenant-scoped phone matching.
+ *
+ * Normalize existing customer numbers in PHP so this works with
+ * both PostgreSQL and SQLite.
+ */
+protected function findCoreCustomer(
+    int $tenantId,
+    string $normalizedPhone
+): ?Customer {
+    return Customer::query()
+        ->where('tenant_id', $tenantId)
+        ->whereNotNull('phone')
+        ->get()
+        ->first(function (Customer $customer) use ($normalizedPhone) {
+            return $this->normalizeGhanaPhone($customer->phone)
+                === $normalizedPhone;
+        });
+}
 }

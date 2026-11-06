@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class EngageMessage extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'tenant_id',
         'conversation_id',

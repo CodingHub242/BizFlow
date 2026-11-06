@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class EngageConversation extends Model
 {
+    use HasFactory;
+    
     protected $fillable = [
         'tenant_id',
         'contact_id',
@@ -39,5 +43,11 @@ class EngageConversation extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(EngageMessage::class, 'conversation_id');
+    }
+
+    public function latestMessage(): HasOne
+    {
+        return $this->hasOne(EngageMessage::class, 'conversation_id')
+            ->latestOfMany();
     }
 }

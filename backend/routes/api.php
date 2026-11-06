@@ -13,6 +13,7 @@ use App\Http\Controllers\ExpenseReportController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\QuickBooksCreditMemosImportController;
 use App\Http\Controllers\InventoryExportController;
+use App\Http\Controllers\Engage\EngageConversationController;
 use App\Http\Controllers\QuickBooksCreditMemoApplicationsReconcileController;
 use App\Http\Controllers\QuickBooksCustomerImportController;
 use App\Http\Controllers\QuickBooksMigrationCatalogController;
@@ -309,7 +310,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::get('/inventory/opening-stock-candidates',[InventoryController::class, 'openingStockCandidates']
     )->middleware('permission:inventory.receive');
 
-    // INVENTORY BATCHES
+	 // INVENTORY BATCHES
     Route::get('/inventory/batches', [InventoryController::class, 'batches'])
         ->middleware('permission:inventory.view');
 
@@ -348,7 +349,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
     Route::post('/sales', [OrderController::class, 'store'])
         ->middleware('permission:sales.create');
 
-    Route::post('/sales/price-quote', [
+	 Route::post('/sales/price-quote', [
         OrderController::class,
         'quotePrice',
     ])->middleware('permission:sales.view');
@@ -528,7 +529,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
     Route::post('/roles', [RoleController::class, 'store']);
 
-    Route::put('/roles/{roleId}/permissions',[RoleController::class, 'updatePermissions']
+	 Route::put('/roles/{roleId}/permissions',[RoleController::class, 'updatePermissions']
     )->whereNumber('roleId')
     ->middleware('permission:roles.update');
 
@@ -575,5 +576,37 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 
         Route::post('/{requestId}/returns', 'returnItems')
             ->name('returns.store');
+    });
+
+    // BIZFLOW ENGAGE
+    Route::prefix('engage')
+        ->name('engage.')
+        ->group(function () {
+
+        // Conversations
+        Route::get('/conversations', [
+            EngageConversationController::class,
+            'index',
+        ])->middleware('permission:engage.conversations.view');
+
+        Route::get('/conversations/{conversation}', [
+            EngageConversationController::class,
+            'show',
+        ])->middleware('permission:engage.conversations.view');
+
+        Route::get('/conversations/{conversation}/messages', [
+            EngageConversationController::class,
+            'messages',
+        ])->middleware('permission:engage.conversations.view');
+
+        Route::post('/conversations/{conversation}/read', [
+            EngageConversationController::class,
+            'markAsRead',
+        ])->middleware('permission:engage.conversations.view');
+
+        Route::post('/conversations/{conversation}/messages', [
+            EngageConversationController::class,
+            'storeMessage',
+        ])->middleware('permission:engage.conversations.reply');
     });
 });

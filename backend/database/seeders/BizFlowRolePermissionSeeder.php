@@ -103,6 +103,14 @@ class BizFlowRolePermissionSeeder extends Seeder
         'employee_item_requests.issue',
         'employee_item_requests.return',
         'employee_item_requests.manage',
+
+        // XBeez Engage
+        'engage.view',
+        'engage.conversations.view',
+        'engage.conversations.reply',
+        'engage.conversations.manage',
+        'engage.contacts.view',
+        'engage.contacts.manage',
     ];
 
     public const ROLE_PERMISSIONS = [
@@ -179,6 +187,13 @@ class BizFlowRolePermissionSeeder extends Seeder
         'employee_item_requests.issue',
         'employee_item_requests.return',
         'employee_item_requests.manage',
+
+        'engage.view',
+        'engage.conversations.view',
+        'engage.conversations.reply',
+        'engage.conversations.manage',
+        'engage.contacts.view',
+        'engage.contacts.manage',
     ],
 
     'Administrator' => [
@@ -254,6 +269,13 @@ class BizFlowRolePermissionSeeder extends Seeder
         'employee_item_requests.issue',
         'employee_item_requests.return',
         'employee_item_requests.manage',
+
+        'engage.view',
+        'engage.conversations.view',
+        'engage.conversations.reply',
+        'engage.conversations.manage',
+        'engage.contacts.view',
+        'engage.contacts.manage',
     ],
 
     'Manager' => [
@@ -305,6 +327,12 @@ class BizFlowRolePermissionSeeder extends Seeder
 
         'employee_item_requests.view',
         'employee_item_requests.create',
+
+        'engage.view',
+        'engage.conversations.view',
+        'engage.conversations.reply',
+        'engage.conversations.manage',
+        'engage.contacts.view',
     ],
 
     'Salesperson' => [
@@ -348,6 +376,11 @@ class BizFlowRolePermissionSeeder extends Seeder
 
         // Categories
         'categories.view',
+
+        'engage.view',
+        'engage.conversations.view',
+        'engage.conversations.reply',
+        'engage.contacts.view',
     ],
 
     'Inventory Officer' => [
