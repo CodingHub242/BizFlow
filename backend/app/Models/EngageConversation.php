@@ -22,6 +22,7 @@ class EngageConversation extends Model
         'unread_count',
         'last_message_at',
         'last_inbound_at',
+        'whatsapp_number_id',
     ];
 
     protected $casts = [
@@ -49,5 +50,13 @@ class EngageConversation extends Model
     {
         return $this->hasOne(EngageMessage::class, 'conversation_id')
             ->latestOfMany();
+    }
+
+    public function whatsappNumber(): BelongsTo
+    {
+        return $this->belongsTo(
+            EngageWhatsAppNumber::class,
+            'whatsapp_number_id'
+        );
     }
 }

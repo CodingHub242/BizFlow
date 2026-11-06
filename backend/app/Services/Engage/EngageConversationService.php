@@ -33,6 +33,8 @@ class EngageConversationService
             );
         }
 
+        $whatsappNumberId = $payload['whatsapp_number_id'] ?? null;
+
         if (empty($payload['body']) && empty($payload['media'])) {
             throw new InvalidArgumentException(
                 'An inbound message must contain text or media.'
@@ -47,7 +49,8 @@ class EngageConversationService
             $contact,
             $payload,
             $channel,
-            $providerMessageId
+            $providerMessageId,
+            $whatsappNumberId
         ) {
             // Check idempotency before creating or updating a conversation.
             if ($providerMessageId) {
@@ -61,13 +64,17 @@ class EngageConversationService
                 }
             }
 
-            $conversation = EngageConversation::query()
+           $query = EngageConversation::query()
                 ->where('tenant_id', $tenantId)
                 ->where('contact_id', $contact->id)
                 ->where('channel', $channel)
-                ->where('status', 'open')
-                ->lockForUpdate()
-                ->first();
+                ->where('status', 'open');
+
+            if ($whatsappNumberId !== null) {
+                $query->where('whatsapp_number_id', $whatsappNumberId);
+            }
+
+            $conversation = $query->lockForUpdate()->first();
 
             if (!$conversation) {
                 $conversation = EngageConversation::create([
@@ -76,6 +83,7 @@ class EngageConversationService
                     'channel' => $channel,
                     'status' => 'open',
                     'unread_count' => 0,
+                    'whatsapp_number_id' => $whatsappNumberId,
                 ]);
             }
 
@@ -91,6 +99,7 @@ class EngageConversationService
                 'status' => 'received',
                 'media' => $payload['media'] ?? null,
                 'metadata' => $payload['metadata'] ?? null,
+                'received_at' => $receivedAt,
             ]);
 
             $conversation->increment('unread_count');

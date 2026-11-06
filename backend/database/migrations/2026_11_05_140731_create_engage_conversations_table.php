@@ -30,6 +30,7 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
+                
 
             $table->unsignedInteger('unread_count')->default(0);
 

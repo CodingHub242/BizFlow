@@ -1,3 +1,23 @@
+///Meta Token 
+EAAP4geKxr7MBSyT7u6ZBHPT20J97ZBubCxjNIZBKY5gmGnZAsSKHTKW4a1RAHHBmcZCLURkdcZC7mMu0l3lzyYTfFIu5gIX12LqYCbFQEFY1rI9n4T3yDc8F1J1wB3kd9qsQkgcLz5yAQkkqmgEPvhJo0ZA9qEgtwY01RKWl8XZBmMZBFrqUxI9MXZAGzCmZB8C6yh6We1ZAyo8z5o1TBAzfAEz2HQ7kOIdFqc5rDYODKxShVEZBdGdZBIz1thGYlPr6QZBI0AbDFQsK50Jjs4I6HsX233PLgZDZD
+
+
+Phone Number Test - 1462640713593829
+
+Message AcountID - 1927082844938939
+
+
+XBeez Engage is a multi-tenant customer engagement platform that enables businesses to communicate with their customers through WhatsApp.
+
+The whatsapp_business_messaging permission allows XBeez to receive incoming WhatsApp messages through Meta webhooks and send replies from the business's connected WhatsApp Business phone numbers.
+
+Each XBeez tenant can connect multiple WhatsApp Business Accounts and phone numbers. Incoming messages are routed to the correct business workspace and displayed in its unified Engage inbox. Authorized business users can respond to customers directly from XBeez.
+
+The integration also supports message status updates, conversation history and customer engagement workflows.
+
+
+
+
 
 FIXED////////
 3. MEDIUM — Sanctum tokens never expire (Fixed)

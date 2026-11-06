@@ -23,6 +23,7 @@ class EngageMessage extends Model
         'sent_at',
         'delivered_at',
         'read_at',
+        'received_at' => 'datetime',
     ];
 
     protected $casts = [

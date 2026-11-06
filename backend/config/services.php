@@ -44,5 +44,10 @@ return [
         'frontend_return_url' => env('QUICKBOOKS_FRONTEND_RETURN_URL', env('APP_URL')),
     ],
 
+    'whatsapp' => [
+        'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
+        'app_secret' => env('META_APP_SECRET'),
+    ],
+
 
 ];

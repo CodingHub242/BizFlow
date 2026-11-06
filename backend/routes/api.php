@@ -38,12 +38,22 @@ use App\Http\Controllers\GeneralReportController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchController;
-
+use App\Http\Controllers\Engage\WhatsAppWebhookController;
 
 //Login
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth:sanctum');
+
+Route::get(
+    '/webhooks/whatsapp',
+    [WhatsAppWebhookController::class, 'verify']
+)->name('webhooks.whatsapp.verify');
+
+Route::post(
+    '/webhooks/whatsapp',
+    [WhatsAppWebhookController::class, 'receive']
+)->name('webhooks.whatsapp.receive');
 
 Route::get('/user', function (Request $request) {
      $user = $request->user();

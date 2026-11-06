@@ -111,6 +111,8 @@ class BizFlowRolePermissionSeeder extends Seeder
         'engage.conversations.manage',
         'engage.contacts.view',
         'engage.contacts.manage',
+        'engage.whatsapp.view',
+        'engage.whatsapp.manage',
     ];
 
     public const ROLE_PERMISSIONS = [
@@ -194,6 +196,8 @@ class BizFlowRolePermissionSeeder extends Seeder
         'engage.conversations.manage',
         'engage.contacts.view',
         'engage.contacts.manage',
+        'engage.whatsapp.view',
+        'engage.whatsapp.manage',
     ],
 
     'Administrator' => [
@@ -276,6 +280,8 @@ class BizFlowRolePermissionSeeder extends Seeder
         'engage.conversations.manage',
         'engage.contacts.view',
         'engage.contacts.manage',
+        'engage.whatsapp.view',
+        'engage.whatsapp.manage',
     ],
 
     'Manager' => [
@@ -333,6 +339,8 @@ class BizFlowRolePermissionSeeder extends Seeder
         'engage.conversations.reply',
         'engage.conversations.manage',
         'engage.contacts.view',
+        'engage.whatsapp.view',
+        'engage.whatsapp.manage',
     ],
 
     'Salesperson' => [
@@ -356,6 +364,12 @@ class BizFlowRolePermissionSeeder extends Seeder
         'categories.view',
 
         'employee_item_requests.view',
+
+        'engage.view',
+        'engage.conversations.view',
+        'engage.conversations.reply',
+        'engage.contacts.view',
+        'engage.whatsapp.view',
     ],
 
     'Cashier' => [

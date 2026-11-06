@@ -45,7 +45,7 @@ class RoleService
         if ($invalidPermissions !== []) {
             throw ValidationException::withMessages([
                 'permissions' => [
-                    'One or more selected permissions are not supported by BizFlow.',
+                    'One or more selected permissions are not supported by XBeez.',
                 ],
             ]);
         }
@@ -70,7 +70,7 @@ class RoleService
                 if ($permissionRecords->count() !== count(array_unique($permissions))) {
                     throw ValidationException::withMessages([
                         'permissions' => [
-                            'Some selected permissions have not been provisioned in BizFlow.',
+                            'Some selected permissions have not been provisioned in XBeez.',
                         ],
                     ]);
                 }
@@ -99,7 +99,7 @@ class RoleService
     if ($invalidPermissions !== []) {
         throw ValidationException::withMessages([
             'permissions' => [
-                'One or more selected permissions are not supported by BizFlow.',
+                'One or more selected permissions are not supported by XBeez.',
             ],
         ]);
     }
@@ -151,7 +151,7 @@ class RoleService
         if ($permissionRecords->count() !== count($permissions)) {
             throw ValidationException::withMessages([
                 'permissions' => [
-                    'Some selected permissions have not been provisioned in BizFlow.',
+                    'Some selected permissions have not been provisioned in XBeez.',
                 ],
             ]);
         }
