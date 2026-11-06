@@ -78,11 +78,38 @@
 
       <div class="conversation-list">
 
+        <div class="conversation-pagination" *ngIf="lastPage > 1">
+          <button
+            type="button"
+            (click)="previousPage()"
+            [disabled]="currentPage === 1">
+            Previous
+          </button>
+
+          <span>{{ currentPage }} / {{ lastPage }}</span>
+
+          <button
+            type="button"
+            (click)="nextPage()"
+            [disabled]="currentPage === lastPage">
+            Next
+          </button>
+        </div>
+
+        <div class="empty-state" *ngIf="loadingConversations">
+          Loading conversations...
+        </div>
+
+        <div class="empty-state" *ngIf="errorMessage">
+          {{ errorMessage }}
+          <button type="button" (click)="loadConversations()">Retry</button>
+        </div>
+
         <button
           class="conversation-item"
           *ngFor="let conversation of filteredConversations; trackBy: trackConversation"
           type="button"
-          [class.selected]="selectedConversation.id === conversation.id"
+          [class.selected]="selectedConversation?.id === conversation.id"
           (click)="selectConversation(conversation)">
 
           <div class="contact-avatar">
@@ -144,6 +171,13 @@
 
       <div class="messages-area">
 
+        <div class="empty-state" *ngIf="loadingMessages">
+          Loading messages...
+        </div>
+
+        <div class="empty-state" *ngIf="messageError">
+          {{ messageError }}
+        </div>
         <div
           *ngFor="let message of selectedConversation.messages"
           class="message-row"
@@ -153,7 +187,9 @@
             <p>{{ message.text }}</p>
             <small>
               {{ message.time }}
-              <span *ngIf="message.outgoing"> ✓✓</span>
+             <span *ngIf="message.outgoing">
+                {{ message.status === 'queued' ? 'Queued' : message.status }}
+              </span>
             </small>
           </div>
 
@@ -174,7 +210,7 @@
         <button
           class="send-button"
           type="submit"
-          [disabled]="!messageText.trim()">
+          [disabled]="!messageText.trim() || sendingMessage">
           ➤
         </button>
       </form>
