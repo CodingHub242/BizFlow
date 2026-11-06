@@ -7,6 +7,7 @@ use App\Services\RoleService;
 use Spatie\Permission\Models\Role;
 use Database\Seeders\BizFlowRolePermissionSeeder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 
 class RoleController extends Controller
@@ -200,5 +201,94 @@ private function formatRole(Role $role): array
             ->values(),
         'created_at' => $role->created_at,
     ];
+}
+
+//NEW PERMS
+public function backfillTenantRolePermissions()
+{
+    $results = [
+        'tenants_processed' => 0,
+        'roles_updated' => 0,
+        'permissions_added' => 0,
+        'roles_skipped' => 0,
+    ];
+
+    DB::transaction(function () use (&$results) {
+
+        // Get the global role templates.
+        $globalRoles = Role::query()
+            ->whereNull('tenant_id')
+            ->where('guard_name', 'web')
+            ->with('permissions')
+            ->get();
+
+        // Get all existing tenant-specific roles.
+        $tenantRoles = Role::query()
+            ->whereNotNull('tenant_id')
+            ->where('guard_name', 'web')
+            ->get();
+
+        foreach ($tenantRoles as $tenantRole) {
+
+            // Find the matching global role template.
+            $template = $globalRoles->firstWhere(
+                'name',
+                $tenantRole->name
+            );
+
+            if (!$template) {
+                $results['roles_skipped']++;
+                continue;
+            }
+
+            $tenantId = $tenantRole->tenant_id;
+
+            // Set the tenant context for Spatie permissions.
+            setPermissionsTeamId($tenantId);
+
+            // Permissions assigned to the global template.
+            $templatePermissions = $template->permissions
+                ->pluck('name')
+                ->unique()
+                ->values();
+
+            // Permissions already assigned to this tenant role.
+            $existingPermissions = $tenantRole->permissions()
+                ->pluck('name');
+
+            // Only add permissions that are missing.
+            $missingPermissions = $templatePermissions
+                ->diff($existingPermissions)
+                ->values()
+                ->all();
+
+            if (empty($missingPermissions)) {
+                continue;
+            }
+
+            $tenantRole->givePermissionTo($missingPermissions);
+
+            $results['roles_updated']++;
+            $results['permissions_added'] += count($missingPermissions);
+        }
+
+        $results['tenants_processed'] = $tenantRoles
+            ->pluck('tenant_id')
+            ->unique()
+            ->count();
+    });
+
+    // Clear the permission cache after the backfill.
+    app(\Spatie\Permission\PermissionRegistrar::class)
+        ->forgetCachedPermissions();
+
+    // Reset the team context.
+    setPermissionsTeamId(null);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Tenant role permissions backfilled successfully.',
+        'results' => $results,
+    ]);
 }
 }

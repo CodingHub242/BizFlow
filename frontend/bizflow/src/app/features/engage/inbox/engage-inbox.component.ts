@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 
@@ -43,6 +43,7 @@ interface EngageConversationView {
 })
 export class EngageInboxComponent implements OnInit {
   private readonly engageService = inject(EngageService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   activeFilter = 'All';
   searchTerm = '';
@@ -78,6 +79,7 @@ export class EngageInboxComponent implements OnInit {
       .pipe(finalize(() => (this.loadingConversations = false)))
       .subscribe({
         next: response => {
+          this.loadingConversations = false;
           this.currentPage = response.meta.current_page;
           this.lastPage = response.meta.last_page;
           this.totalConversations = response.meta.total;
@@ -101,11 +103,15 @@ export class EngageInboxComponent implements OnInit {
           if (!this.selectedConversation && this.conversations.length) {
             this.selectConversation(this.conversations[0]);
           }
+
+          this.cdr.detectChanges();
         },
         error: error => {
           console.error('Failed to load Engage conversations:', error);
           this.errorMessage =
             error?.error?.message || 'Unable to load conversations.';
+
+          this.cdr.detectChanges();
         },
       });
   }
@@ -240,15 +246,20 @@ export class EngageInboxComponent implements OnInit {
       .pipe(finalize(() => (this.loadingMessages = false)))
       .subscribe({
         next: response => {
+          this.loadingMessages = false;
           // API returns newest-first; reverse for chronological chat display.
           conversation.messages = response.data
             .map(message => this.mapMessage(message))
             .reverse();
+
+          this.cdr.detectChanges();
         },
         error: error => {
           console.error('Failed to load conversation messages:', error);
           this.messageError =
             error?.error?.message || 'Unable to load messages.';
+
+          this.cdr.detectChanges();
         },
       });
   }
@@ -259,9 +270,13 @@ export class EngageInboxComponent implements OnInit {
     this.engageService.markAsRead(conversation.id).subscribe({
       next: () => {
         conversation.unread = 0;
+
+        this.cdr.detectChanges();
       },
       error: error => {
         console.error('Failed to mark conversation as read:', error);
+
+        this.cdr.detectChanges();
       },
     });
   }
@@ -282,6 +297,7 @@ export class EngageInboxComponent implements OnInit {
       .pipe(finalize(() => (this.sendingMessage = false)))
       .subscribe({
         next: response => {
+          this.sendingMessage = false;
           const message = this.mapMessage(response.data);
 
           conversation.messages.push(message);
@@ -289,11 +305,15 @@ export class EngageInboxComponent implements OnInit {
           conversation.time = 'Just now';
 
           this.messageText = '';
+
+          this.cdr.detectChanges();
         },
         error: error => {
           console.error('Failed to queue outbound message:', error);
           this.messageError =
             error?.error?.message || 'Unable to queue your message.';
+
+          this.cdr.detectChanges();
         },
       });
   }

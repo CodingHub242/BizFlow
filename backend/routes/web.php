@@ -5,11 +5,19 @@ use App\Http\Controllers\PlatformAuthController;
 use App\Http\Controllers\PlatformDashboardController;
 use App\Http\Controllers\PlatformAuditLogController;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\RoleController;
 use App\Http\Controllers\PlatformBusinessApprovalController;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+// TEMPORARY: Tenant role permission backfill.
+// Uncomment when new permissions are added, run once, then comment out.
+Route::middleware('auth:platform')->post(
+    '/admin/roles/backfill-tenant-permissions',
+    [RoleController::class, 'backfillTenantRolePermissions']
+);
 
 
 Route::prefix('platform')->group(function () {
