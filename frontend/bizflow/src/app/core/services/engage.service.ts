@@ -61,24 +61,36 @@ export interface EngageConversation {
   messages_count?: number;
   created_at: string;
   updated_at: string;
+
+  last_page?: number;
+  current_page?: number;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
 }
 
 export interface PaginatedResponse<T> {
+  current_page: number;
   data: T[];
+  first_page_url: string | null;
+  from: number | null;
+  last_page: number;
+  last_page_url: string | null;
   links: {
-    first: string | null;
-    last: string | null;
-    prev: string | null;
-    next: string | null;
-  };
-  meta: {
-    current_page: number;
-    from: number | null;
-    last_page: number;
-    per_page: number;
-    to: number | null;
-    total: number;
-  };
+    url: string | null;
+    label: string;
+    page: number | null;
+    active: boolean;
+  }[];
+  next_page_url: string | null;
+  path: string;
+  per_page: number;
+  prev_page_url: string | null;
+  to: number | null;
+  total: number;
 }
 
 export interface EngageMessageResponse {
@@ -95,6 +107,46 @@ export interface ConversationFilters {
   page?: number;
 }
 
+export interface EngageWhatsAppNumber {
+  id: number;
+  whatsapp_account_id: number;
+  phone_number_id: string;
+  display_phone_number: string | null;
+  verified_name: string | null;
+  quality_rating: string | null;
+  messaging_limit_tier: string | null;
+  is_default: boolean;
+  status: 'active' | 'inactive';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EngageWhatsAppAccount {
+  id: number;
+  tenant_id: number;
+  business_id: string | null;
+  waba_id: string;
+  name: string | null;
+  token_expires_at: string | null;
+  status: 'active' | 'inactive';
+  connected_by: number | null;
+  numbers?: EngageWhatsAppNumber[];
+  created_at: string;
+  updated_at: string;
+
+  current_page?: number;
+}
+
+export interface EngageWhatsAppNumberResponse {
+  message: string;
+  data: EngageWhatsAppNumber;
+}
+
+export interface EngageWhatsAppAccountResponse {
+  message?: string;
+  data: EngageWhatsAppAccount;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -103,21 +155,21 @@ export class EngageService {
   private readonly apiUrl = `${API_URL}/engage`;
 
   getConversations(
-    filters: ConversationFilters = {}
-  ): Observable<PaginatedResponse<EngageConversation>> {
-    let params = new HttpParams();
+  filters: ConversationFilters = {}
+): Observable<ApiResponse<PaginatedResponse<EngageConversation>>> {
+  let params = new HttpParams();
 
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params = params.set(key, String(value));
-      }
-    });
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params = params.set(key, String(value));
+    }
+  });
 
-    return this.http.get<PaginatedResponse<EngageConversation>>(
-      `${this.apiUrl}/conversations`,
-      { params }
-    );
-  }
+  return this.http.get<ApiResponse<PaginatedResponse<EngageConversation>>>(
+    `${this.apiUrl}/conversations`,
+    { params }
+  );
+}
 
   getConversation(id: number): Observable<{ data: EngageConversation }> {
     return this.http.get<{ data: EngageConversation }>(
@@ -125,20 +177,20 @@ export class EngageService {
     );
   }
 
-  getMessages(
-    conversationId: number,
-    page = 1,
-    perPage = 50
-  ): Observable<PaginatedResponse<EngageMessage>> {
-    const params = new HttpParams()
-      .set('page', page)
-      .set('per_page', perPage);
+ getMessages(
+  conversationId: number,
+  page = 1,
+  perPage = 50
+): Observable<ApiResponse<PaginatedResponse<EngageMessage>>> {
+  const params = new HttpParams()
+    .set('page', page)
+    .set('per_page', perPage);
 
-    return this.http.get<PaginatedResponse<EngageMessage>>(
-      `${this.apiUrl}/conversations/${conversationId}/messages`,
-      { params }
-    );
-  }
+  return this.http.get<ApiResponse<PaginatedResponse<EngageMessage>>>(
+    `${this.apiUrl}/conversations/${conversationId}/messages`,
+    { params }
+  );
+}
 
   markAsRead(
     conversationId: number
@@ -158,4 +210,71 @@ export class EngageService {
       { body }
     );
   }
+
+  // WhatsApp account management
+
+getWhatsAppAccounts(
+  page = 1,
+  perPage = 20
+): Observable<ApiResponse<PaginatedResponse<EngageWhatsAppAccount>>> {
+  const params = new HttpParams()
+    .set('page', page)
+    .set('per_page', perPage);
+
+  return this.http.get<ApiResponse<PaginatedResponse<EngageWhatsAppAccount>>>(
+    `${this.apiUrl}/whatsapp/accounts`,
+    { params }
+  );
+}
+
+getWhatsAppAccount(
+  accountId: number
+): Observable<ApiResponse<EngageWhatsAppAccount>> {
+  return this.http.get<ApiResponse<EngageWhatsAppAccount>>(
+    `${this.apiUrl}/whatsapp/accounts/${accountId}`
+  );
+}
+
+getWhatsAppNumbers(
+  page = 1,
+  perPage = 20
+): Observable<ApiResponse<PaginatedResponse<EngageWhatsAppNumber>>> {
+  const params = new HttpParams()
+    .set('page', page)
+    .set('per_page', perPage);
+
+  return this.http.get<ApiResponse<PaginatedResponse<EngageWhatsAppNumber>>>(
+    `${this.apiUrl}/whatsapp/numbers`,
+    { params }
+  );
+}
+
+setDefaultWhatsAppNumber(
+  numberId: number
+): Observable<ApiResponse<EngageWhatsAppNumber>> {
+  return this.http.post<ApiResponse<EngageWhatsAppNumber>>(
+    `${this.apiUrl}/whatsapp/numbers/${numberId}/default`,
+    {}
+  );
+}
+
+updateWhatsAppAccountStatus(
+  accountId: number,
+  status: 'active' | 'inactive'
+): Observable<ApiResponse<EngageWhatsAppAccount>> {
+  return this.http.patch<ApiResponse<EngageWhatsAppAccount>>(
+    `${this.apiUrl}/whatsapp/accounts/${accountId}/status`,
+    { status }
+  );
+}
+
+updateWhatsAppNumberStatus(
+  numberId: number,
+  status: 'active' | 'inactive'
+): Observable<ApiResponse<EngageWhatsAppNumber>> {
+  return this.http.patch<ApiResponse<EngageWhatsAppNumber>>(
+    `${this.apiUrl}/whatsapp/numbers/${numberId}/status`,
+    { status }
+  );
+}
 }

@@ -68,53 +68,51 @@ export class EngageInboxComponent implements OnInit {
   }
 
   loadConversations(page = 1): void {
-    this.loadingConversations = true;
-    this.errorMessage = '';
+  this.loadingConversations = true;
+  this.errorMessage = '';
 
-    this.engageService
-      .getConversations({
-        page,
-        per_page: 20,
-      })
-      .pipe(finalize(() => (this.loadingConversations = false)))
-      .subscribe({
-        next: response => {
-          this.loadingConversations = false;
-          this.currentPage = response.meta.current_page;
-          this.lastPage = response.meta.last_page;
-          this.totalConversations = response.meta.total;
+  this.engageService
+    .getConversations({
+      page,
+      per_page: 20,
+    })
+    .pipe(finalize(() => (this.loadingConversations = false)))
+    .subscribe({
+      next: (response) => {
+        const pagination = response.data;
 
-          this.conversations = response.data.map(conversation =>
-            this.mapConversation(conversation)
+        this.currentPage = pagination.current_page;
+        this.lastPage = pagination.last_page;
+        this.totalConversations = pagination.total;
+
+        this.conversations = pagination.data.map((conversation) =>
+          this.mapConversation(conversation)
+        );
+
+        if (this.selectedConversation) {
+          const updatedSelection = this.conversations.find(
+            (item) => item.id === this.selectedConversation?.id
           );
 
-          if (this.selectedConversation) {
-            const updatedSelection = this.conversations.find(
-              item => item.id === this.selectedConversation?.id
-            );
+          this.selectedConversation = updatedSelection ?? null;
+        }
 
-            if (updatedSelection) {
-              this.selectedConversation = updatedSelection;
-            } else {
-              this.selectedConversation = null;
-            }
-          }
+        if (!this.selectedConversation && this.conversations.length) {
+          this.selectConversation(this.conversations[0]);
+        }
 
-          if (!this.selectedConversation && this.conversations.length) {
-            this.selectConversation(this.conversations[0]);
-          }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Failed to load Engage conversations:', error);
 
-          this.cdr.detectChanges();
-        },
-        error: error => {
-          console.error('Failed to load Engage conversations:', error);
-          this.errorMessage =
-            error?.error?.message || 'Unable to load conversations.';
+        this.errorMessage =
+          error?.error?.message || 'Unable to load conversations.';
 
-          this.cdr.detectChanges();
-        },
-      });
-  }
+        this.cdr.detectChanges();
+      },
+    });
+}
 
   private mapConversation(
     conversation: EngageConversation
@@ -248,9 +246,11 @@ export class EngageInboxComponent implements OnInit {
         next: response => {
           this.loadingMessages = false;
           // API returns newest-first; reverse for chronological chat display.
-          conversation.messages = response.data
-            .map(message => this.mapMessage(message))
-            .reverse();
+         const pagination = response.data;
+
+        conversation.messages = pagination.data
+          .map((message) => this.mapMessage(message))
+          .reverse();
 
           this.cdr.detectChanges();
         },

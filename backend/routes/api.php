@@ -39,6 +39,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\Engage\WhatsAppWebhookController;
+use App\Http\Controllers\Engage\EngageWhatsAppController;
 
 //Login
 Route::post('/login', [AuthController::class, 'login']);
@@ -618,5 +619,40 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
             EngageConversationController::class,
             'storeMessage',
         ])->middleware('permission:engage.conversations.reply');
+    });
+
+    Route::prefix('engage/whatsapp')
+    ->name('engage.whatsapp.')
+    ->group(function () {
+
+        Route::get('/accounts', [
+            EngageWhatsAppController::class,
+            'accounts',
+        ])->middleware('permission:engage.whatsapp.view');
+
+        Route::get('/accounts/{account}', [
+            EngageWhatsAppController::class,
+            'showAccount',
+        ])->middleware('permission:engage.whatsapp.view');
+
+        Route::get('/numbers', [
+            EngageWhatsAppController::class,
+            'numbers',
+        ])->middleware('permission:engage.whatsapp.view');
+
+        Route::post('/numbers/{number}/default', [
+            EngageWhatsAppController::class,
+            'setDefaultNumber',
+        ])->middleware('permission:engage.whatsapp.manage');
+
+        Route::patch('/accounts/{account}/status', [
+            EngageWhatsAppController::class,
+            'updateAccountStatus',
+        ])->middleware('permission:engage.whatsapp.manage');
+
+        Route::patch('/numbers/{number}/status', [
+            EngageWhatsAppController::class,
+            'updateNumberStatus',
+        ])->middleware('permission:engage.whatsapp.manage');
     });
 });

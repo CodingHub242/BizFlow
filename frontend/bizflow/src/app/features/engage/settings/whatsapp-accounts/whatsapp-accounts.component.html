@@ -1,0 +1,249 @@
+
+<section class="whatsapp-accounts">
+
+  <header class="page-heading">
+    <div>
+      <h1>WhatsApp Accounts</h1>
+      <p>
+        Manage your connected WhatsApp Business accounts and phone numbers.
+      </p>
+    </div>
+
+    <div class="heading-actions">
+      <span class="account-count">
+        {{ totalAccounts }} account{{ totalAccounts === 1 ? '' : 's' }}
+      </span>
+    </div>
+  </header>
+
+  <section class="overview-card">
+    <div class="overview-icon">W</div>
+
+    <div class="overview-content">
+      <strong>WhatsApp Business connections</strong>
+      <p>
+        Manage the business accounts and phone numbers used by
+        XBeez Engage to communicate with your customers.
+      </p>
+    </div>
+
+    <div class="overview-status">
+      <span class="status-dot"></span>
+      Account management
+    </div>
+  </section>
+
+  <div class="feedback success" *ngIf="successMessage">
+    {{ successMessage }}
+  </div>
+
+  <div class="feedback error" *ngIf="errorMessage">
+    <span>{{ errorMessage }}</span>
+    <button type="button" (click)="loadAccounts()">Retry</button>
+  </div>
+
+  <section class="accounts-section">
+
+    <div class="section-heading">
+      <div>
+        <h2>Connected accounts</h2>
+        <p>View and manage your WhatsApp Business connections.</p>
+      </div>
+
+      <button
+        type="button"
+        class="refresh-button"
+        (click)="loadAccounts()"
+        [disabled]="loading">
+        {{ loading ? 'Refreshing...' : '↻ Refresh' }}
+      </button>
+    </div>
+
+    <div class="loading-state" *ngIf="loading && !accounts.length">
+      Loading WhatsApp accounts...
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && !accounts.length && !errorMessage">
+      <div class="empty-icon">W</div>
+      <h3>No WhatsApp accounts connected</h3>
+      <p>
+        Your connected WhatsApp Business accounts will appear here.
+      </p>
+    </div>
+
+    <article
+      class="account-card"
+      *ngFor="let account of accounts; trackBy: trackAccount">
+
+      <div class="account-header">
+
+        <div class="account-identity">
+          <div class="account-icon">W</div>
+
+          <div class="account-name">
+            <h3>{{ account.name || 'WhatsApp Business Account' }}</h3>
+            <span>WABA ID: {{ account.waba_id }}</span>
+          </div>
+        </div>
+
+        <div class="account-header-actions">
+          <span
+            class="status-pill"
+            [class.active]="account.status === 'active'"
+            [class.inactive]="account.status !== 'active'">
+            {{ account.status }}
+          </span>
+
+          <button
+            type="button"
+            class="text-action"
+            [disabled]="busyAction === 'account-' + account.id"
+            (click)="toggleAccountStatus(account)">
+            {{
+              busyAction === 'account-' + account.id
+                ? 'Updating...'
+                : account.status === 'active'
+                  ? 'Deactivate'
+                  : 'Activate'
+            }}
+          </button>
+        </div>
+
+      </div>
+
+      <div class="account-meta">
+        <div>
+          <span>Business ID</span>
+          <strong>{{ account.business_id || 'Not available' }}</strong>
+        </div>
+
+        <div>
+          <span>Connected numbers</span>
+          <strong>{{ getNumberCount(account) }}</strong>
+        </div>
+
+        <div>
+          <span>Token expiry</span>
+          <strong>
+            {{ account.token_expires_at
+              ? (account.token_expires_at | date: 'mediumDate')
+              : 'Not available' }}
+          </strong>
+        </div>
+      </div>
+
+      <div class="numbers-section">
+
+        <div class="numbers-heading">
+          <div>
+            <h4>Phone numbers</h4>
+            <p>Numbers associated with this business account.</p>
+          </div>
+        </div>
+
+        <div
+          class="number-row"
+          *ngFor="let number of account.numbers || []; trackBy: trackNumber">
+
+          <div class="number-identity">
+            <div class="phone-icon">☎</div>
+
+            <div>
+              <strong>
+                {{ number.display_phone_number || number.phone_number_id }}
+              </strong>
+
+              <span>
+                {{ number.verified_name || 'WhatsApp Business number' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="number-details">
+            <span
+              class="status-pill"
+              [class.active]="number.status === 'active'"
+              [class.inactive]="number.status !== 'active'">
+              {{ number.status }}
+            </span>
+
+            <span
+              class="default-label"
+              *ngIf="number.is_default">
+              Default number
+            </span>
+
+            <span
+              class="quality-label"
+              *ngIf="number.quality_rating">
+              Quality: {{ number.quality_rating }}
+            </span>
+          </div>
+
+          <div class="number-actions">
+
+            <button
+              type="button"
+              class="secondary-button"
+              *ngIf="!number.is_default && number.status === 'active'"
+              [disabled]="
+                account.status !== 'active' ||
+                busyAction === 'default-' + number.id
+              "
+              (click)="setDefaultNumber(number)">
+              {{
+                busyAction === 'default-' + number.id
+                  ? 'Updating...'
+                  : 'Set as default'
+              }}
+            </button>
+
+            <button
+              type="button"
+              class="text-action"
+              [disabled]="busyAction === 'number-' + number.id"
+              (click)="toggleNumberStatus(number)">
+              {{
+                busyAction === 'number-' + number.id
+                  ? 'Updating...'
+                  : number.status === 'active'
+                    ? 'Deactivate'
+                    : 'Activate'
+              }}
+            </button>
+
+          </div>
+
+        </div>
+
+        <div
+          class="no-numbers"
+          *ngIf="!account.numbers?.length">
+          No phone numbers are associated with this account.
+        </div>
+
+      </div>
+
+    </article>
+
+    <div class="pagination" *ngIf="lastPage > 1">
+      <button
+        type="button"
+        (click)="previousPage()"
+        [disabled]="currentPage === 1 || loading">
+        Previous
+      </button>
+
+      <span>Page {{ currentPage }} of {{ lastPage }}</span>
+
+      <button
+        type="button"
+        (click)="nextPage()"
+        [disabled]="currentPage === lastPage || loading">
+        Next
+      </button>
+    </div>
+
+  </section>
+
+</section>
