@@ -85,7 +85,7 @@ export class EngageInboxComponent implements OnInit {
         this.lastPage = pagination.last_page;
         this.totalConversations = pagination.total;
 
-        this.conversations = pagination.data.map((conversation) =>
+        this.conversations = (pagination?.data ?? []).map((conversation) =>
           this.mapConversation(conversation)
         );
 
