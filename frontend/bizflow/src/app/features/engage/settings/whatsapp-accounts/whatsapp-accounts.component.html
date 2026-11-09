@@ -15,8 +15,10 @@
       </span>
     </div>
   </header>
+  
+  
 
-  <section class="overview-card">
+  <!-- <section class="overview-card">
     <div class="overview-icon">W</div>
 
     <div class="overview-content">
@@ -31,7 +33,7 @@
       <span class="status-dot"></span>
       Account management
     </div>
-  </section>
+  </section> -->
 
   <div class="feedback success" *ngIf="successMessage">
     {{ successMessage }}
@@ -41,6 +43,80 @@
     <span>{{ errorMessage }}</span>
     <button type="button" (click)="loadAccounts()">Retry</button>
   </div>
+
+  <section class="whatsapp-connect">
+  <div class="connect-heading">
+    <div>
+      <h2>Connect WhatsApp Business</h2>
+      <p>
+        Connect a WhatsApp Business account to start managing
+        customer conversations through XBeez Engage.
+      </p>
+    </div>
+  </div>
+
+  <div class="connect-options">
+    <button
+      type="button"
+      class="connect-option"
+      [disabled]="!facebookSdkReady || !!connectingMode"
+      (click)="connectWhatsApp('standard')"
+    >
+      <span>
+        {{ connectingMode === 'standard'
+          ? 'Connecting...'
+          : 'Connect WhatsApp Cloud API' }}
+      </span>
+    </button>
+
+    <button
+      type="button"
+      class="connect-option secondary"
+      [disabled]="!facebookSdkReady || !!connectingMode"
+      (click)="connectWhatsApp('coexistence')"
+    >
+      <span>
+        {{ connectingMode === 'coexistence'
+          ? 'Connecting...'
+          : 'Connect Existing WhatsApp Business App' }}
+      </span>
+    </button>
+  </div>
+
+  <p class="sdk-status">
+    <span
+      class="status-dot"
+      [class.ready]="facebookSdkReady"
+    ></span>
+
+    {{ facebookSdkReady
+      ? 'Meta connection is ready'
+      : 'Preparing Meta connection...' }}
+  </p>
+  </section>
+
+  @if (pendingSignupResult) {
+    <section class="signup-result">
+      <h3>Meta onboarding response received</h3>
+
+      <p>
+        <strong>WhatsApp Business Account ID:</strong>
+        {{ pendingSignupResult.wabaId }}
+      </p>
+
+      <p>
+        <strong>Phone Number ID:</strong>
+        {{ pendingSignupResult.phoneNumberId }}
+      </p>
+
+      @if (pendingSignupResult.businessId) {
+        <p>
+          <strong>Business ID:</strong>
+          {{ pendingSignupResult.businessId }}
+        </p>
+      }
+    </section>
+  }
 
   <section class="accounts-section">
 
@@ -57,6 +133,10 @@
         [disabled]="loading">
         {{ loading ? 'Refreshing...' : '↻ Refresh' }}
       </button>
+
+      <!-- <button type="button" (click)="testFacebookSdk()">
+  Test Facebook SDK
+</button> -->
     </div>
 
     <div class="loading-state" *ngIf="loading && !accounts.length">

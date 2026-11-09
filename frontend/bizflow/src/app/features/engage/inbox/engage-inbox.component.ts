@@ -79,6 +79,7 @@ export class EngageInboxComponent implements OnInit {
     .pipe(finalize(() => (this.loadingConversations = false)))
     .subscribe({
       next: (response) => {
+        this.loadingConversations = false;
         const pagination = response.data;
 
         this.currentPage = pagination.current_page;
@@ -104,7 +105,8 @@ export class EngageInboxComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => {
-        console.error('Failed to load Engage conversations:', error);
+        this.loadingConversations = false;
+        //console.error('Failed to load Engage conversations:', error);
 
         this.errorMessage =
           error?.error?.message || 'Unable to load conversations.';

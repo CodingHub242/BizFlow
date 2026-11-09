@@ -490,3 +490,87 @@
     margin-left: 0;
   }
 }
+
+
+.whatsapp-connect {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 24px;
+}
+
+.connect-heading {
+  margin-bottom: 18px;
+
+  h2 {
+    margin: 0 0 6px;
+    color: #1e293b;
+    font-size: 18px;
+  }
+
+  p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+  }
+}
+
+.connect-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.connect-option {
+  padding: 11px 18px;
+  border: 1px solid #246b4a;
+  border-radius: 7px;
+  background: #246b4a;
+  color: #fff;
+  cursor: pointer;
+
+  &.secondary {
+    background: #fff;
+    color: #246b4a;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.sdk-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+
+  &.ready {
+    background: #16a34a;
+  }
+}
+
+.signup-result {
+  padding: 18px;
+  margin-bottom: 20px;
+  background: #f8faf9;
+  border: 1px solid #dce8df;
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+
+  h3 {
+    margin-top: 0;
+    color: #246b4a;
+  }
+}

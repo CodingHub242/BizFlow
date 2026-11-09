@@ -6,6 +6,9 @@ import {
   EngageWhatsAppAccount,
   EngageWhatsAppNumber,
 } from '../../../../core/services/engage.service';
+import { FacebookSdkService } from '../../../../core/services/facebook-sdk.service';
+import { environment } from '../../../../../environments/environment';
+import {WhatsAppEmbeddedSignupService,WhatsAppSignupMode,WhatsAppSignupResult} from '../../../../core/services/whatsapp-embedded-signup.service';
 
 @Component({
   selector: 'app-whatsapp-accounts',
@@ -17,6 +20,14 @@ import {
 export class WhatsappAccountsComponent implements OnInit {
   private readonly engageService = inject(EngageService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly facebookSdk = inject(FacebookSdkService);
+
+  private readonly embeddedSignup = inject(WhatsAppEmbeddedSignupService);
+
+  facebookSdkReady = false;
+  connectingMode: WhatsAppSignupMode | null = null;
+
+  pendingSignupResult: WhatsAppSignupResult | null = null;
 
   accounts: EngageWhatsAppAccount[] = [];
 
@@ -32,6 +43,64 @@ export class WhatsappAccountsComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadAccounts();
+     this.initializeFacebookSdk();//initialize the Facebook SDK when the component is initialized
+  }
+
+  private async initializeFacebookSdk(): Promise<void> {
+    try {
+      await this.embeddedSignup.initialize();
+
+      this.facebookSdkReady = true;
+      this.cdr.detectChanges();
+
+      console.log('WhatsApp Embedded Signup is ready.');
+    } catch (error) {
+      console.error('WhatsApp SDK initialization failed:', error);
+
+      this.errorMessage =
+        'Unable to initialize WhatsApp connection. Please refresh and try again.';
+
+      this.cdr.detectChanges();
+    }
+  }
+
+  async connectWhatsApp(mode: WhatsAppSignupMode): Promise<void> {
+    if (!this.facebookSdkReady || this.connectingMode) {
+      return;
+    }
+
+    this.clearMessages();
+    this.pendingSignupResult = null;
+    this.connectingMode = mode;
+
+    try {
+      const result = await this.embeddedSignup.launch(mode);
+
+      this.pendingSignupResult = result;
+
+      this.successMessage =
+        'Meta onboarding completed. WhatsApp account details received.';
+
+      console.log('WhatsApp signup completed:', {
+        wabaId: result.wabaId,
+        phoneNumberId: result.phoneNumberId,
+        businessId: result.businessId,
+      });
+
+      this.cdr.detectChanges();
+
+    } catch (error) {
+      console.error('WhatsApp signup failed:', error);
+
+      this.errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'WhatsApp onboarding failed. Please try again.';
+
+    } finally {
+      this.connectingMode = null;
+      this.cdr.detectChanges();
+    }
   }
 
   loadAccounts(page = this.currentPage): void {
@@ -55,6 +124,7 @@ export class WhatsappAccountsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (error) => {
+        this.loading = false;
         this.errorMessage =
           error?.error?.message ??
           'Unable to load WhatsApp accounts. Please try again.';
@@ -180,4 +250,16 @@ export class WhatsappAccountsComponent implements OnInit {
     this.errorMessage = '';
     this.successMessage = '';
   }
+
+//   async testFacebookSdk(): Promise<void> {
+//   try {
+//     const fb = await this.facebookSdk.getFacebookSdk();
+
+//     console.log('Facebook SDK loaded successfully:', fb);
+//     console.log('Meta App ID:', environment.meta.appId);
+
+//   } catch (error) {
+//     console.error('Facebook SDK loading failed:', error);
+//   }
+// }
 }

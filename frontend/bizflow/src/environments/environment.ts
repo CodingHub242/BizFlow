@@ -3,7 +3,14 @@
 // The list of file replacements can be found in `angular.json`.
 
 export const environment = {
-  production: false
+  production: false,
+
+   meta: {
+    appId: '1117661667897267',
+    configId: '1497842035738803',
+    graphApiVersion: 'v26.0',
+    embeddedSignupVersion: 'v4',
+  },
 };
 
 /*

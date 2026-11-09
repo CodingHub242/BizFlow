@@ -47,6 +47,9 @@ return [
     'whatsapp' => [
         'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
         'app_secret' => env('META_APP_SECRET'),
+        'test_access_token' => env('WHATSAPP_TEST_ACCESS_TOKEN'),
+        'test_waba_id' => env('WHATSAPP_TEST_WABA_ID'),
+        'test_phone_number_id' => env('WHATSAPP_TEST_PHONE_NUMBER_ID'),
     ],
 
 
