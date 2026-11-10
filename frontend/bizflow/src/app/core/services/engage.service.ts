@@ -75,12 +75,14 @@ export interface ApiResponse<T> {
 
 export interface PaginatedResponse<T> {
   data: T[];
+
   links: {
     first: string | null;
     last: string | null;
     prev: string | null;
     next: string | null;
   };
+
   meta: {
     current_page: number;
     last_page: number;
@@ -179,12 +181,12 @@ export class EngageService {
   conversationId: number,
   page = 1,
   perPage = 50
-): Observable<ApiResponse<PaginatedResponse<EngageMessage>>> {
+): Observable<PaginatedResponse<EngageMessage>> {
   const params = new HttpParams()
     .set('page', page)
     .set('per_page', perPage);
 
-  return this.http.get<ApiResponse<PaginatedResponse<EngageMessage>>>(
+  return this.http.get<PaginatedResponse<EngageMessage>>(
     `${this.apiUrl}/conversations/${conversationId}/messages`,
     { params }
   );

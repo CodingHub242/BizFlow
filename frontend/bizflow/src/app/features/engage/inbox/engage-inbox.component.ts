@@ -231,9 +231,9 @@ export class EngageInboxComponent implements OnInit {
           // API returns newest-first; reverse for chronological chat display.
          const pagination = response.data;
 
-        conversation.messages = pagination.data
-          .map((message) => this.mapMessage(message))
-          .reverse();
+        conversation.messages = response.data
+        .map(message => this.mapMessage(message))
+        .reverse();
 
           this.cdr.detectChanges();
         },
