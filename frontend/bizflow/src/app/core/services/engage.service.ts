@@ -73,24 +73,21 @@ export interface ApiResponse<T> {
 }
 
 export interface PaginatedResponse<T> {
-  current_page: number;
   data: T[];
-  first_page_url: string | null;
-  from: number | null;
-  last_page: number;
-  last_page_url: string | null;
   links: {
-    url: string | null;
-    label: string;
-    page: number | null;
-    active: boolean;
-  }[];
-  next_page_url: string | null;
-  path: string;
-  per_page: number;
-  prev_page_url: string | null;
-  to: number | null;
-  total: number;
+    first: string | null;
+    last: string | null;
+    prev: string | null;
+    next: string | null;
+  };
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+  };
 }
 
 export interface EngageMessageResponse {
@@ -156,7 +153,7 @@ export class EngageService {
 
   getConversations(
   filters: ConversationFilters = {}
-): Observable<ApiResponse<PaginatedResponse<EngageConversation>>> {
+): Observable<PaginatedResponse<EngageConversation>> {
   let params = new HttpParams();
 
   Object.entries(filters).forEach(([key, value]) => {
@@ -165,7 +162,7 @@ export class EngageService {
     }
   });
 
-  return this.http.get<ApiResponse<PaginatedResponse<EngageConversation>>>(
+  return this.http.get<PaginatedResponse<EngageConversation>>(
     `${this.apiUrl}/conversations`,
     { params }
   );
