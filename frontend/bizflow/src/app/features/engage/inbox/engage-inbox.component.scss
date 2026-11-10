@@ -390,9 +390,19 @@
 
 .messages-area {
   flex: 1;
-  min-height: 330px;
-  padding: 16px 12px;
+  height: 500px;
+  max-height: 500px;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  min-height: 0;
+  
   background-color: #f8f5ef;
   background-image:
     radial-gradient(rgba(148, 163, 184, 0.09) 0.7px, transparent 0.7px);

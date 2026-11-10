@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject,ChangeDetectorRef,OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { finalize, timer,Subscription } from 'rxjs';
 
 import {
   EngageService,
@@ -41,7 +41,7 @@ interface EngageConversationView {
   standalone: true,
   imports: [CommonModule, FormsModule],
 })
-export class EngageInboxComponent implements OnInit {
+export class EngageInboxComponent implements OnInit,OnDestroy {
   private readonly engageService = inject(EngageService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -62,6 +62,9 @@ export class EngageInboxComponent implements OnInit {
   currentPage = 1;
   lastPage = 1;
   totalConversations = 0;
+
+  private messagePollingSubscription?: Subscription;
+  private lastMessagePollTime = 0;
 
   ngOnInit(): void {
     this.loadConversations();
@@ -208,13 +211,20 @@ export class EngageInboxComponent implements OnInit {
     return this.conversations.filter(c => c.status === 'closed').length;
   }
 
-  selectConversation(conversation: EngageConversationView): void {
+  selectConversation(
+    conversation: EngageConversationView
+  ): void {
+    this.stopMessagePolling();
+
     this.selectedConversation = conversation;
+
     this.loadMessages(conversation);
 
     if (conversation.unread > 0) {
       this.markConversationAsRead(conversation);
     }
+
+    this.startMessagePolling(conversation);
   }
 
   private loadMessages(conversation: EngageConversationView): void {
@@ -321,9 +331,85 @@ export class EngageInboxComponent implements OnInit {
     }
   }
 
+  private startMessagePolling(
+    conversation: EngageConversationView
+  ): void {
+    // Stop polling the previously selected conversation.
+    this.stopMessagePolling();
+
+    this.messagePollingSubscription = timer(5000, 5000)
+      .subscribe(() => {
+        // Only poll the currently selected conversation.
+        if (this.selectedConversation?.id !== conversation.id) {
+          this.stopMessagePolling();
+          return;
+        }
+
+        this.refreshConversationMessages(conversation);
+      });
+  }
+
+  private refreshConversationMessages(
+    conversation: EngageConversationView
+  ): void {
+    // Prevent overlapping requests.
+    const now = Date.now();
+
+    if (now - this.lastMessagePollTime < 4500) {
+      return;
+    }
+
+    this.lastMessagePollTime = now;
+
+    this.engageService
+      .getMessages(conversation.id)
+      .subscribe({
+        next: response => {
+          const latestMessages = response.data
+            .map(message => this.mapMessage(message))
+            .reverse();
+
+          const existingIds = new Set(
+            conversation.messages.map(message => message.id)
+          );
+
+          const newMessages = latestMessages.filter(
+            message => !existingIds.has(message.id)
+          );
+
+          if (newMessages.length > 0) {
+            conversation.messages = latestMessages;
+
+            conversation.preview =
+              latestMessages[latestMessages.length - 1].text;
+
+            conversation.time = 'Just now';
+
+            // Keep the conversation read while it is open.
+            this.markConversationAsRead(conversation);
+
+            this.cdr.detectChanges();
+          }
+        },
+        error: error => {
+          console.error('Message polling failed:', error);
+        }
+      });
+  }
+
+  private stopMessagePolling(): void {
+    this.messagePollingSubscription?.unsubscribe();
+    this.messagePollingSubscription = undefined;
+  }
+
+
   nextPage(): void {
     if (this.currentPage < this.lastPage) {
       this.loadConversations(this.currentPage + 1);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.stopMessagePolling();
   }
 }
