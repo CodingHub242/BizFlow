@@ -136,6 +136,22 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     };
   }
 
+  private upsertMessage(
+    conversation: EngageConversationView,
+    message: EngageMessageView
+  ): void {
+    const existingIndex = conversation.messages.findIndex(
+      item => item.id === message.id
+    );
+
+    if (existingIndex !== -1) {
+      // Update the existing message instead of adding another bubble.
+      conversation.messages[existingIndex] = message;
+    } else {
+      conversation.messages.push(message);
+    }
+  }
+
   private getInitials(name: string): string {
     return name
       .trim()
@@ -275,7 +291,7 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     });
   }
 
-  sendMessage(): void {
+ sendMessage(): void {
     const body = this.messageText.trim();
     const conversation = this.selectedConversation;
 
@@ -288,13 +304,19 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
 
     this.engageService
       .sendMessage(conversation.id, body)
-      .pipe(finalize(() => (this.sendingMessage = false)))
+      .pipe(
+        finalize(() => {
+          this.sendingMessage = false;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
         next: response => {
-          this.sendingMessage = false;
           const message = this.mapMessage(response.data);
 
-          conversation.messages.push(message);
+          // Update the existing message or insert it once.
+          this.upsertMessage(conversation, message);
+
           conversation.preview = body;
           conversation.time = 'Just now';
 
@@ -303,13 +325,13 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
           this.cdr.detectChanges();
         },
         error: error => {
-          this.sendingMessage = false;
-          console.error('Failed to queue outbound message:', error);
+          console.error('Failed to send WhatsApp message:', error);
+
           this.messageError =
-            error?.error?.message || 'Unable to queue your message.';
+            error?.error?.message || 'Unable to send your message.';
 
           this.cdr.detectChanges();
-        },
+        }
       });
   }
 
@@ -349,10 +371,9 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       });
   }
 
-  private refreshConversationMessages(
+ private refreshConversationMessages(
     conversation: EngageConversationView
   ): void {
-    // Prevent overlapping requests.
     const now = Date.now();
 
     if (now - this.lastMessagePollTime < 4500) {
@@ -365,38 +386,33 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       .getMessages(conversation.id)
       .subscribe({
         next: response => {
+          // Laravel returns the latest messages newest-first.
+          // Reverse them for chronological chat display.
           const latestMessages = response.data
             .map(message => this.mapMessage(message))
             .reverse();
 
-          const existingIds = new Set(
-            conversation.messages.map(message => message.id)
-          );
+          // The server response is authoritative.
+          // This reconciles new messages and status changes,
+          // while removing stale or duplicated local entries.
+          conversation.messages = latestMessages;
 
-          const newMessages = latestMessages.filter(
-            message => !existingIds.has(message.id)
-          );
+          const latestMessage =
+            latestMessages[latestMessages.length - 1];
 
-          if (newMessages.length > 0) {
-            conversation.messages = latestMessages;
-
-            conversation.preview =
-              latestMessages[latestMessages.length - 1].text;
-
+          if (latestMessage) {
+            conversation.preview = latestMessage.text;
             conversation.time = 'Just now';
-
-            // Keep the conversation read while it is open.
-            this.markConversationAsRead(conversation);
-
-            this.cdr.detectChanges();
           }
+
+          this.cdr.detectChanges();
         },
         error: error => {
           console.error('Message polling failed:', error);
         }
       });
   }
-
+  
   private stopMessagePolling(): void {
     this.messagePollingSubscription?.unsubscribe();
     this.messagePollingSubscription = undefined;
