@@ -238,6 +238,7 @@ export class EngageInboxComponent implements OnInit {
           this.cdr.detectChanges();
         },
         error: error => {
+          this.loadingMessages = false;
           console.error('Failed to load conversation messages:', error);
           this.messageError =
             error?.error?.message || 'Unable to load messages.';
@@ -292,6 +293,7 @@ export class EngageInboxComponent implements OnInit {
           this.cdr.detectChanges();
         },
         error: error => {
+          this.sendingMessage = false;
           console.error('Failed to queue outbound message:', error);
           this.messageError =
             error?.error?.message || 'Unable to queue your message.';
