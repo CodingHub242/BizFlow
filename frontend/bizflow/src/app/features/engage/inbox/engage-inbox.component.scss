@@ -402,11 +402,38 @@
   scroll-behavior: smooth;
   overscroll-behavior: contain;
   min-height: 0;
-  
+
   background-color: #f8f5ef;
   background-image:
     radial-gradient(rgba(148, 163, 184, 0.09) 0.7px, transparent 0.7px);
   background-size: 16px 16px;
+}
+
+/* Scrollbar styling */
+.messages-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-area::-webkit-scrollbar-thumb {
+  background: #c5c5c5;
+  border-radius: 10px;
+}
+
+.messages-area::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .messages-area {
+    height: calc(100dvh - 300px);
+    max-height: calc(100dvh - 300px);
+    min-height: 250px;
+  }
 }
 
 .message-row {
