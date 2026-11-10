@@ -9,6 +9,8 @@ use App\Models\EngageWhatsAppNumber;
 use App\Services\Engage\EngageContactService;
 use App\Services\Engage\EngageConversationService;
 use Illuminate\Http\JsonResponse;
+use App\Models\EngageMessage;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppWebhookController extends Controller
@@ -114,6 +116,108 @@ class WhatsAppWebhookController extends Controller
             }
 
             $tenantId = (int) $whatsappNumber->tenant_id;
+
+            // 5. Process outbound message status notifications.
+            foreach ($value['statuses'] ?? [] as $statusUpdate) {
+                $providerMessageId = $statusUpdate['id'] ?? null;
+                $providerStatus = $statusUpdate['status'] ?? null;
+
+                if (
+                    !is_string($providerMessageId) ||
+                    !is_string($providerStatus) ||
+                    !in_array($providerStatus, [
+                        'sent',
+                        'delivered',
+                        'read',
+                        'failed',
+                    ], true)
+                ) {
+                    continue;
+                }
+
+                // Find the outbound message belonging to this tenant
+                // and this specific WhatsApp number.
+                $message = EngageMessage::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('provider_message_id', $providerMessageId)
+                    ->where('direction', 'outbound')
+                    ->whereHas('conversation', function ($query) use ($tenantId, $whatsappNumber) {
+                        $query
+                            ->where('tenant_id', $tenantId)
+                            ->where('whatsapp_number_id', $whatsappNumber->id);
+                    })
+                    ->first();
+
+                if (!$message) {
+                    Log::warning('WhatsApp status received for an unknown outbound message.', [
+                        'tenant_id' => $tenantId,
+                        'phone_number_id' => $phoneNumberId,
+                        'provider_message_id' => $providerMessageId,
+                        'provider_status' => $providerStatus,
+                    ]);
+
+                    continue;
+                }
+
+                $statusTimestamp = isset($statusUpdate['timestamp'])
+                    ? Carbon::createFromTimestamp((int) $statusUpdate['timestamp'])
+                    : now();
+
+                // Prevent delayed webhook events from downgrading message status.
+                $statusRank = [
+                    'queued' => 0,
+                    'sent' => 1,
+                    'delivered' => 2,
+                    'read' => 3,
+                ];
+
+                $currentRank = $statusRank[$message->status] ?? -1;
+                $incomingRank = $statusRank[$providerStatus] ?? -1;
+
+                if (
+                    $message->status === 'failed' &&
+                    $providerStatus !== 'failed'
+                ) {
+                    continue;
+                }
+
+                if (
+                    $providerStatus !== 'failed' &&
+                    $incomingRank <= $currentRank
+                ) {
+                    continue;
+                }
+
+                if (
+                    $providerStatus === 'failed' &&
+                    in_array($message->status, ['delivered', 'read'], true)
+                ) {
+                    continue;
+                }
+
+                $metadata = $message->metadata ?? [];
+                $metadata['provider_status'] = $providerStatus;
+
+                if ($providerStatus === 'failed') {
+                    $metadata['provider_errors'] = $statusUpdate['errors'] ?? [];
+                }
+
+                $updates = [
+                    'status' => $providerStatus,
+                    'metadata' => $metadata,
+                ];
+
+                if ($providerStatus === 'sent') {
+                    $updates['sent_at'] = $statusTimestamp;
+                } elseif ($providerStatus === 'delivered') {
+                    $updates['delivered_at'] = $statusTimestamp;
+                } elseif ($providerStatus === 'read') {
+                    $updates['read_at'] = $statusTimestamp;
+                }
+
+                $message->update($updates);
+            }
+
 
             // 5. Process incoming messages.
             foreach ($value['messages'] ?? [] as $incoming) {
