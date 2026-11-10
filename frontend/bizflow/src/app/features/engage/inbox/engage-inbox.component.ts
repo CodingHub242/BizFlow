@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject,ChangeDetectorRef,OnDestroy } from '@angular/core';
+import { Component, OnInit, inject,ChangeDetectorRef,OnDestroy,ElementRef,ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { finalize, timer,Subscription } from 'rxjs';
 
@@ -42,6 +42,8 @@ interface EngageConversationView {
   imports: [CommonModule, FormsModule],
 })
 export class EngageInboxComponent implements OnInit,OnDestroy {
+  @ViewChild('messagesArea')
+  private messagesArea?: ElementRef<HTMLDivElement>;
   private readonly engageService = inject(EngageService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -262,6 +264,7 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
         .reverse();
 
           this.cdr.detectChanges();
+          this.scrollToBottom(false);
         },
         error: error => {
           this.loadingMessages = false;
@@ -323,6 +326,8 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
           this.messageText = '';
 
           this.cdr.detectChanges();
+
+          this.scrollToBottom();
         },
         error: error => {
           console.error('Failed to send WhatsApp message:', error);
@@ -385,16 +390,26 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     this.engageService
       .getMessages(conversation.id)
       .subscribe({
-        next: response => {
-          // Laravel returns the latest messages newest-first.
-          // Reverse them for chronological chat display.
+       next: response => {
           const latestMessages = response.data
             .map(message => this.mapMessage(message))
             .reverse();
 
-          // The server response is authoritative.
-          // This reconciles new messages and status changes,
-          // while removing stale or duplicated local entries.
+          const existingIds = new Set(
+            conversation.messages.map(message => message.id)
+          );
+
+          const newInboundMessages = latestMessages.filter(
+            message =>
+              !existingIds.has(message.id) &&
+              !message.outgoing
+          );
+
+          // Check scroll position before updating the messages.
+          const shouldAutoScroll =
+            newInboundMessages.length > 0 &&
+            this.isNearBottom();
+
           conversation.messages = latestMessages;
 
           const latestMessage =
@@ -406,13 +421,17 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
           }
 
           this.cdr.detectChanges();
+
+          if (shouldAutoScroll) {
+            this.scrollToBottom();
+          }
         },
         error: error => {
           console.error('Message polling failed:', error);
         }
       });
   }
-  
+
   private stopMessagePolling(): void {
     this.messagePollingSubscription?.unsubscribe();
     this.messagePollingSubscription = undefined;
@@ -424,6 +443,35 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       this.loadConversations(this.currentPage + 1);
     }
   }
+
+  private isNearBottom(): boolean {
+  const element = this.messagesArea?.nativeElement;
+
+  if (!element) {
+    return true;
+  }
+
+  const threshold = 100;
+
+  return (
+    element.scrollHeight -
+    element.scrollTop -
+    element.clientHeight
+  ) <= threshold;
+}
+
+private scrollToBottom(smooth = true): void {
+  const element = this.messagesArea?.nativeElement;
+
+  if (!element) {
+    return;
+  }
+
+  element.scrollTo({
+    top: element.scrollHeight,
+    behavior: smooth ? 'smooth' : 'auto'
+  });
+}
 
   ngOnDestroy(): void {
     this.stopMessagePolling();
