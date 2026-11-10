@@ -43,6 +43,7 @@ export interface EngageMessage {
   read_at: string | null;
   created_at: string;
   updated_at: string;
+  received_at?: string | null;
 }
 
 export interface EngageConversation {
