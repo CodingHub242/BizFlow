@@ -23,6 +23,7 @@ class EngageMessageResource extends JsonResource
             'media' => $this->media,
             'metadata' => $this->metadata,
 
+            'received_at' => $this->received_at,
             'sent_at' => $this->sent_at,
             'delivered_at' => $this->delivered_at,
             'read_at' => $this->read_at,

@@ -160,13 +160,14 @@ class EngageConversationController extends Controller
 
 
 /**
- * Store an outbound conversation message.
+ * Store and send an outbound conversation message.
  */
     public function storeMessage(
         Request $request,
         int $conversation,
         EngageMessageService $messageService
-    ) {
+    ) 
+    {
         $user = $request->user();
 
         abort_unless($user && $user->tenant_id, 403);
@@ -181,8 +182,15 @@ class EngageConversationController extends Controller
             body: $validated['body'],
         );
 
-       return response()->json([
-            'message' => 'Message queued successfully.',
+        if ($message->status === 'failed') {
+            return response()->json([
+                'message' => 'WhatsApp could not confirm successful message submission.',
+                'data' => new EngageMessageResource($message),
+            ], 502);
+        }
+
+        return response()->json([
+            'message' => 'WhatsApp accepted the message for sending.',
             'data' => new EngageMessageResource($message),
         ], 201);
     }

@@ -50,6 +50,7 @@ return [
         'test_access_token' => env('WHATSAPP_TEST_ACCESS_TOKEN'),
         'test_waba_id' => env('WHATSAPP_TEST_WABA_ID'),
         'test_phone_number_id' => env('WHATSAPP_TEST_PHONE_NUMBER_ID'),
+        'graph_api_version' => env('WHATSAPP_GRAPH_API_VERSION', 'v26.0'),
     ],
 
 

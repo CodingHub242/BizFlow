@@ -23,7 +23,7 @@ class EngageMessage extends Model
         'sent_at',
         'delivered_at',
         'read_at',
-        'received_at' => 'datetime',
+        'received_at',
     ];
 
     protected $casts = [
@@ -32,6 +32,7 @@ class EngageMessage extends Model
         'sent_at' => 'datetime',
         'delivered_at' => 'datetime',
         'read_at' => 'datetime',
+        'received_at' => 'datetime',
     ];
 
     public function conversation(): BelongsTo
