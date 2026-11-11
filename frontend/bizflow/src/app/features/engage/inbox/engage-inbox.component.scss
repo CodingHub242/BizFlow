@@ -829,3 +829,68 @@
     max-width: 92%;
   }
 }
+
+.conversation-assignee {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 11px;
+  color: #77766f;
+}
+
+.assignee-indicator {
+  font-size: 12px;
+}
+
+.conversation-assignment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+
+  label {
+    font-size: 11px;
+    color: #77766f;
+  }
+
+  select {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid #deded7;
+    border-radius: 7px;
+    background: #fff;
+    color: #34342f;
+    font-size: 12px;
+    outline: none;
+
+    &:focus {
+      border-color: #9b927d;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  small {
+    font-size: 10px;
+    color: #77766f;
+  }
+}
+
+.assignment-feedback {
+  padding: 8px 14px;
+  font-size: 12px;
+
+  &.error {
+    color: #a33c35;
+    background: #fff1ef;
+  }
+
+  &.success {
+    color: #426b4c;
+    background: #f0f6ef;
+  }
+}

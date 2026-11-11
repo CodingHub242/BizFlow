@@ -6,7 +6,7 @@ import { finalize, timer,Subscription } from 'rxjs';
 import {
   EngageService,
   EngageConversation,
-  EngageMessage,
+  EngageMessage,EngageEmployee
 } from '../../../core/services/engage.service';
 
 type ConversationStatus = 'open' | 'closed' | 'pending';
@@ -32,6 +32,8 @@ interface EngageConversationView {
   email: string;
   company: string;
   location: string;
+  assignedTo: number | null;
+  assigneeName: string | null;
 }
 
 @Component({
@@ -68,8 +70,15 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   private messagePollingSubscription?: Subscription;
   private lastMessagePollTime = 0;
 
+  employees: EngageEmployee[] = [];
+  loadingEmployees = false;
+  assigningConversation = false;
+  assignmentError = '';
+  assignmentSuccess = '';
+
   ngOnInit(): void {
     this.loadConversations();
+    this.loadEmployees();
   }
 
   loadConversations(page = 1): void {
@@ -102,6 +111,98 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     });
   }
 
+  loadEmployees(): void {
+    this.loadingEmployees = true;
+
+    this.engageService.getEmployees()
+      .pipe(finalize(() => {
+        this.loadingEmployees = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          this.employees = (response.data ?? []).filter(
+            employee =>
+              employee.employment_status === 'active' &&
+              employee.user_id !== null &&
+              !!employee.name
+          );
+        },
+        error: error => {
+          console.error('Unable to load employees:', error);
+          this.assignmentError =
+            error?.error?.message ||
+            'Unable to load employees for assignment.';
+        }
+      });
+  }
+
+  assignConversation(value: string | number): void {
+    const conversation = this.selectedConversation;
+
+    if (!conversation || this.assigningConversation) {
+      return;
+    }
+
+    const assignedTo = value === '' ? null : Number(value);
+
+    if (
+      assignedTo !== null &&
+      (!Number.isInteger(assignedTo) || assignedTo <= 0)
+    ) {
+      return;
+    }
+
+    if (conversation.assignedTo === assignedTo) {
+      return;
+    }
+
+    this.assigningConversation = true;
+    this.assignmentError = '';
+    this.assignmentSuccess = '';
+
+    this.engageService
+      .assignConversation(conversation.id, assignedTo)
+      .pipe(finalize(() => {
+        this.assigningConversation = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: response => {
+          const updated = response.data;
+
+          conversation.assignedTo = updated.assigned_to;
+          conversation.assigneeName = updated.assignee?.name ?? null;
+
+          // Keep the conversation list and selected conversation in sync.
+          const listItem = this.conversations.find(
+            item => item.id === conversation.id
+          );
+
+          if (listItem) {
+            listItem.assignedTo = conversation.assignedTo;
+            listItem.assigneeName = conversation.assigneeName;
+          }
+
+          this.assignmentSuccess = assignedTo === null
+            ? 'Conversation unassigned.'
+            : 'Conversation assigned successfully.';
+
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          console.error('Conversation assignment failed:', error);
+
+          this.assignmentError =
+            error?.error?.errors?.assigned_to?.[0] ||
+            error?.error?.message ||
+            'Unable to update conversation assignment.';
+
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
   private mapConversation(
     conversation: EngageConversation
   ): EngageConversationView {
@@ -125,6 +226,8 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       email: contact?.email || '',
       company: contact?.company_name || '',
       location: '',
+      assignedTo: conversation.assigned_to ?? null,
+      assigneeName: conversation.assignee?.name ?? null,
     };
   }
 

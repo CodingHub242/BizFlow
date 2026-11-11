@@ -142,6 +142,14 @@
       </div>
     </aside>
 
+    <div class="assignment-feedback error" *ngIf="assignmentError">
+      {{ assignmentError }}
+    </div>
+
+    <div class="assignment-feedback success" *ngIf="assignmentSuccess">
+      {{ assignmentSuccess }}
+    </div>
+
     <!-- Chat panel -->
     <section class="chat-panel" *ngIf="selectedConversation">
 
@@ -214,6 +222,10 @@
           ➤
         </button>
       </form>
+      <div class="conversation-assignee">
+        <span class="assignee-indicator">↗</span>
+        {{ conversation.assigneeName || 'Unassigned' }}
+      </div>
 
       <div class="quick-actions">
         <strong>Quick Actions</strong>
@@ -223,6 +235,31 @@
           <button type="button">◇ Send Product</button>
           <button type="button">▤ Send Template</button>
           <button type="button">＋ Add Note</button>
+        </div>
+
+        <div class="conversation-assignment">
+          <label for="conversationAssignee">Assigned to</label>
+
+          <select
+            id="conversationAssignee"
+            [ngModel]="selectedConversation.assignedTo ?? ''"
+            (ngModelChange)="assignConversation($event)"
+            [disabled]="assigningConversation || loadingEmployees"
+          >
+            <option value="">Unassigned</option>
+
+            <option
+              *ngFor="let employee of employees"
+              [value]="employee.user_id"
+            >
+              {{ employee.name }}
+              <span *ngIf="employee.job_title">
+                — {{ employee.job_title }}
+              </span>
+            </option>
+          </select>
+
+          <small *ngIf="loadingEmployees">Loading employees...</small>
         </div>
       </div>
 

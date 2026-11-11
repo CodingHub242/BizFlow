@@ -147,6 +147,27 @@ export interface EngageWhatsAppAccountResponse {
   data: EngageWhatsAppAccount;
 }
 
+export interface EngageEmployee {
+  id: number;
+  user_id: number | null;
+  name: string | null;
+  email: string | null;
+  job_title: string | null;
+  employment_status: 'active' | 'inactive' | 'suspended';
+  branch_name?: string | null;
+}
+
+export interface EngageEmployeeListResponse {
+  success: boolean;
+  data: EngageEmployee[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -277,4 +298,26 @@ updateWhatsAppNumberStatus(
     { status }
   );
 }
+
+getEmployees(
+  page = 1
+): Observable<EngageEmployeeListResponse> {
+  const params = new HttpParams().set('page', page);
+
+  return this.http.get<EngageEmployeeListResponse>(
+    `${API_URL}/employees`,
+    { params }
+  );
+}
+
+assignConversation(
+  conversationId: number,
+  assignedTo: number | null
+): Observable<{ data: EngageConversation }> {
+  return this.http.patch<{ data: EngageConversation }>(
+    `${this.apiUrl}/conversations/${conversationId}/assignment`,
+    { assigned_to: assignedTo }
+  );
+}
+
 }
