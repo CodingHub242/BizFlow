@@ -239,7 +239,7 @@
             [ngModel]="selectedConversation.assignedTo ?? ''"
             (ngModelChange)="assignConversation($event)"
             [disabled]="assigningConversation || loadingEmployees"
-          >
+          style="height:40px;">
             <option value="">Unassigned</option>
 
             <option
