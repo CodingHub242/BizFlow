@@ -9,6 +9,11 @@ use App\Services\Engage\EngageMessageService;
 use App\Http\Resources\EngageConversationResource;
 use App\Http\Resources\EngageMessageResource;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use App\Services\AuditService;
+use App\EmploymentStatus;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Database\Eloquent\Builder;
 
 class EngageConversationController extends Controller
@@ -90,8 +95,6 @@ class EngageConversationController extends Controller
             ->with([
                 'contact.customer',
                 'assignee:id,name',
-                'contact.customer',
-                'assignee',
                 'latestMessage',
             ])
             ->findOrFail($conversation);
@@ -194,5 +197,104 @@ class EngageConversationController extends Controller
             'data' => new EngageMessageResource($message),
         ], 201);
     }
+
+    public function assign(
+	    Request $request,
+	    int $conversation,
+	    AuditService $auditService
+	) {
+	    $user = $request->user();
+	
+	    abort_unless($user && $user->tenant_id, 403);
+	
+	    $validated = $request->validate([
+	        'assigned_to' => [
+	            'present',
+	            'nullable',
+	            'integer',
+	        ],
+	    ]);
+	
+	    return DB::transaction(function () use (
+	        $request,
+	        $user,
+	        $conversation,
+	        $validated,
+	        $auditService
+	    ) {
+	        $conversationModel = EngageConversation::query()
+	            ->where('tenant_id', $user->tenant_id)
+	            ->lockForUpdate()
+	            ->findOrFail($conversation);
+	
+	       $newAssigneeId = $validated['assigned_to'] !== null
+                ? (int) $validated['assigned_to']
+                : null;
+
+            $oldAssigneeId = $conversationModel->assigned_to !== null
+                ? (int) $conversationModel->assigned_to
+                : null;
+	
+	        if ($newAssigneeId !== null) {
+	            $assignee = User::query()
+	                ->where('id', $newAssigneeId)
+	                ->where('tenant_id', $user->tenant_id)
+	                ->whereHas('employee', function ($query) use ($user) {
+	                    $query
+	                        ->where('tenant_id', $user->tenant_id)
+	                        ->where(
+	                            'employment_status',
+	                            EmploymentStatus::ACTIVE->value
+	                        );
+	                })
+	                ->first();
+	
+	            if (!$assignee) {
+	                throw ValidationException::withMessages([
+	                    'assigned_to' => [
+	                        'The selected user must belong to this business and have an active employee record.',
+	                    ],
+	                ]);
+	            }
+	        }
+	
+	        if ($oldAssigneeId === $newAssigneeId) {
+	            $conversationModel->load([
+	                'contact.customer',
+	                'assignee',
+	                'latestMessage',
+	            ]);
+	
+	            return new EngageConversationResource($conversationModel);
+	        }
+	
+	        $conversationModel->assigned_to = $newAssigneeId;
+	        $conversationModel->save();
+	
+	        $auditService->record(
+	            action: $newAssigneeId === null
+	                ? 'conversation.unassigned'
+	                : ($oldAssigneeId === null
+	                    ? 'conversation.assigned'
+	                    : 'conversation.reassigned'),
+	            model: $conversationModel,
+	            oldValues: [
+	                'assigned_to' => $oldAssigneeId,
+	            ],
+	            newValues: [
+	                'assigned_to' => $newAssigneeId,
+	            ],
+	            request: $request,
+	        );
+	
+	        $conversationModel->load([
+	            'contact.customer',
+	            'assignee',
+	            'latestMessage',
+	        ]);
+	
+	        return new EngageConversationResource($conversationModel);
+	    });
+	}
 
 }

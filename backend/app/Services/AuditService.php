@@ -21,8 +21,15 @@ class AuditService
 
         $user = Auth::user();
 
+        $requestId = $request->header('X-Request-ID');
+
+        if (!$requestId || strlen($requestId) > 100) {
+            $requestId = (string) Str::uuid();
+        }
+
         return AuditLog::create([
-            'tenant_id' => $user?->tenant_id,
+            'tenant_id' => $model->getAttribute('tenant_id')
+                ?? $user?->tenant_id,
 
             'user_id' => $user?->id,
             'actor_name' => $user?->name,
@@ -39,11 +46,10 @@ class AuditService
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
 
-            'url' => $request->fullUrl(),
+            'url' => $request->url(),
             'http_method' => $request->method(),
 
-            'request_id' => $request->headers->get('X-Request-ID')
-                ?? (string) Str::uuid(),
+            'request_id' => $requestId,
 
             'created_at' => now(),
         ]);

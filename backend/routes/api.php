@@ -654,5 +654,10 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
             EngageWhatsAppController::class,
             'updateNumberStatus',
         ])->middleware('permission:engage.whatsapp.manage');
+
+        Route::patch(
+            '/conversations/{conversation}/assignment',
+            [EngageConversationController::class, 'assign']
+        );
     });
 });
