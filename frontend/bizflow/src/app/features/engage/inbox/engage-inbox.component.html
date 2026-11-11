@@ -142,13 +142,7 @@
       </div>
     </aside>
 
-    <div class="assignment-feedback error" *ngIf="assignmentError">
-      {{ assignmentError }}
-    </div>
-
-    <div class="assignment-feedback success" *ngIf="assignmentSuccess">
-      {{ assignmentSuccess }}
-    </div>
+   
 
     <!-- Chat panel -->
     <section class="chat-panel" *ngIf="selectedConversation">
@@ -336,6 +330,14 @@
     </aside>
 
   </section>
+
+   <div class="assignment-feedback error" *ngIf="assignmentError">
+      {{ assignmentError }}
+    </div>
+
+    <div class="assignment-feedback success" *ngIf="assignmentSuccess">
+      {{ assignmentSuccess }}
+    </div>
 
   <section class="bottom-sections">
 
