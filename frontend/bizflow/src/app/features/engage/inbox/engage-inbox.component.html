@@ -218,7 +218,7 @@
       </form>
       <div class="conversation-assignee">
         <span class="assignee-indicator">↗</span>
-        {{ conversation.assigneeName || 'Unassigned' }}
+        {{ selectedConversation.assigneeName || 'Unassigned' }}
       </div>
 
       <div class="quick-actions">
@@ -246,10 +246,7 @@
               *ngFor="let employee of employees"
               [value]="employee.user_id"
             >
-              {{ employee.name }}
-              <span *ngIf="employee.job_title">
-                — {{ employee.job_title }}
-              </span>
+              {{ employee.name }}{{ employee.job_title ? ' — ' + employee.job_title : '' }}
             </option>
           </select>
 
