@@ -187,11 +187,23 @@
           <button type="button" title="Star conversation">☆</button>
           <button type="button" title="Labels">◇</button>
 
-          <button
+         <button
             type="button"
-            title="Close or reopen conversation"
-            (click)="toggleConversationStatus()">
-            {{ selectedConversation.status === 'open' ? 'Close' : 'Reopen' }}
+            [disabled]="updatingConversationStatus"
+            (click)="toggleConversationStatus()"
+            [title]="
+              selectedConversation.status === 'closed'
+                ? 'Reopen conversation'
+                : 'Close conversation'
+            "
+          >
+            {{
+              updatingConversationStatus
+                ? 'Updating...'
+                : selectedConversation.status === 'closed'
+                  ? 'Reopen'
+                  : 'Close'
+            }}
           </button>
         </div>
       </header>
@@ -327,6 +339,20 @@
     </aside>
 
   </section>
+
+    <div
+      class="assignment-feedback error"
+      *ngIf="conversationStatusError"
+    >
+      {{ conversationStatusError }}
+    </div>
+
+    <div
+      class="assignment-feedback success"
+      *ngIf="conversationStatusSuccess"
+    >
+      {{ conversationStatusSuccess }}
+    </div>
 
    <div class="assignment-feedback error" *ngIf="assignmentError">
       {{ assignmentError }}

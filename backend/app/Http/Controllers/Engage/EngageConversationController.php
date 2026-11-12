@@ -297,4 +297,69 @@ class EngageConversationController extends Controller
 	    });
 	}
 
+
+/**
+ * Close or reopen a conversation.
+ */
+    public function updateStatus(
+        Request $request,
+        int $conversation,
+        AuditService $auditService
+    ) {
+        $user = $request->user();
+
+        abort_unless($user && $user->tenant_id, 403);
+
+        $validated = $request->validate([
+            'status' => [
+                'required',
+                Rule::in(['open', 'closed']),
+            ],
+        ]);
+
+        return DB::transaction(function () use (
+            $request,
+            $user,
+            $conversation,
+            $validated,
+            $auditService
+        ) {
+            $conversationModel = EngageConversation::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->lockForUpdate()
+                ->findOrFail($conversation);
+
+            $oldStatus = $conversationModel->status;
+            $newStatus = $validated['status'];
+
+            if ($oldStatus !== $newStatus) {
+                $conversationModel->status = $newStatus;
+                $conversationModel->save();
+
+                $auditService->record(
+                    action: $newStatus === 'closed'
+                        ? 'conversation.closed'
+                        : 'conversation.reopened',
+                    model: $conversationModel,
+                    oldValues: [
+                        'status' => $oldStatus,
+                    ],
+                    newValues: [
+                        'status' => $newStatus,
+                    ],
+                    request: $request,
+                );
+            }
+
+            $conversationModel->load([
+                'contact.customer',
+                'assignee',
+                'latestMessage',
+            ]);
+
+            return new EngageConversationResource($conversationModel);
+        });
+    }
+
+
 }

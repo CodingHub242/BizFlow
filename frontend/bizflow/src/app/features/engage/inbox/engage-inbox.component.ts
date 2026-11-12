@@ -76,6 +76,10 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   assignmentError = '';
   assignmentSuccess = '';
 
+  updatingConversationStatus = false;
+  conversationStatusError = '';
+  conversationStatusSuccess = '';
+
   ngOnInit(): void {
     this.loadConversations();
     this.loadEmployees();
@@ -443,10 +447,70 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       });
   }
 
-  toggleConversationStatus(): void {
-    // Status update endpoint has not been implemented yet.
-    // Do not change the local status without a successful API request.
+  
+toggleConversationStatus(): void {
+  const conversation = this.selectedConversation;
+
+  if (!conversation || this.updatingConversationStatus) {
+    return;
   }
+
+  const nextStatus: 'open' | 'closed' =
+    conversation.status === 'closed' ? 'open' : 'closed';
+
+  this.updatingConversationStatus = true;
+  this.conversationStatusError = '';
+  this.conversationStatusSuccess = '';
+
+  this.engageService
+    .updateConversationStatus(conversation.id, nextStatus)
+    .pipe(
+      finalize(() => {
+        this.updatingConversationStatus = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: (response) => {
+        const updated = response.data;
+
+        // Update the currently selected conversation.
+        if (this.selectedConversation?.id === updated.id) {
+          this.selectedConversation.status = updated.status;
+        }
+
+        // Synchronize the conversation list.
+        const listItem = this.conversations.find(
+          item => item.id === updated.id
+        );
+
+        if (listItem) {
+          listItem.status = updated.status;
+        }
+
+        this.conversationStatusSuccess =
+          updated.status === 'closed'
+            ? 'Conversation closed successfully.'
+            : 'Conversation reopened successfully.';
+
+        this.cdr.detectChanges();
+      },
+
+      error: (error) => {
+        console.error(
+          'Unable to update conversation status:',
+          error
+        );
+
+        this.conversationStatusError =
+          error?.error?.message ||
+          'Unable to update conversation status. Please try again.';
+
+        this.cdr.detectChanges();
+      },
+    });
+}
+
 
   trackConversation(
     index: number,

@@ -625,6 +625,13 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 	            '/conversations/{conversation}/assignment',
 	            [EngageConversationController::class, 'assign']
 	        );
+
+            Route::patch(
+			    '/conversations/{conversation}/status',
+			    [EngageConversationController::class, 'updateStatus']
+			)
+			->whereNumber('conversation')
+			->middleware('permission:engage.conversations.reply');
     });
 
 	Route::prefix('engage/whatsapp')

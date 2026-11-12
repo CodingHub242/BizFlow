@@ -320,4 +320,14 @@ assignConversation(
   );
 }
 
+updateConversationStatus(
+  conversationId: number,
+  status: 'open' | 'closed'
+): Observable<{ data: EngageConversation }> {
+  return this.http.patch<{ data: EngageConversation }>(
+    `${this.apiUrl}/conversations/${conversationId}/status`,
+    { status }
+  );
+}
+
 }
