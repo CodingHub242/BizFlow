@@ -160,8 +160,28 @@
         </div>
 
         <div class="chat-actions">
+          <div class="conversation-assignment">
+            <label for="conversationAssignee">Assigned to</label>
+
+            <select
+              id="conversationAssignee"
+              [ngModel]="selectedConversation.assignedTo ?? ''"
+              (ngModelChange)="assignConversation($event)"
+              [disabled]="assigningConversation || loadingEmployees">
+
+              <option value="">Unassigned</option>
+
+              <option
+                *ngFor="let employee of employees"
+                [value]="employee.user_id">
+                {{ employee.name }}{{ employee.job_title ? ' — ' + employee.job_title : '' }}
+              </option>
+            </select>
+          </div>
+
           <button type="button" title="Star conversation">☆</button>
           <button type="button" title="Labels">◇</button>
+
           <button
             type="button"
             title="Close or reopen conversation"
@@ -229,28 +249,6 @@
           <button type="button">◇ Send Product</button>
           <button type="button">▤ Send Template</button>
           <button type="button">＋ Add Note</button>
-        </div>
-
-        <div class="conversation-assignment">
-          <label for="conversationAssignee">Assigned to</label>
-
-          <select
-            id="conversationAssignee"
-            [ngModel]="selectedConversation.assignedTo ?? ''"
-            (ngModelChange)="assignConversation($event)"
-            [disabled]="assigningConversation || loadingEmployees"
-          style="height:40px;">
-            <option value="">Unassigned</option>
-
-            <option
-              *ngFor="let employee of employees"
-              [value]="employee.user_id"
-            >
-              {{ employee.name }}{{ employee.job_title ? ' — ' + employee.job_title : '' }}
-            </option>
-          </select>
-
-          <small *ngIf="loadingEmployees">Loading employees...</small>
         </div>
       </div>
 

@@ -41,6 +41,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\Engage\WhatsAppWebhookController;
 use App\Http\Controllers\Engage\EngageWhatsAppController;
 
+
 //Login
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])
@@ -589,39 +590,44 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
             ->name('returns.store');
     });
 
-    // BIZFLOW ENGAGE
-    Route::prefix('engage')
-        ->name('engage.')
-        ->group(function () {
+	// BIZFLOW ENGAGE
+	Route::prefix('engage')
+	    ->name('engage.')
+	    ->group(function () {
+	
+	        // Conversations
+	        Route::get('/conversations', [
+	            EngageConversationController::class,
+	            'index',
+	        ])->middleware('permission:engage.conversations.view');
+	
+	        Route::get('/conversations/{conversation}', [
+	            EngageConversationController::class,
+	            'show',
+	        ])->middleware('permission:engage.conversations.view');
+	
+	        Route::get('/conversations/{conversation}/messages', [
+	            EngageConversationController::class,
+	            'messages',
+	        ])->middleware('permission:engage.conversations.view');
+	
+	        Route::post('/conversations/{conversation}/read', [
+	            EngageConversationController::class,
+	            'markAsRead',
+	        ])->middleware('permission:engage.conversations.view');
 
-        // Conversations
-        Route::get('/conversations', [
-            EngageConversationController::class,
-            'index',
-        ])->middleware('permission:engage.conversations.view');
+			Route::post('/conversations/{conversation}/messages', [
+			    EngageConversationController::class,
+			    'storeMessage',
+			])->middleware('permission:engage.conversations.reply');
 
-        Route::get('/conversations/{conversation}', [
-            EngageConversationController::class,
-            'show',
-        ])->middleware('permission:engage.conversations.view');
-
-        Route::get('/conversations/{conversation}/messages', [
-            EngageConversationController::class,
-            'messages',
-        ])->middleware('permission:engage.conversations.view');
-
-        Route::post('/conversations/{conversation}/read', [
-            EngageConversationController::class,
-            'markAsRead',
-        ])->middleware('permission:engage.conversations.view');
-
-        Route::post('/conversations/{conversation}/messages', [
-            EngageConversationController::class,
-            'storeMessage',
-        ])->middleware('permission:engage.conversations.reply');
+			 Route::patch(
+	            '/conversations/{conversation}/assignment',
+	            [EngageConversationController::class, 'assign']
+	        );
     });
 
-    Route::prefix('engage/whatsapp')
+	Route::prefix('engage/whatsapp')
     ->name('engage.whatsapp.')
     ->group(function () {
 
@@ -654,10 +660,5 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
             EngageWhatsAppController::class,
             'updateNumberStatus',
         ])->middleware('permission:engage.whatsapp.manage');
-
-        Route::patch(
-            '/conversations/{conversation}/assignment',
-            [EngageConversationController::class, 'assign']
-        );
     });
 });
