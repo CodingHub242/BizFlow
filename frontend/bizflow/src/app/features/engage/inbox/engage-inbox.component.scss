@@ -1,7 +1,8 @@
-
 :host {
   display: block;
   min-width: 0;
+  container-type: inline-size;
+  container-name: engage-inbox;
 }
 
 .engage-inbox {
