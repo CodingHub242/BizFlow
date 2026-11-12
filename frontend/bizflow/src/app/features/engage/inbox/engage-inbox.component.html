@@ -44,7 +44,7 @@
     </article>
   </section>
 
-  <section class="inbox-layout">
+  <section class="inbox-layout" [class.chat-panel-hidden]="!isChatPanelOpen || !selectedConversation">
 
     <!-- Conversation list -->
     <aside class="conversation-panel">
@@ -150,7 +150,7 @@
    
 
     <!-- Chat panel -->
-    <section class="chat-panel" *ngIf="selectedConversation">
+    <section class="chat-panel" *ngIf="isChatPanelOpen && selectedConversation">
 
       <header class="chat-header">
         <div class="chat-contact">
@@ -204,6 +204,16 @@
                   ? 'Reopen'
                   : 'Close'
             }}
+          </button>
+
+          <button
+            type="button"
+            class="close-chat-panel"
+            title="Close chat panel"
+            aria-label="Close chat panel"
+            (click)="closeChatPanel()"
+          >
+            &times;
           </button>
         </div>
       </header>
@@ -269,7 +279,7 @@
     </section>
 
     <!-- Customer details -->
-    <aside class="customer-panel" *ngIf="selectedConversation">
+    <aside class="customer-panel" *ngIf="isChatPanelOpen && selectedConversation">
 
       <div class="panel-heading">
         <h2>Customer Details</h2>

@@ -80,6 +80,8 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   conversationStatusError = '';
   conversationStatusSuccess = '';
 
+  isChatPanelOpen = false;
+
   ngOnInit(): void {
     this.loadConversations();
     this.loadEmployees();
@@ -337,20 +339,29 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   }
 
   selectConversation(
-    conversation: EngageConversationView
-  ): void {
-    this.stopMessagePolling();
+  conversation: EngageConversationView
+): void {
+  this.isChatPanelOpen = true;
 
-    this.selectedConversation = conversation;
+  this.stopMessagePolling();
 
-    this.loadMessages(conversation);
+  this.selectedConversation = conversation;
 
-    if (conversation.unread > 0) {
-      this.markConversationAsRead(conversation);
-    }
+  this.conversationStatusError = '';
+  this.conversationStatusSuccess = '';
+  this.assignmentError = '';
+  this.assignmentSuccess = '';
 
-    this.startMessagePolling(conversation);
+  this.loadMessages(conversation);
+
+  if (conversation.unread > 0) {
+    this.markConversationAsRead(conversation);
   }
+
+  this.startMessagePolling(conversation);
+}
+
+
 
   private loadMessages(conversation: EngageConversationView): void {
     this.loadingMessages = true;
@@ -638,6 +649,11 @@ private scrollToBottom(smooth = true): void {
     top: element.scrollHeight,
     behavior: smooth ? 'smooth' : 'auto'
   });
+}
+
+closeChatPanel(): void {
+  this.isChatPanelOpen = false;
+  this.stopMessagePolling();
 }
 
   ngOnDestroy(): void {

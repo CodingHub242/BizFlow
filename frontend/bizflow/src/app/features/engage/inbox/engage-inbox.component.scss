@@ -1254,3 +1254,37 @@
     max-width: 94%;
   }
 }
+.close-chat-panel {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #deded7;
+  border-radius: 7px;
+  background: #fff;
+  color: #77766f;
+  font-size: 20px;
+  cursor: pointer;
+
+  &:hover {
+    background: #f5f4f0;
+    color: #252525;
+  }
+}
+.inbox-layout {
+  display: grid;
+  grid-template-columns: 350px minmax(0, 1fr) 310px;
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+
+  &.chat-panel-hidden {
+    grid-template-columns: minmax(0, 1fr);
+
+    .conversation-panel {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+}
