@@ -907,6 +907,7 @@
   flex-direction: column;
   gap: 4px;
   min-width: 165px;
+  margin-top:-10px;
 
   label {
     font-size: 10px;
@@ -915,7 +916,7 @@
 
   select {
     width: 100%;
-    height: 36px;
+    height: 38px;
     padding: 6px 9px;
     border: 1px solid #deded7;
     border-radius: 7px;
