@@ -893,75 +893,27 @@
   }
 }
 
-/* Narrow laptop and tablet */
-@media (max-width: 1100px) {
+
+
+
+
+
+/* =====================================================
+   INBOX CONTAINER RESPONSIVENESS
+   Responds to available application width,
+   not the entire browser viewport.
+===================================================== */
+
+/* Compact desktop / narrow application content */
+@container engage-inbox (max-width: 1050px) {
+  .metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .inbox-layout {
     grid-template-columns:
-      minmax(210px, .75fr)
+      minmax(200px, 0.8fr)
       minmax(0, 1.5fr);
-  }
-
-  .customer-panel {
-    display: none;
-  }
-
-  .conversation-assignment {
-    flex: 1 1 150px;
-  }
-
-  .messages-area {
-    min-width: 0;
-  }
-}
-
-/* Mobile and small tablets */
-@media (max-width: 750px) {
-  .engage-inbox {
-    padding: 16px 12px 24px;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .metric-card {
-    padding: 12px;
-
-    > strong {
-      font-size: 18px;
-      overflow-wrap: anywhere;
-    }
-  }
-
-  .metric-icon {
-    width: 29px;
-    height: 29px;
-    top: 10px;
-    right: 10px;
-  }
-
-  .inbox-layout {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-height: 0;
-  }
-
-  .conversation-panel,
-  .chat-panel {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .conversation-panel {
-    max-height: 360px;
-    min-height: 220px;
-  }
-
-  .chat-panel {
-    min-height: 500px;
   }
 
   .customer-panel {
@@ -979,144 +931,6 @@
 
   .chat-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) repeat(3, auto);
-    width: 100%;
-    align-items: end;
-  }
-
-  .conversation-assignment {
-    width: 100%;
-    min-width: 0;
-    max-width: none;
-  }
-
-  .messages-area {
-    height: 400px;
-    max-height: 400px;
-    min-height: 250px;
-    padding: 12px 10px;
-    overflow-x: hidden;
-  }
-
-  .message-bubble {
-    max-width: 90%;
-    overflow-wrap: anywhere;
-  }
-
-  .message-composer {
-    min-width: 0;
-    gap: 5px;
-    padding: 8px;
-
-    input {
-      min-width: 0;
-      flex: 1;
-    }
-  }
-
-  .quick-actions {
-    padding: 10px;
-  }
-
-  .bottom-sections {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Small mobile screens */
-@media (max-width: 420px) {
-  .engage-inbox {
-    padding: 12px 8px 20px;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .metric-card {
-    padding: 10px;
-
-    > strong {
-      font-size: 15px;
-    }
-  }
-
-  .metric-card > span {
-    max-width: 75%;
-    font-size: 11px;
-  }
-
-  .inbox-heading h1 {
-    font-size: 23px;
-  }
-
-  .inbox-heading p {
-    font-size: 12px;
-  }
-
-  .chat-actions {
-    grid-template-columns: minmax(0, 1fr) repeat(3, auto);
-    gap: 4px;
-  }
-
-  .chat-actions button {
-    padding: 6px;
-    font-size: 10px;
-  }
-
-  .conversation-filters {
-    gap: 2px;
-    padding-right: 8px;
-    padding-left: 8px;
-  }
-
-  .conversation-filters button {
-    padding: 7px 6px;
-  }
-
-  .message-bubble {
-    max-width: 94%;
-  }
-
-  .insight-stat {
-    margin-right: 12px;
-  }
-}
-@media (min-width: 1101px) {
-  .chat-header {
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-
-  .chat-contact {
-    flex: 1 1 150px;
-  }
-
-  .chat-actions {
-    flex: 0 1 auto;
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-
-  .conversation-assignment {
-    flex: 0 1 175px;
-    min-width: 135px;
-    margin-top: 0;
-  }
-
-  .chat-actions button {
-    white-space: nowrap;
-  }
-}
-
-@media (min-width: 751px) and (max-width: 1100px) {
-  .chat-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .chat-actions {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto auto;
     width: 100%;
     align-items: end;
@@ -1125,5 +939,87 @@
   .conversation-assignment {
     min-width: 0;
     max-width: none;
+  }
+}
+
+/* Tablet / narrow content area */
+@container engage-inbox (max-width: 750px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .inbox-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .conversation-panel,
+  .chat-panel {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .conversation-panel {
+    min-height: 220px;
+    max-height: 350px;
+  }
+
+  .chat-panel {
+    min-height: 500px;
+  }
+
+  .chat-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-actions {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+
+  .messages-area {
+    height: 400px;
+    max-height: 400px;
+    min-height: 250px;
+  }
+
+  .customer-panel {
+    display: none;
+  }
+
+  .bottom-sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Small mobile */
+@container engage-inbox (max-width: 420px) {
+  .engage-inbox {
+    padding: 12px 8px 20px;
+  }
+
+  .metric-card {
+    padding: 10px;
+  }
+
+  .metric-card > strong {
+    font-size: 15px;
+  }
+
+  .chat-actions {
+    gap: 4px;
+  }
+
+  .chat-actions button {
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .message-bubble {
+    max-width: 94%;
   }
 }
