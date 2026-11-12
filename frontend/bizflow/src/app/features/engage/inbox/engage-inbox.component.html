@@ -125,6 +125,11 @@
             <div class="conversation-preview">
               {{ conversation.preview }}
             </div>
+
+            <div class="conversation-assignee">
+              <span class="assignee-indicator">↗</span>
+              {{ conversation.assigneeName || 'Unassigned' }}
+            </div>
           </div>
 
           <span
@@ -236,10 +241,7 @@
           ➤
         </button>
       </form>
-      <div class="conversation-assignee">
-        <span class="assignee-indicator">↗</span>
-        {{ selectedConversation.assigneeName || 'Unassigned' }}
-      </div>
+     
 
       <div class="quick-actions">
         <strong>Quick Actions</strong>
