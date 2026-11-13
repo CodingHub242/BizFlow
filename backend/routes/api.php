@@ -14,6 +14,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\QuickBooksCreditMemosImportController;
 use App\Http\Controllers\InventoryExportController;
 use App\Http\Controllers\Engage\EngageConversationController;
+use App\Http\Controllers\Engage\EngageContactController;
 use App\Http\Controllers\QuickBooksCreditMemoApplicationsReconcileController;
 use App\Http\Controllers\QuickBooksCustomerImportController;
 use App\Http\Controllers\QuickBooksMigrationCatalogController;
@@ -632,6 +633,24 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 			)
 			->whereNumber('conversation')
 			->middleware('permission:engage.conversations.reply');
+
+            // Contacts
+            Route::get('/contacts', [
+                EngageContactController::class,
+                'index',
+            ])->middleware('permission:engage.contacts.view');
+
+            Route::get('/contacts/{contact}', [
+                EngageContactController::class,
+                'show',
+            ])->whereNumber('contact')
+            ->middleware('permission:engage.contacts.view');
+
+            Route::put('/contacts/{contact}', [
+                EngageContactController::class,
+                'update',
+            ])->whereNumber('contact')
+            ->middleware('permission:engage.contacts.manage');
     });
 
 	Route::prefix('engage/whatsapp')
