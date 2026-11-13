@@ -1,4 +1,4 @@
-TEENS RAVE
+TRA
 
 evt_iQXrOUQKOcMBFb6BMspF0mSAHOov2oQj
 
@@ -6,7 +6,7 @@ Name: TEENS RAVE
 Prefix: evt_iQXrOUQK
 Permissions: orders.create
 
-OLIVE
+OE
 evt_8yMXJgcAAlxtyLDzr0Zmeak63F62vPRQ
 
 Name: OLIVE
