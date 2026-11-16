@@ -34,6 +34,10 @@ class EngageContactResource extends JsonResource
                     ? new CustomerResource($this->customer)
                     : null
             ),
+            'conversations' => $this->whenLoaded(
+                'conversations',
+                fn () => $this->conversations
+            ),
 
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
