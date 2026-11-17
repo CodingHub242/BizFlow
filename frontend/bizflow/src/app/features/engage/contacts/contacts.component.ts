@@ -47,6 +47,11 @@ export class ContactsComponent implements OnInit, OnDestroy {
   perPage = 15;
   total = 0;
 
+  selectedContact: EngageContact | null = null;
+  detailsLoading = false;
+  detailsError = '';
+  drawerOpen = false;
+
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
@@ -142,6 +147,37 @@ export class ContactsComponent implements OnInit, OnDestroy {
 
   get showingTo(): number {
     return Math.min(this.currentPage * this.perPage, this.total);
+  }
+
+  openContact(contact: EngageContact): void {
+    this.drawerOpen = true;
+    this.detailsLoading = true;
+    this.detailsError = '';
+    this.selectedContact = contact;
+
+    this.engageService.getContact(contact.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.selectedContact = response.data;
+          this.detailsLoading = false;
+
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          this.detailsLoading = false;
+          this.detailsError =
+            error?.error?.message || 'Unable to load contact details.';
+
+            this.cdr.detectChanges();
+        }
+      });
+  }
+
+  closeContactDrawer(): void {
+    this.drawerOpen = false;
+    this.selectedContact = null;
+    this.detailsError = '';
   }
 
   ngOnDestroy(): void {

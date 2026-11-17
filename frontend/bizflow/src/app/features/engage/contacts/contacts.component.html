@@ -58,12 +58,12 @@
           <th>Type</th>
           <th>Status</th>
           <th>Source</th>
-          <th></th>
+          <!-- <th></th> -->
         </tr>
       </thead>
 
       <tbody>
-        <tr *ngFor="let contact of contacts">
+        <tr *ngFor="let contact of contacts" (click)="openContact(contact)" class="contact-row">
           <td>
             <div class="contact-name">
               <div class="contact-avatar">
@@ -93,17 +93,6 @@
           </td>
 
           <td>{{ contact.source || '—' }}</td>
-
-          <td>
-            <button
-              type="button"
-              class="more-button"
-              title="View contact"
-              disabled
-            >
-              <ion-icon name="ellipsis-horizontal"></ion-icon>
-            </button>
-          </td>
         </tr>
 
         <tr *ngIf="contacts.length === 0">
@@ -141,4 +130,127 @@
     </div>
 
   </div>
+</div>
+<div
+  class="drawer-overlay"
+  *ngIf="drawerOpen"
+  (click)="closeContactDrawer()"
+>
+  <aside
+    class="contact-drawer"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="drawer-header">
+      <div>
+        <h2>Contact Details</h2>
+        <p>View contact information</p>
+      </div>
+
+      <button
+        type="button"
+        class="drawer-close"
+        (click)="closeContactDrawer()"
+      >
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+    </div>
+
+    <div *ngIf="detailsLoading" class="drawer-loading">
+      Loading contact details...
+    </div>
+
+    <div *ngIf="detailsError" class="drawer-error">
+      {{ detailsError }}
+    </div>
+
+    <ng-container *ngIf="!detailsLoading && selectedContact as contact">
+
+      <div class="drawer-profile">
+        <div class="profile-avatar">
+          {{ (contact.name || '?').charAt(0).toUpperCase() }}
+        </div>
+
+        <h3>{{ contact.name || 'Unnamed contact' }}</h3>
+        <p>{{ contact.company_name || 'No company specified' }}</p>
+
+        <div class="profile-badges">
+          <span class="type-badge" [ngClass]="contact.lifecycle_status">
+            {{ contact.lifecycle_status }}
+          </span>
+
+          <span class="status-badge" [ngClass]="contact.status">
+            {{ contact.status }}
+          </span>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h4>Contact Information</h4>
+
+        <div class="detail-item">
+          <span>Phone</span>
+          <strong>{{ contact.phone || 'Not provided' }}</strong>
+        </div>
+
+        <div class="detail-item">
+          <span>Email</span>
+          <strong>{{ contact.email || 'Not provided' }}</strong>
+        </div>
+
+        <div class="detail-item">
+          <span>Company</span>
+          <strong>{{ contact.company_name || 'Not provided' }}</strong>
+        </div>
+
+        <div class="detail-item">
+          <span>Source</span>
+          <strong>{{ contact.source || 'Unknown' }}</strong>
+        </div>
+
+        <div class="detail-item">
+          <span>Created</span>
+          <strong>
+            {{ contact.created_at ? (contact.created_at | date:'mediumDate') : '—' }}
+          </strong>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h4>Notes</h4>
+        <p class="contact-notes">
+          {{ contact.notes || 'No notes have been added.' }}
+        </p>
+      </div>
+
+      <div class="drawer-section" *ngIf="contact.customer">
+        <h4>Linked Bizflow Customer</h4>
+
+        <div class="linked-customer">
+          <ion-icon name="business-outline"></ion-icon>
+          <div>
+            <strong>{{ contact.customer.name }}</strong>
+            <small>Core customer account</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <button type="button" class="secondary-button" disabled>
+          <ion-icon name="create-outline"></ion-icon>
+          Edit Contact
+        </button>
+
+        <button
+          type="button"
+          class="secondary-button"
+          *ngIf="!contact.customer_id"
+          disabled
+        >
+          <ion-icon name="link-outline"></ion-icon>
+          Link Core Customer
+        </button>
+      </div>
+
+    </ng-container>
+  </aside>
 </div>
