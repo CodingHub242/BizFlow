@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy,CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, OnInit, OnDestroy,CUSTOM_ELEMENTS_SCHEMA,ChangeDetectorRef,inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
@@ -32,6 +32,7 @@ import {
   styleUrls: ['./contacts.component.scss'],
 })
 export class ContactsComponent implements OnInit, OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
   contacts: EngageContact[] = [];
 
   loading = false;
@@ -103,11 +104,15 @@ export class ContactsComponent implements OnInit, OnDestroy {
           this.lastPage = response.meta.last_page;
           this.total = response.meta.total;
           this.loading = false;
+
+          this.cdr.detectChanges();
         },
         error: (error) => {
           this.loading = false;
           this.errorMessage =
             error?.error?.message || 'Unable to load contacts. Please try again.';
+
+            this.cdr.detectChanges();
         }
       });
   }
