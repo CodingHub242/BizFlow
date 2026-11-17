@@ -1,3 +1,144 @@
-<p>
-  contacts works!
-</p>
+<div class="contacts-page">
+
+  <div class="page-header">
+    <div>
+      <h1>Contacts</h1>
+      <p>Manage your customer relationships and prospects.</p>
+    </div>
+
+    <button class="primary-button" type="button" disabled>
+      <ion-icon name="add-outline"></ion-icon>
+      Add Contact
+    </button>
+  </div>
+
+  <div class="contacts-toolbar">
+    <div class="search-box">
+      <ion-icon name="search-outline"></ion-icon>
+      <input
+        type="search"
+        placeholder="Search name, phone, email or company..."
+        [ngModel]="search"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </div>
+
+    <select [(ngModel)]="lifecycleStatus" (ngModelChange)="onFilterChange()">
+      <option value="">All contact types</option>
+      <option value="prospect">Prospects</option>
+      <option value="lead">Leads</option>
+      <option value="customer">Customers</option>
+    </select>
+
+    <select [(ngModel)]="status" (ngModelChange)="onFilterChange()">
+      <option value="">All statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="archived">Archived</option>
+    </select>
+  </div>
+
+  <div class="contacts-table-container">
+
+    <div class="loading-state" *ngIf="loading">
+      Loading contacts...
+    </div>
+
+    <div class="error-state" *ngIf="!loading && errorMessage">
+      {{ errorMessage }}
+      <button type="button" (click)="loadContacts()">Retry</button>
+    </div>
+
+    <table *ngIf="!loading && !errorMessage">
+      <thead>
+        <tr>
+          <th>Contact</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Source</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let contact of contacts">
+          <td>
+            <div class="contact-name">
+              <div class="contact-avatar">
+                {{ (contact.name || '?').charAt(0).toUpperCase() }}
+              </div>
+
+              <div>
+                <strong>{{ contact.name || 'Unnamed contact' }}</strong>
+                <small>{{ contact.company_name || '—' }}</small>
+              </div>
+            </div>
+          </td>
+
+          <td>{{ contact.phone || '—' }}</td>
+          <td>{{ contact.email || '—' }}</td>
+
+          <td>
+            <span class="type-badge" [ngClass]="contact.lifecycle_status">
+              {{ contact.lifecycle_status }}
+            </span>
+          </td>
+
+          <td>
+            <span class="status-badge" [ngClass]="contact.status">
+              {{ contact.status }}
+            </span>
+          </td>
+
+          <td>{{ contact.source || '—' }}</td>
+
+          <td>
+            <button
+              type="button"
+              class="more-button"
+              title="View contact"
+              disabled
+            >
+              <ion-icon name="ellipsis-horizontal"></ion-icon>
+            </button>
+          </td>
+        </tr>
+
+        <tr *ngIf="contacts.length === 0">
+          <td colspan="7" class="empty-state">
+            No contacts found.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="table-footer" *ngIf="!loading && !errorMessage">
+      <span>
+        Showing {{ showingFrom }}–{{ showingTo }} of {{ total }} contacts
+      </span>
+
+      <div class="pagination">
+        <button
+          type="button"
+          [disabled]="currentPage <= 1"
+          (click)="goToPage(currentPage - 1)"
+        >
+          Previous
+        </button>
+
+        <span>Page {{ currentPage }} of {{ lastPage }}</span>
+
+        <button
+          type="button"
+          [disabled]="currentPage >= lastPage"
+          (click)="goToPage(currentPage + 1)"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
