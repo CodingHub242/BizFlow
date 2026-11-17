@@ -21,6 +21,8 @@ export interface EngageContact {
     phone: string | null;
     email: string | null;
   } | null;
+
+  created_at: string | null;
 }
 
 export interface EngageAssignee {
