@@ -2,7 +2,21 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
-
+import { IonIcon } from '@ionic/angular';
+import { addIcons } from 'ionicons';
+import {
+  arrowDownOutline,
+  arrowUpOutline,
+  cartOutline,
+  documentTextOutline,
+  peopleOutline,
+  cardOutline,
+  receiptOutline,
+  walletOutline,
+  alertCircleOutline,
+  arrowForwardOutline,
+  ellipsisHorizontalOutline,
+} from 'ionicons/icons';
 import {
   EngageContact,
   EngageContactFilters,
@@ -34,7 +48,21 @@ export class ContactsComponent implements OnInit, OnDestroy {
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
-  constructor(private engageService: EngageService) {}
+  constructor(private engageService: EngageService) {
+    addIcons({
+      arrowDownOutline,
+      arrowUpOutline,
+      cartOutline,
+      cardOutline,
+      receiptOutline,
+      documentTextOutline,
+      peopleOutline,
+      walletOutline,
+      alertCircleOutline,
+      arrowForwardOutline,
+      ellipsisHorizontalOutline,
+    });
+  }
 
   ngOnInit(): void {
     this.searchSubject.pipe(
