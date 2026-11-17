@@ -168,6 +168,46 @@ export interface EngageEmployeeListResponse {
   };
 }
 
+
+export interface EngageContactFilters {
+  search?: string;
+  status?: 'active' | 'inactive' | 'archived';
+  lifecycle_status?: 'prospect' | 'lead' | 'customer';
+  source?: string;
+  per_page?: number;
+  page?: number;
+}
+
+export interface EngageContactListResponse {
+  success: boolean;
+  data: EngageContact[];
+  meta: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
+}
+
+export interface EngageContactResponse {
+  success: boolean;
+  message?: string;
+  warning?: string | null;
+  data: EngageContact;
+}
+
+export interface UpdateEngageContactPayload {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  company_name?: string | null;
+  source?: string;
+  lifecycle_status?: 'prospect' | 'lead' | 'customer';
+  status?: 'active' | 'inactive' | 'archived';
+  notes?: string | null;
+}
+
+
 @Injectable({
   providedIn: 'root',
 })
@@ -329,5 +369,54 @@ updateConversationStatus(
     { status }
   );
 }
+
+
+  // Engage Contacts
+
+  getContacts(
+    filters: EngageContactFilters = {}
+  ): Observable<EngageContactListResponse> {
+    let params = new HttpParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+
+    return this.http.get<EngageContactListResponse>(
+      `${this.apiUrl}/contacts`,
+      { params }
+    );
+  }
+
+  getContact(
+    contactId: number
+  ): Observable<EngageContactResponse> {
+    return this.http.get<EngageContactResponse>(
+      `${this.apiUrl}/contacts/${contactId}`
+    );
+  }
+
+  updateContact(
+    contactId: number,
+    payload: UpdateEngageContactPayload
+  ): Observable<EngageContactResponse> {
+    return this.http.patch<EngageContactResponse>(
+      `${this.apiUrl}/contacts/${contactId}`,
+      payload
+    );
+  }
+
+  linkContactToCustomer(
+    contactId: number,
+    customerId: number
+  ): Observable<EngageContactResponse> {
+    return this.http.post<EngageContactResponse>(
+      `${this.apiUrl}/contacts/${contactId}/link-customer`,
+      { customer_id: customerId }
+    );
+  }
+
 
 }

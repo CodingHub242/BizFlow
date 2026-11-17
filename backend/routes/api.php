@@ -651,7 +651,19 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
                 'update',
             ])->whereNumber('contact')
             ->middleware('permission:engage.contacts.manage');
-    });
+
+            Route::patch('/contacts/{contact}/link-customer', [
+                    EngageContactController::class,
+                    'linkCustomer',
+                ])->whereNumber('contact')
+                ->middleware('permission:engage.contacts.manage');
+
+            Route::post('/contacts/{contact}/convert', [
+                EngageContactController::class,
+                'convertToCustomer',
+            ])->whereNumber('contact')
+            ->middleware('permission:engage.contacts.manage');
+        });
 
 	Route::prefix('engage/whatsapp')
     ->name('engage.whatsapp.')
@@ -660,7 +672,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
         Route::get('/accounts', [
             EngageWhatsAppController::class,
             'accounts',
-        ])->middleware('permission:engage.whatsapp.view');
+         ])->middleware('permission:engage.whatsapp.view');
 
         Route::get('/accounts/{account}', [
             EngageWhatsAppController::class,

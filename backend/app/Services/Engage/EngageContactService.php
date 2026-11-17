@@ -5,6 +5,7 @@ namespace App\Services\Engage;
 use App\Models\Customer;
 use App\Models\EngageContact;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Collection;
 use InvalidArgumentException;
 
 class EngageContactService
@@ -130,13 +131,24 @@ protected function findCoreCustomer(
     int $tenantId,
     string $normalizedPhone
 ): ?Customer {
+    return $this->findCoreCustomersByPhone(
+        $tenantId,
+        $normalizedPhone
+    )->first();
+}
+
+public function findCoreCustomersByPhone(
+    int $tenantId,
+    string $normalizedPhone
+): Collection {
     return Customer::query()
         ->where('tenant_id', $tenantId)
         ->whereNotNull('phone')
         ->get()
-        ->first(function (Customer $customer) use ($normalizedPhone) {
+        ->filter(function (Customer $customer) use ($normalizedPhone) {
             return $this->normalizeGhanaPhone($customer->phone)
                 === $normalizedPhone;
-        });
+        })
+        ->values();
 }
 }
