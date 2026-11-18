@@ -9,9 +9,8 @@ use App\Http\Requests\Engage\UpdateEngageContactRequest;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Models\Customer;
-use Illuminate\Support\Facades\Log;
 use App\Services\Engage\EngageContactService;
-
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -317,9 +316,10 @@ public function update(
     }
 
     public function convertToCustomer(
-    StoreCustomerRequest $request,
-    int $contact
-): JsonResponse {
+	    StoreCustomerRequest $request,
+	    int $contact
+	): JsonResponse 
+	{
     $tenantId = $this->authorizeEngage(
         $request,
         'engage.contacts.manage'
@@ -451,5 +451,84 @@ public function update(
         ],
     ], 201);
 }
+
+	public function store(Request $request): JsonResponse
+	{
+	    $tenantId = $this->authorizeEngage(
+	        $request,
+	        'engage.contacts.manage'
+	    );
+	
+	    $validated = $request->validate([
+	        'name' => ['required', 'string', 'max:255'],
+	        'phone' => ['nullable', 'string', 'max:50'],
+	        'email' => ['nullable', 'email', 'max:255'],
+	        'company_name' => ['nullable', 'string', 'max:255'],
+	        'source' => ['required', 'string', 'max:50'],
+	        'lifecycle_status' => [
+	            'required',
+	            'in:prospect,lead',
+	        ],
+	        'notes' => ['nullable', 'string'],
+	    ]);
+	
+	    $normalizedPhone = null;
+	
+	    if (!empty($validated['phone'])) {
+	        $normalizedPhone = app(EngageContactService::class)
+	            ->normalizeGhanaPhone($validated['phone']);
+	
+	        if (!$normalizedPhone) {
+	            return response()->json([
+	                'success' => false,
+	                'message' => 'Please provide a valid Ghanaian phone number.',
+	                'errors' => [
+	                    'phone' => [
+	                        'Please provide a valid Ghanaian phone number.',
+	                    ],
+	                ],
+	            ], 422);
+	        }
+	    }
+	
+	    if ($normalizedPhone) {
+	        $duplicate = EngageContact::query()
+	            ->where('tenant_id', $tenantId)
+	            ->where('normalized_phone', $normalizedPhone)
+	            ->exists();
+	
+	        if ($duplicate) {
+	            return response()->json([
+	                'success' => false,
+	                'message' => 'An Engage contact with this phone number already exists.',
+	                'errors' => [
+	                    'phone' => [
+	                        'This phone number is already registered as an Engage contact.',
+	                    ],
+	                ],
+	            ], 422);
+	        }
+	    }
+	
+	    $contact = EngageContact::create([
+	        'tenant_id' => $tenantId,
+	        'customer_id' => null,
+	        'name' => $validated['name'],
+	        'phone' => $validated['phone'] ?? null,
+	        'normalized_phone' => $normalizedPhone,
+	        'email' => $validated['email'] ?? null,
+	        'company_name' => $validated['company_name'] ?? null,
+	        'source' => $validated['source'],
+	        'lifecycle_status' => $validated['lifecycle_status'],
+	        'status' => 'active',
+	        'notes' => $validated['notes'] ?? null,
+	    ]);
+	
+	    return response()->json([
+	        'success' => true,
+	        'message' => 'Engage contact created successfully.',
+	        'data' => new EngageContactResource($contact),
+	    ], 201);
+	}
 
 }

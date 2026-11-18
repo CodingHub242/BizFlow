@@ -639,6 +639,11 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
                 'index',
             ])->middleware('permission:engage.contacts.view');
 
+			Route::post('/contacts', [
+			    EngageContactController::class,
+			    'store',
+			])->middleware('permission:engage.contacts.manage');
+
 			Route::put('/contacts/{contact}', [
                 EngageContactController::class,
                 'update',

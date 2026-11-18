@@ -250,6 +250,17 @@ export interface ConvertProspectResponse {
   matching_customers?: CoreCustomer[];
 }
 
+export interface CreateEngageContactPayload {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  company_name?: string | null;
+  source: string;
+  lifecycle_status: 'prospect' | 'lead';
+  notes?: string | null;
+}
+
+
 
 export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
 
@@ -297,6 +308,15 @@ export class EngageService {
   return this.http.get<PaginatedResponse<EngageMessage>>(
     `${this.apiUrl}/conversations/${conversationId}/messages`,
     { params }
+  );
+}
+
+createContact(
+  payload: CreateEngageContactPayload
+): Observable<EngageContactResponse> {
+  return this.http.post<EngageContactResponse>(
+    `${this.apiUrl}/contacts`,
+    payload
   );
 }
 

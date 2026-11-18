@@ -99,6 +99,22 @@ export class ContactsComponent implements OnInit, OnDestroy {
     notes: ''
   };
 
+  // Add Engage Contact
+  showCreateContactModal = false;
+  creatingContact = false;
+  createContactError = '';
+  createContactValidationErrors: string[] = [];
+
+  createContactForm = {
+    name: '',
+    phone: '',
+    email: '',
+    company_name: '',
+    source: 'manual',
+    lifecycle_status: 'prospect' as 'prospect' | 'lead',
+    notes: ''
+  };
+
 
 
   constructor(private engageService: EngageService) {
@@ -507,6 +523,96 @@ submitConversion(): void {
       this.cdr.detectChanges();
     }
   });
+}
+
+openCreateContactModal(): void {
+  this.createContactForm = {
+    name: '',
+    phone: '',
+    email: '',
+    company_name: '',
+    source: 'manual',
+    lifecycle_status: 'prospect',
+    notes: ''
+  };
+
+  this.createContactError = '';
+  this.createContactValidationErrors = [];
+  this.showCreateContactModal = true;
+}
+
+closeCreateContactModal(): void {
+  if (this.creatingContact) return;
+
+  this.showCreateContactModal = false;
+  this.createContactError = '';
+  this.createContactValidationErrors = [];
+}
+
+submitCreateContact(): void {
+  if (
+    this.creatingContact ||
+    !this.createContactForm.name.trim()
+  ) {
+    return;
+  }
+
+  const payload = {
+    ...this.createContactForm,
+    name: this.createContactForm.name.trim(),
+    phone: this.createContactForm.phone.trim() || null,
+    email: this.createContactForm.email.trim() || null,
+    company_name: this.createContactForm.company_name.trim() || null,
+    notes: this.createContactForm.notes.trim() || null
+  };
+
+  this.creatingContact = true;
+  this.createContactError = '';
+  this.createContactValidationErrors = [];
+
+  this.engageService.createContact(payload)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: response => {
+        this.creatingContact = false;
+
+        if (!response.data) {
+          this.createContactError =
+            response.message || 'Unable to create contact.';
+          this.cdr.detectChanges();
+          return;
+        }
+
+        const newContact = response.data;
+
+        this.showCreateContactModal = false;
+
+        // Refresh the listing so the new contact appears.
+        this.currentPage = 1;
+        this.loadContacts();
+
+        // Open the newly created contact in the details drawer.
+        this.openContact(newContact);
+
+        this.cdr.detectChanges();
+      },
+
+      error: error => {
+        this.creatingContact = false;
+
+        const body = error?.error;
+
+        if (body?.errors) {
+          this.createContactValidationErrors =
+            Object.values(body.errors).flat() as string[];
+        } else {
+          this.createContactError =
+            body?.message || 'Unable to create contact.';
+        }
+
+        this.cdr.detectChanges();
+      }
+    });
 }
 
   closeContactDrawer(): void {

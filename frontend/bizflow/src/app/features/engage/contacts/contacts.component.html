@@ -6,10 +6,14 @@
       <p>Manage your customer relationships and prospects.</p>
     </div>
 
-    <button class="primary-button" type="button" disabled>
-      <ion-icon name="add-outline"></ion-icon>
-      Add Contact
-    </button>
+    <button
+        class="primary-button"
+        type="button"
+        (click)="openCreateContactModal()"
+      >
+        <ion-icon name="add-outline"></ion-icon>
+        Add Contact
+      </button>
   </div>
 
   <div class="contacts-toolbar">
@@ -455,175 +459,341 @@
     </ng-container>
   </aside>
 
-  <!-- Prospect Conversion Modal -->
-<div
-  class="conversion-modal-backdrop"
-  *ngIf="showConversionModal"
-  (click)="closeConversionModal()"
->
+
+  <!-- Add Engage Contact Modal -->
   <div
-    class="conversion-modal"
-    (click)="$event.stopPropagation()"
+    class="conversion-modal-backdrop"
+    *ngIf="showCreateContactModal"
+    (click)="closeCreateContactModal()"
   >
-    <div class="conversion-modal-header">
-      <div>
-        <span class="modal-eyebrow">BIZFLOW CORE</span>
-        <h2>Convert to customer</h2>
-        <p>
-          Create a Core customer record and link it to this Engage contact.
-        </p>
-      </div>
-
-      <button
-        type="button"
-        class="modal-close-button"
-        (click)="closeConversionModal()"
-        [disabled]="convertingProspect"
-      >
-        <ion-icon name="close-outline"></ion-icon>
-      </button>
-    </div>
-
-    <form (ngSubmit)="submitConversion()" #conversionFormRef="ngForm">
-
-      <div class="conversion-form-grid">
-
-        <div class="form-field full-width">
-          <label for="conversion-name">Customer name *</label>
-          <input
-            id="conversion-name"
-            type="text"
-            name="name"
-            [(ngModel)]="conversionForm.name"
-            required
-            maxlength="255"
-            placeholder="Enter customer name"
-          />
+    <div
+      class="conversion-modal"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="conversion-modal-header">
+        <div>
+          <span class="modal-eyebrow">XBEEZ ENGAGE</span>
+          <h2>Add contact</h2>
+          <p>
+            Add a prospect or lead to Engage. This will not create a
+            Core customer automatically.
+          </p>
         </div>
 
-        <div class="form-field">
-          <label for="conversion-phone">Phone number</label>
-          <input
-            id="conversion-phone"
-            type="tel"
-            name="phone"
-            [(ngModel)]="conversionForm.phone"
-            maxlength="50"
-            placeholder="Phone number"
-          />
-        </div>
-
-        <div class="form-field">
-          <label for="conversion-email">Email address</label>
-          <input
-            id="conversion-email"
-            type="email"
-            name="email"
-            [(ngModel)]="conversionForm.email"
-            maxlength="255"
-            placeholder="Email address"
-          />
-        </div>
-
-        <div class="form-field full-width">
-          <label for="conversion-company">Company name</label>
-          <input
-            id="conversion-company"
-            type="text"
-            name="company_name"
-            [(ngModel)]="conversionForm.company_name"
-            maxlength="255"
-            placeholder="Company or organisation"
-          />
-        </div>
-
-        <div class="form-field full-width">
-          <label for="conversion-address">Address</label>
-          <input
-            id="conversion-address"
-            type="text"
-            name="address"
-            [(ngModel)]="conversionForm.address"
-            placeholder="Street address"
-          />
-        </div>
-
-        <div class="form-field">
-          <label for="conversion-city">City</label>
-          <input
-            id="conversion-city"
-            type="text"
-            name="city"
-            [(ngModel)]="conversionForm.city"
-            maxlength="100"
-            placeholder="City"
-          />
-        </div>
-
-        <div class="form-field">
-          <label for="conversion-country">Country</label>
-          <input
-            id="conversion-country"
-            type="text"
-            name="country"
-            [(ngModel)]="conversionForm.country"
-            maxlength="100"
-            placeholder="Country"
-          />
-        </div>
-
-        <div class="form-field full-width">
-          <label for="conversion-notes">Notes</label>
-          <textarea
-            id="conversion-notes"
-            name="notes"
-            [(ngModel)]="conversionForm.notes"
-            rows="3"
-            placeholder="Additional customer information"
-          ></textarea>
-        </div>
-
-      </div>
-
-      <div class="conversion-error" *ngIf="conversionError">
-        <ion-icon name="alert-circle-outline"></ion-icon>
-        {{ conversionError }}
-      </div>
-
-      <ul
-        class="conversion-validation-errors"
-        *ngIf="conversionValidationErrors.length"
-      >
-        <li *ngFor="let error of conversionValidationErrors">
-          {{ error }}
-        </li>
-      </ul>
-
-      <div class="conversion-modal-footer">
         <button
           type="button"
-          class="secondary-button"
+          class="modal-close-button"
+          (click)="closeCreateContactModal()"
+          [disabled]="creatingContact"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+
+      <form
+        (ngSubmit)="submitCreateContact()"
+        #createContactFormRef="ngForm"
+      >
+        <div class="conversion-form-grid">
+
+          <div class="form-field full-width">
+            <label for="create-contact-name">Full name *</label>
+            <input
+              id="create-contact-name"
+              type="text"
+              name="name"
+              [(ngModel)]="createContactForm.name"
+              required
+              maxlength="255"
+              placeholder="Enter contact name"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="create-contact-phone">Phone number</label>
+            <input
+              id="create-contact-phone"
+              type="tel"
+              name="phone"
+              [(ngModel)]="createContactForm.phone"
+              maxlength="50"
+              placeholder="0241234567"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="create-contact-email">Email address</label>
+            <input
+              id="create-contact-email"
+              type="email"
+              name="email"
+              [(ngModel)]="createContactForm.email"
+              maxlength="255"
+              placeholder="name@example.com"
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="create-contact-company">Company name</label>
+            <input
+              id="create-contact-company"
+              type="text"
+              name="company_name"
+              [(ngModel)]="createContactForm.company_name"
+              maxlength="255"
+              placeholder="Company or organisation"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="create-contact-type">Contact type *</label>
+            <select
+              id="create-contact-type"
+              name="lifecycle_status"
+              [(ngModel)]="createContactForm.lifecycle_status"
+              required
+            >
+              <option value="prospect">Prospect</option>
+              <option value="lead">Lead</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label for="create-contact-source">Source</label>
+            <input
+              id="create-contact-source"
+              type="text"
+              name="source"
+              [(ngModel)]="createContactForm.source"
+              maxlength="50"
+              readonly
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="create-contact-notes">Notes</label>
+            <textarea
+              id="create-contact-notes"
+              name="notes"
+              [(ngModel)]="createContactForm.notes"
+              rows="3"
+              placeholder="Add some information about this contact..."
+            ></textarea>
+          </div>
+
+        </div>
+
+        <div class="conversion-error" *ngIf="createContactError">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          {{ createContactError }}
+        </div>
+
+        <ul
+          class="conversion-validation-errors"
+          *ngIf="createContactValidationErrors.length"
+        >
+          <li *ngFor="let error of createContactValidationErrors">
+            {{ error }}
+          </li>
+        </ul>
+
+        <div class="conversion-modal-footer">
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="closeCreateContactModal()"
+            [disabled]="creatingContact"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="createContactFormRef.invalid || creatingContact"
+          >
+            <ion-icon
+              *ngIf="!creatingContact"
+              name="add-outline"
+            ></ion-icon>
+
+            {{ creatingContact ? 'Creating...' : 'Create Contact' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Prospect Conversion Modal -->
+  <div
+    class="conversion-modal-backdrop"
+    *ngIf="showConversionModal"
+    (click)="closeConversionModal()"
+  >
+    <div
+      class="conversion-modal"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="conversion-modal-header">
+        <div>
+          <span class="modal-eyebrow">XBEEZ CORE</span>
+          <h2>Convert to customer</h2>
+          <p>
+            Create a Core customer record and link it to this Engage contact.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close-button"
           (click)="closeConversionModal()"
           [disabled]="convertingProspect"
         >
-          Cancel
-        </button>
-
-        <button
-          type="submit"
-          class="primary-button"
-          [disabled]="conversionFormRef.invalid || convertingProspect"
-        >
-          <ion-icon
-            *ngIf="!convertingProspect"
-            name="people-outline"
-          ></ion-icon>
-
-          {{ convertingProspect ? 'Converting...' : 'Create Core Customer' }}
+          <ion-icon name="close-outline"></ion-icon>
         </button>
       </div>
 
-    </form>
+      <form (ngSubmit)="submitConversion()" #conversionFormRef="ngForm">
+
+        <div class="conversion-form-grid">
+
+          <div class="form-field full-width">
+            <label for="conversion-name">Customer name *</label>
+            <input
+              id="conversion-name"
+              type="text"
+              name="name"
+              [(ngModel)]="conversionForm.name"
+              required
+              maxlength="255"
+              placeholder="Enter customer name"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="conversion-phone">Phone number</label>
+            <input
+              id="conversion-phone"
+              type="tel"
+              name="phone"
+              [(ngModel)]="conversionForm.phone"
+              maxlength="50"
+              placeholder="Phone number"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="conversion-email">Email address</label>
+            <input
+              id="conversion-email"
+              type="email"
+              name="email"
+              [(ngModel)]="conversionForm.email"
+              maxlength="255"
+              placeholder="Email address"
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="conversion-company">Company name</label>
+            <input
+              id="conversion-company"
+              type="text"
+              name="company_name"
+              [(ngModel)]="conversionForm.company_name"
+              maxlength="255"
+              placeholder="Company or organisation"
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="conversion-address">Address</label>
+            <input
+              id="conversion-address"
+              type="text"
+              name="address"
+              [(ngModel)]="conversionForm.address"
+              placeholder="Street address"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="conversion-city">City</label>
+            <input
+              id="conversion-city"
+              type="text"
+              name="city"
+              [(ngModel)]="conversionForm.city"
+              maxlength="100"
+              placeholder="City"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="conversion-country">Country</label>
+            <input
+              id="conversion-country"
+              type="text"
+              name="country"
+              [(ngModel)]="conversionForm.country"
+              maxlength="100"
+              placeholder="Country"
+            />
+          </div>
+
+          <div class="form-field full-width">
+            <label for="conversion-notes">Notes</label>
+            <textarea
+              id="conversion-notes"
+              name="notes"
+              [(ngModel)]="conversionForm.notes"
+              rows="3"
+              placeholder="Additional customer information"
+            ></textarea>
+          </div>
+
+        </div>
+
+        <div class="conversion-error" *ngIf="conversionError">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          {{ conversionError }}
+        </div>
+
+        <ul
+          class="conversion-validation-errors"
+          *ngIf="conversionValidationErrors.length"
+        >
+          <li *ngFor="let error of conversionValidationErrors">
+            {{ error }}
+          </li>
+        </ul>
+
+        <div class="conversion-modal-footer">
+          <button
+            type="button"
+            class="secondary-button"
+            (click)="closeConversionModal()"
+            [disabled]="convertingProspect"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="conversionFormRef.invalid || convertingProspect"
+          >
+            <ion-icon
+              *ngIf="!convertingProspect"
+              name="people-outline"
+            ></ion-icon>
+
+            {{ convertingProspect ? 'Converting...' : 'Create Core Customer' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
   </div>
-</div>
 </div>
