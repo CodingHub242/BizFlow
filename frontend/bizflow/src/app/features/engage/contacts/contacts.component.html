@@ -324,12 +324,118 @@
           type="button"
           class="secondary-button"
           *ngIf="!contact.customer_id"
-          disabled
+          (click)="openCustomerSearch()"
         >
           <ion-icon name="link-outline"></ion-icon>
           Link Core Customer
         </button>
       </div>
+
+
+      <div class="customer-link-panel" *ngIf="showCustomerSearch">
+
+        <div class="customer-link-header">
+          <div>
+            <h4>Link Core Customer</h4>
+            <p>Find an existing customer in Bizflow Core.</p>
+          </div>
+
+          <button
+            type="button"
+            class="drawer-close"
+            [disabled]="customerLinking"
+            (click)="closeCustomerSearch()"
+          >
+            <ion-icon name="close-outline"></ion-icon>
+          </button>
+        </div>
+
+        <div class="customer-search-input">
+          <input
+            type="search"
+            [ngModel]="customerSearch"
+            (ngModelChange)="onCustomerSearchChange($event)"
+            placeholder="Search name, phone or email..."
+          />
+        </div>
+
+        <p class="search-hint">
+          Enter at least two characters to search.
+        </p>
+
+        <div *ngIf="customerSearchLoading" class="drawer-loading">
+          Searching customers...
+        </div>
+
+        <div *ngIf="customerSearchError" class="form-error">
+          {{ customerSearchError }}
+        </div>
+
+        <div
+          *ngIf="
+            !customerSearchLoading &&
+            customerSearch.trim().length >= 2 &&
+            coreCustomers.length === 0 &&
+            !customerSearchError
+          "
+          class="empty-state"
+        >
+          No matching Core customers found.
+        </div>
+
+        <div class="customer-search-results">
+
+          <button
+            type="button"
+            class="customer-result"
+            *ngFor="let customer of coreCustomers"
+            [class.selected]="selectedCoreCustomer?.id === customer.id"
+            (click)="selectCoreCustomer(customer)"
+          >
+            <span class="customer-result-avatar">
+              {{ (customer.name || '?').charAt(0).toUpperCase() }}
+            </span>
+
+            <span class="customer-result-info">
+              <strong>{{ customer.name }}</strong>
+              <small>{{ customer.phone || 'No phone' }}</small>
+              <small>{{ customer.email || 'No email' }}</small>
+            </span>
+
+            <ion-icon
+              *ngIf="selectedCoreCustomer?.id === customer.id"
+              name="checkmark-circle-outline"
+            ></ion-icon>
+          </button>
+
+        </div>
+
+        <div *ngIf="selectedCoreCustomer" class="selected-customer">
+          Selected: <strong>{{ selectedCoreCustomer.name }}</strong>
+        </div>
+
+        <div class="edit-actions">
+          <button
+            type="button"
+            class="cancel-button"
+            [disabled]="customerLinking"
+            (click)="closeCustomerSearch()"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            class="save-button"
+            [disabled]="!selectedCoreCustomer || customerLinking"
+            (click)="confirmCustomerLink()"
+          >
+            {{ customerLinking ? 'Linking...' : 'Confirm Link' }}
+          </button>
+        </div>
+
+      </div>
+
 
     </ng-container>
   </aside>

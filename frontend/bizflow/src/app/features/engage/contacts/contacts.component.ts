@@ -21,7 +21,7 @@ import {
 import {
   EngageContact,
   EngageContactFilters,
-  EngageService
+  EngageService,CoreCustomer
 } from '../../../core/services/engage.service';
 
 @Component({
@@ -60,6 +60,18 @@ export class ContactsComponent implements OnInit, OnDestroy {
   savingContact = false;
   saveError: string [] = [];
 
+  // Core customer linking
+  showCustomerSearch = false;
+  customerSearch = '';
+  customerSearchLoading = false;
+  customerSearchError = '';
+  customerLinking = false;
+
+  coreCustomers: CoreCustomer[] = [];
+  selectedCoreCustomer: CoreCustomer | null = null;
+
+  private customerSearchSubject = new Subject<string>();
+
   editForm = {
     name: '',
     phone: '',
@@ -69,6 +81,8 @@ export class ContactsComponent implements OnInit, OnDestroy {
     status: 'active' as 'active' | 'inactive' | 'archived',
     notes: ''
   };
+
+
 
   constructor(private engageService: EngageService) {
     addIcons({
@@ -95,6 +109,14 @@ export class ContactsComponent implements OnInit, OnDestroy {
     ).subscribe(() => {
       this.currentPage = 1;
       this.loadContacts();
+    });
+
+    this.customerSearchSubject.pipe(
+      debounceTime(350),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(value => {
+      this.searchCoreCustomers(value);
     });
 
     this.loadContacts();
@@ -252,6 +274,120 @@ saveContact(): void {
   });
 }
 
+
+openCustomerSearch(): void {
+  if (!this.selectedContact || this.selectedContact.customer_id) {
+    return;
+  }
+
+  this.showCustomerSearch = true;
+  this.customerSearch = '';
+  this.coreCustomers = [];
+  this.selectedCoreCustomer = null;
+  this.customerSearchError = '';
+}
+
+closeCustomerSearch(): void {
+  if (this.customerLinking) return;
+
+  this.showCustomerSearch = false;
+  this.customerSearch = '';
+  this.coreCustomers = [];
+  this.selectedCoreCustomer = null;
+  this.customerSearchError = '';
+}
+
+onCustomerSearchChange(value: string): void {
+  this.customerSearch = value;
+  this.selectedCoreCustomer = null;
+  this.customerSearchSubject.next(value);
+}
+
+searchCoreCustomers(search: string): void {
+  const term = search.trim();
+
+  if (term.length < 2) {
+    this.coreCustomers = [];
+    this.customerSearchError = '';
+    this.customerSearchLoading = false;
+    this.cdr.detectChanges();
+    return;
+  }
+
+  this.customerSearchLoading = true;
+  this.customerSearchError = '';
+
+  this.engageService.getCoreCustomers(term, 1, 10)
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
+      next: response => {
+        this.coreCustomers = response.data || [];
+        this.customerSearchLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.customerSearchLoading = false;
+        this.customerSearchError =
+          error?.error?.message || 'Unable to search Core customers.';
+        this.cdr.detectChanges();
+      }
+    });
+}
+
+selectCoreCustomer(customer: CoreCustomer): void {
+  this.selectedCoreCustomer = customer;
+}
+
+confirmCustomerLink(): void {
+  if (
+    !this.selectedContact ||
+    !this.selectedCoreCustomer ||
+    this.customerLinking
+  ) {
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Link ${this.selectedContact.name || 'this contact'} to ${this.selectedCoreCustomer.name}?`
+  );
+
+  if (!confirmed) return;
+
+  this.customerLinking = true;
+  this.customerSearchError = '';
+
+  this.engageService.linkContactToCustomer(
+    this.selectedContact.id,
+    this.selectedCoreCustomer.id
+  )
+  .pipe(takeUntil(this.destroy$))
+  .subscribe({
+    next: response => {
+      this.selectedContact = response.data;
+
+      this.contacts = this.contacts.map(contact =>
+        contact.id === response.data.id ? response.data : contact
+      );
+
+      this.customerLinking = false;
+      this.closeCustomerSearch();
+
+      if (response.warning) {
+        window.alert(response.warning);
+      }
+
+      this.cdr.detectChanges();
+    },
+    error: error => {
+      this.customerLinking = false;
+      this.customerSearchError =
+        error?.error?.message || 'Unable to link this customer.';
+      this.cdr.detectChanges();
+    }
+  });
+}
+
+
   closeContactDrawer(): void {
     this.drawerOpen = false;
     this.selectedContact = null;
@@ -262,5 +398,6 @@ saveContact(): void {
     this.destroy$.next();
     this.destroy$.complete();
     this.searchSubject.complete();
+    this.customerSearchSubject.complete();
   }
 }

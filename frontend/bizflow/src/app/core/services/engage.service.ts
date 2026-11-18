@@ -209,6 +209,26 @@ export interface UpdateEngageContactPayload {
   notes?: string | null;
 }
 
+
+export interface CoreCustomer {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface CoreCustomerListResponse {
+  success: boolean;
+  data: CoreCustomer[];
+  meta: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
+}
+
+
 export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
 
 export type EngageContactStatus = 'active' | 'inactive' | 'archived';
@@ -324,6 +344,24 @@ setDefaultWhatsAppNumber(
   );
 }
 
+
+getCoreCustomers(
+  search: string,
+  page = 1,
+  perPage = 10
+): Observable<CoreCustomerListResponse> {
+  const params = new HttpParams()
+    .set('search', search)
+    .set('page', page)
+    .set('per_page', perPage);
+
+  return this.http.get<CoreCustomerListResponse>(
+    `${API_URL}/customers`,
+    { params }
+  );
+}
+
+
 updateWhatsAppAccountStatus(
   accountId: number,
   status: 'active' | 'inactive'
@@ -415,15 +453,17 @@ updateConversationStatus(
   return this.http.put<EngageContactResponse>(url, payload);
   }
 
-  linkContactToCustomer(
-    contactId: number,
-    customerId: number
-  ): Observable<EngageContactResponse> {
-    return this.http.post<EngageContactResponse>(
-      `${this.apiUrl}/contacts/${contactId}/link-customer`,
-      { customer_id: customerId }
-    );
-  }
+
+linkContactToCustomer(
+  contactId: number,
+  customerId: number
+): Observable<EngageContactResponse> {
+  return this.http.patch<EngageContactResponse>(
+    `${this.apiUrl}/contacts/${contactId}/link-customer`,
+    { customer_id: customerId }
+  );
+}
+
 
 
 }

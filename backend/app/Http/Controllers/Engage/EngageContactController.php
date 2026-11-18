@@ -11,6 +11,7 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Models\Customer;
 use Illuminate\Support\Facades\Log;
 use App\Services\Engage\EngageContactService;
+
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
@@ -139,8 +140,9 @@ class EngageContactController extends Controller
         ]);
     }
 
-   public function update(
-    UpdateEngageContactRequest $request,
+  
+public function update(
+    Request $request,
     int $contact
 ): JsonResponse {
 
@@ -149,54 +151,95 @@ class EngageContactController extends Controller
         'engage.contacts.manage'
     );
 
-    $validated = $request->validated();
+    $allowedFields = [
+        'name',
+        'phone',
+        'email',
+        'company_name',
+        'source',
+        'lifecycle_status',
+        'status',
+        'notes',
+    ];
 
-    $updatedContact = DB::transaction(function () use (
-        $tenantId,
-        $contact,
-        $validated
-    ) {
-        $engageContact = EngageContact::query()
-            ->where('tenant_id', $tenantId)
-            ->lockForUpdate()
-            ->findOrFail($contact);
+    $data = $request->only($allowedFields);
 
-        // Normalize the phone number whenever it is supplied.
-        if (array_key_exists('phone', $validated)) {
+    $errors = [];
 
-            $phone = trim((string) ($validated['phone'] ?? ''));
+	if (isset($data['name']) && (
+	    !is_string($data['name']) ||
+	    mb_strlen($data['name']) > 255
+	)) {
+	    $errors['name'] = 'Name must be a string of no more than 255 characters.';
+	}
 
-            if ($phone === '') {
-                $validated['phone'] = null;
-                $validated['normalized_phone'] = null;
-            } else {
-                $contactService = app(EngageContactService::class);
+	if (isset($data['email']) && $data['email'] !== '') {
+	    if (!is_string($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+	        $errors['email'] = 'Please provide a valid email address.';
+	    } elseif (mb_strlen($data['email']) > 255) {
+	        $errors['email'] = 'Email cannot exceed 255 characters.';
+	    }
+	}
 
-                $normalizedPhone = $contactService
-                    ->normalizeGhanaPhone($phone);
+	if (isset($data['phone']) && $data['phone'] !== '') {
+	    if (!is_string($data['phone']) || mb_strlen($data['phone']) > 50) {
+	        $errors['phone'] = 'Phone must not exceed 50 characters.';
+	    }
+	}
 
-                if (!$normalizedPhone) {
-                    abort(
-                        422,
-                        'Please provide a valid Ghanaian phone number.'
-                    );
-                }
+	if (isset($data['company_name']) && (
+	    !is_string($data['company_name']) ||
+	    mb_strlen($data['company_name']) > 255
+	)) {
+	    $errors['company_name'] = 'Company name cannot exceed 255 characters.';
+	}
 
-                $validated['phone'] = $phone;
-                $validated['normalized_phone'] = $normalizedPhone;
-            }
-        }
+	if (isset($data['source']) && (
+	    !is_string($data['source']) ||
+	    mb_strlen($data['source']) > 50
+	)) {
+	    $errors['source'] = 'Source cannot exceed 50 characters.';
+	}
 
-        $engageContact->fill($validated);
+	if (isset($data['lifecycle_status']) &&
+		!in_array($data['lifecycle_status'], ['prospect', 'lead', 'customer'], true)
+	) {
+		$errors['lifecycle_status'] = 'Invalid lifecycle status.';
+	}
+	
+	if (isset($data['status']) &&
+		!in_array($data['status'], ['active', 'inactive', 'archived'], true)
+	) {
+		$errors['status'] = 'Invalid contact status.';
+	}
+	
+	if (isset($data['notes']) && !is_string($data['notes'])) {
+		$errors['notes'] = 'Notes must be text.';
+	}
+	
+	if (!empty($errors)) {
+		return response()->json([
+			'success' => false,
+			'message' => 'Please correct the supplied information.',
+			'errors' => $errors,
+		], 422);
+	}
+
+    $engageContact = EngageContact::query()
+        ->where('tenant_id', $tenantId)
+        ->findOrFail($contact);
+
+    DB::transaction(function () use ($engageContact, $data) {
+        $engageContact->fill($data);
         $engageContact->save();
-
-        return $engageContact->fresh()->load('customer');
     });
+
+    $engageContact->refresh()->load('customer');
 
     return response()->json([
         'success' => true,
         'message' => 'Contact updated successfully.',
-        'data' => new EngageContactResource($updatedContact),
+        'data' => new EngageContactResource($engageContact),
     ]);
 }
 
