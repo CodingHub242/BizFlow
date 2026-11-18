@@ -35,7 +35,7 @@ import {
 export class ContactsComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   contacts: EngageContact[] = [];
-
+  validationErrors: string[] = [];
   loading = false;
   errorMessage = '';
 
@@ -58,7 +58,7 @@ export class ContactsComponent implements OnInit, OnDestroy {
 
   isEditing = false;
   savingContact = false;
-  saveError = '';
+  saveError: string [] = [];
 
   editForm = {
     name: '',
@@ -205,20 +205,20 @@ export class ContactsComponent implements OnInit, OnDestroy {
     notes: contact.notes || ''
   };
 
-  this.saveError = '';
+  this.saveError = [];
   this.isEditing = true;
 }
 
 cancelEditing(): void {
   this.isEditing = false;
-  this.saveError = '';
+  this.saveError = [];
 }
 
 saveContact(): void {
   if (!this.selectedContact || this.savingContact) return;
 
   this.savingContact = true;
-  this.saveError = '';
+  this.saveError = [];
 
   this.engageService.updateContact(
     this.selectedContact.id,
@@ -240,8 +240,12 @@ saveContact(): void {
     },
     error: (error) => {
       this.savingContact = false;
-      this.saveError =
-        error?.error?.errors[0] || 'Unable to save contact changes.';
+      const errors = error.error?.errors;
+      this.validationErrors = errors
+    ? Object.values(errors).flat() as string[]
+    : [error.error?.message || 'Something went wrong.'];
+
+      this.saveError = this.validationErrors || 'Unable to save contact changes.';
 
         this.cdr.detectChanges();
     }
