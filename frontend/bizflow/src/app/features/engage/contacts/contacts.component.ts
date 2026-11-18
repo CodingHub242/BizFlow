@@ -235,11 +235,15 @@ saveContact(): void {
       this.contacts = this.contacts.map(contact =>
         contact.id === response.data.id ? response.data : contact
       );
+
+      this.cdr.detectChanges();
     },
     error: (error) => {
       this.savingContact = false;
       this.saveError =
         error?.error?.message || 'Unable to save contact changes.';
+
+        this.cdr.detectChanges();
     }
   });
 }
