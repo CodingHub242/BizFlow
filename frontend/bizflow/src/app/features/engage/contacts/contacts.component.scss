@@ -451,3 +451,82 @@ table {
     width: 100%;
   }
 }
+.contact-edit-form {
+  padding: 23px;
+}
+
+.form-field {
+  margin-bottom: 18px;
+
+  label {
+    display: block;
+    margin-bottom: 7px;
+    color: #62645d;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px;
+    border: 1px solid #e5e5df;
+    border-radius: 7px;
+    background: #fff;
+    color: #34362f;
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #929982;
+  }
+
+  textarea {
+    resize: vertical;
+  }
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.cancel-button,
+.save-button {
+  padding: 10px 16px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+}
+
+.cancel-button {
+  border: 1px solid #e5e5df;
+  background: #fff;
+  color: #62645d;
+}
+
+.save-button {
+  border: 0;
+  background: #555e46;
+  color: #fff;
+}
+
+.form-error {
+  margin-top: 12px;
+  color: #a44b4b;
+  font-size: 12px;
+}

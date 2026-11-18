@@ -16,6 +16,7 @@ import {
   alertCircleOutline,
   arrowForwardOutline,
   ellipsisHorizontalOutline,
+  closeOutline,
 } from 'ionicons/icons';
 import {
   EngageContact,
@@ -55,12 +56,27 @@ export class ContactsComponent implements OnInit, OnDestroy {
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
 
+  isEditing = false;
+  savingContact = false;
+  saveError = '';
+
+  editForm = {
+    name: '',
+    phone: '',
+    email: '',
+    company_name: '',
+    lifecycle_status: 'prospect' as 'prospect' | 'lead' | 'customer',
+    status: 'active' as 'active' | 'inactive' | 'archived',
+    notes: ''
+  };
+
   constructor(private engageService: EngageService) {
     addIcons({
       arrowDownOutline,
       arrowUpOutline,
       cartOutline,
       cardOutline,
+      closeOutline,
       receiptOutline,
       documentTextOutline,
       peopleOutline,
@@ -173,6 +189,60 @@ export class ContactsComponent implements OnInit, OnDestroy {
         }
       });
   }
+
+  startEditing(): void {
+  if (!this.selectedContact) return;
+
+  const contact = this.selectedContact;
+
+  this.editForm = {
+    name: contact.name || '',
+    phone: contact.phone || '',
+    email: contact.email || '',
+    company_name: contact.company_name || '',
+    lifecycle_status: contact.lifecycle_status,
+    status: contact.status,
+    notes: contact.notes || ''
+  };
+
+  this.saveError = '';
+  this.isEditing = true;
+}
+
+cancelEditing(): void {
+  this.isEditing = false;
+  this.saveError = '';
+}
+
+saveContact(): void {
+  if (!this.selectedContact || this.savingContact) return;
+
+  this.savingContact = true;
+  this.saveError = '';
+
+  this.engageService.updateContact(
+    this.selectedContact.id,
+    this.editForm
+  )
+  .pipe(takeUntil(this.destroy$))
+  .subscribe({
+    next: (response) => {
+      this.selectedContact = response.data;
+      this.isEditing = false;
+      this.savingContact = false;
+
+      // Keep the listing in sync with the updated contact.
+      this.contacts = this.contacts.map(contact =>
+        contact.id === response.data.id ? response.data : contact
+      );
+    },
+    error: (error) => {
+      this.savingContact = false;
+      this.saveError =
+        error?.error?.message || 'Unable to save contact changes.';
+    }
+  });
+}
 
   closeContactDrawer(): void {
     this.drawerOpen = false;

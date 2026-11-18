@@ -12,8 +12,8 @@ export interface EngageContact {
   email: string | null;
   company_name: string | null;
   source: string;
-  lifecycle_status: string;
-  status: string;
+  lifecycle_status: EngageLifecycleStatus;
+  status: EngageContactStatus;
   notes: string | null;
   customer?: {
     id: number;
@@ -204,11 +204,14 @@ export interface UpdateEngageContactPayload {
   email?: string | null;
   company_name?: string | null;
   source?: string;
-  lifecycle_status?: 'prospect' | 'lead' | 'customer';
-  status?: 'active' | 'inactive' | 'archived';
+  lifecycle_status?: EngageLifecycleStatus;
+  status?: EngageContactStatus;
   notes?: string | null;
 }
 
+export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
+
+export type EngageContactStatus = 'active' | 'inactive' | 'archived';
 
 @Injectable({
   providedIn: 'root',

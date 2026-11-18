@@ -163,7 +163,82 @@
       {{ detailsError }}
     </div>
 
-    <ng-container *ngIf="!detailsLoading && selectedContact as contact">
+    <div *ngIf="isEditing" class="contact-edit-form">
+
+      <div class="form-field">
+        <label>Full Name</label>
+        <input type="text" [(ngModel)]="editForm.name" placeholder="Contact name">
+      </div>
+
+      <div class="form-field">
+        <label>Phone Number</label>
+        <input type="tel" [(ngModel)]="editForm.phone" placeholder="0240000000">
+      </div>
+
+      <div class="form-field">
+        <label>Email Address</label>
+        <input type="email" [(ngModel)]="editForm.email" placeholder="name@example.com">
+      </div>
+
+      <div class="form-field">
+        <label>Company</label>
+        <input type="text" [(ngModel)]="editForm.company_name" placeholder="Company name">
+      </div>
+
+      <div class="form-field">
+        <label>Contact Type</label>
+        <select [(ngModel)]="editForm.lifecycle_status">
+          <option value="prospect">Prospect</option>
+          <option value="lead">Lead</option>
+          <option value="customer">Customer</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label>Status</label>
+        <select [(ngModel)]="editForm.status">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label>Notes</label>
+        <textarea
+          rows="4"
+          [(ngModel)]="editForm.notes"
+          placeholder="Add notes about this contact..."
+        ></textarea>
+      </div>
+
+      <div class="form-error" *ngIf="saveError">
+        {{ saveError }}
+      </div>
+
+      <div class="edit-actions">
+        <button
+          type="button"
+          class="cancel-button"
+          [disabled]="savingContact"
+          (click)="cancelEditing()"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          class="save-button"
+          [disabled]="savingContact"
+          (click)="saveContact()"
+        >
+          {{ savingContact ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+
+    </div>
+
+    <ng-container *ngIf="!isEditing && !detailsLoading && selectedContact as contact">
 
       <div class="drawer-profile">
         <div class="profile-avatar">
@@ -235,7 +310,12 @@
       </div>
 
       <div class="drawer-actions">
-        <button type="button" class="secondary-button" disabled>
+       <button
+          type="button"
+          class="secondary-button"
+          *ngIf="!isEditing"
+          (click)="startEditing()"
+        >
           <ion-icon name="create-outline"></ion-icon>
           Edit Contact
         </button>

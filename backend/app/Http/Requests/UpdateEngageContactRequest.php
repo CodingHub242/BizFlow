@@ -18,8 +18,23 @@ class UpdateEngageContactRequest extends FormRequest
             'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'company_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+
             'source' => ['sometimes', 'string', 'max:50'],
-            'status' => ['sometimes', 'required', 'string', 'in:active,inactive,archived'],
+
+            'lifecycle_status' => [
+                'sometimes',
+                'required',
+                'string',
+                'in:prospect,lead,customer',
+            ],
+
+            'status' => [
+                'sometimes',
+                'required',
+                'string',
+                'in:active,inactive,archived',
+            ],
+
             'notes' => ['sometimes', 'nullable', 'string'],
         ];
     }
