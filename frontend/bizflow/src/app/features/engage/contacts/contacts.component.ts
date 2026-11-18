@@ -225,6 +225,7 @@ export class ContactsComponent implements OnInit, OnDestroy {
     this.detailsLoading = true;
     this.detailsError = '';
     this.selectedContact = contact;
+    this.showCreateContactModal = false;
 
     this.engageService.getContact(contact.id)
       .pipe(takeUntil(this.destroy$))
