@@ -309,30 +309,7 @@
         </div>
       </div>
 
-      <div class="drawer-actions">
-       <button
-          type="button"
-          class="secondary-button"
-          *ngIf="!isEditing"
-          (click)="startEditing()"
-        >
-          <ion-icon name="create-outline"></ion-icon>
-          Edit Contact
-        </button>
-
-        <button
-          type="button"
-          class="secondary-button"
-          *ngIf="!contact.customer_id"
-          (click)="openCustomerSearch()"
-        >
-          <ion-icon name="link-outline"></ion-icon>
-          Link Core Customer
-        </button>
-      </div>
-
-
-      <div class="customer-link-panel" *ngIf="showCustomerSearch">
+       <div class="customer-link-panel" *ngIf="showCustomerSearch">
 
         <div class="customer-link-header">
           <div>
@@ -435,6 +412,31 @@
         </div>
 
       </div>
+
+      <div class="drawer-actions">
+       <button
+          type="button"
+          class="secondary-button"
+          *ngIf="!isEditing"
+          (click)="startEditing()"
+        >
+          <ion-icon name="create-outline"></ion-icon>
+          Edit Contact
+        </button>
+
+        <button
+          type="button"
+          class="secondary-button"
+          *ngIf="!contact.customer_id"
+          (click)="openCustomerSearch()"
+        >
+          <ion-icon name="link-outline"></ion-icon>
+          Link Core Customer
+        </button>
+      </div>
+
+
+     
 
 
     </ng-container>
