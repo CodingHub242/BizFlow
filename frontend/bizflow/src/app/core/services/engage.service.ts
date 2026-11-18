@@ -407,10 +407,12 @@ updateConversationStatus(
     contactId: number,
     payload: UpdateEngageContactPayload
   ): Observable<EngageContactResponse> {
-    return this.http.put<EngageContactResponse>(
-      `${this.apiUrl}/contacts/${contactId}`,
-      payload
-    );
+     const url = `${this.apiUrl}/contacts/${contactId}`;
+
+  console.log('CONTACT UPDATE URL:', url);
+  console.log('CONTACT UPDATE METHOD: PUT');
+
+  return this.http.put<EngageContactResponse>(url, payload);
   }
 
   linkContactToCustomer(

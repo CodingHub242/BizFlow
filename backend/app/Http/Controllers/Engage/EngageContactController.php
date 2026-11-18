@@ -9,6 +9,7 @@ use App\Http\Requests\Engage\UpdateEngageContactRequest;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Models\Customer;
+use Illuminate\Support\Facades\Log;
 use App\Services\Engage\EngageContactService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -138,48 +139,66 @@ class EngageContactController extends Controller
         ]);
     }
 
-    public function update(
-        UpdateEngageContactRequest $request,
-        int $contact
-    ): JsonResponse {
-        $tenantId = $this->authorizeEngage(
-            $request,
-            'engage.contacts.manage'
-        );
+   public function update(
+    UpdateEngageContactRequest $request,
+    int $contact
+): JsonResponse {
 
+    $tenantId = $this->authorizeEngage(
+        $request,
+        'engage.contacts.manage'
+    );
+
+    $validated = $request->validated();
+
+    $updatedContact = DB::transaction(function () use (
+        $tenantId,
+        $contact,
+        $validated
+    ) {
         $engageContact = EngageContact::query()
             ->where('tenant_id', $tenantId)
+            ->lockForUpdate()
             ->findOrFail($contact);
 
-        $data = $request->validated();
+        // Normalize the phone number whenever it is supplied.
+        if (array_key_exists('phone', $validated)) {
 
-        // Normalize the phone whenever it is changed.
-        if (array_key_exists('phone', $data)) {
-            $normalizedPhone = $data['phone']
-                ? app(\App\Services\Engage\EngageContactService::class)
-                    ->normalizeGhanaPhone($data['phone'])
-                : null;
+            $phone = trim((string) ($validated['phone'] ?? ''));
 
-            if ($data['phone'] && !$normalizedPhone) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Please provide a valid Ghanaian phone number.',
-                ], 422);
+            if ($phone === '') {
+                $validated['phone'] = null;
+                $validated['normalized_phone'] = null;
+            } else {
+                $contactService = app(EngageContactService::class);
+
+                $normalizedPhone = $contactService
+                    ->normalizeGhanaPhone($phone);
+
+                if (!$normalizedPhone) {
+                    abort(
+                        422,
+                        'Please provide a valid Ghanaian phone number.'
+                    );
+                }
+
+                $validated['phone'] = $phone;
+                $validated['normalized_phone'] = $normalizedPhone;
             }
-
-            $data['normalized_phone'] = $normalizedPhone;
         }
 
-        $engageContact->update($data);
+        $engageContact->fill($validated);
+        $engageContact->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Contact updated successfully.',
-            'data' => new EngageContactResource(
-                $engageContact->fresh()->load('customer')
-            ),
-        ]);
-    }
+        return $engageContact->fresh()->load('customer');
+    });
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Contact updated successfully.',
+        'data' => new EngageContactResource($updatedContact),
+    ]);
+}
 
 
     public function linkCustomer(
