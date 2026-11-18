@@ -407,7 +407,7 @@ updateConversationStatus(
     contactId: number,
     payload: UpdateEngageContactPayload
   ): Observable<EngageContactResponse> {
-    return this.http.patch<EngageContactResponse>(
+    return this.http.put<EngageContactResponse>(
       `${this.apiUrl}/contacts/${contactId}`,
       payload
     );
