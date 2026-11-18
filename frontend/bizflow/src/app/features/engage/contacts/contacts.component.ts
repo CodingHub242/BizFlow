@@ -241,7 +241,7 @@ saveContact(): void {
     error: (error) => {
       this.savingContact = false;
       this.saveError =
-        error?.error?.message || 'Unable to save contact changes.';
+        error?.error?.errors || 'Unable to save contact changes.';
 
         this.cdr.detectChanges();
     }
