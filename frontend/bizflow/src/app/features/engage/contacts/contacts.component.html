@@ -433,6 +433,19 @@
           <ion-icon name="link-outline"></ion-icon>
           Link Core Customer
         </button>
+
+        <button
+          type="button"
+          class="primary-button"
+          *ngIf="
+            !contact.customer_id &&
+            contact.lifecycle_status !== 'customer'
+          "
+          (click)="openConversionModal()"
+        >
+          <ion-icon name="people-outline"></ion-icon>
+          Convert to Core Customer
+        </button>
       </div>
 
 

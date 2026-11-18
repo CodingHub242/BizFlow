@@ -228,6 +228,28 @@ export interface CoreCustomerListResponse {
   };
 }
 
+export interface ConvertProspectPayload {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  company_name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  notes?: string | null;
+}
+
+export interface ConvertProspectResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    contact: EngageContact;
+    customer: CoreCustomer;
+  };
+  customer?: CoreCustomer;
+  matching_customers?: CoreCustomer[];
+}
+
 
 export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
 
@@ -461,6 +483,16 @@ linkContactToCustomer(
   return this.http.patch<EngageContactResponse>(
     `${this.apiUrl}/contacts/${contactId}/link-customer`,
     { customer_id: customerId }
+  );
+}
+
+convertProspectToCustomer(
+  contactId: number,
+  payload: ConvertProspectPayload
+): Observable<ConvertProspectResponse> {
+  return this.http.post<ConvertProspectResponse>(
+    `${this.apiUrl}/contacts/${contactId}/convert`,
+    payload
   );
 }
 

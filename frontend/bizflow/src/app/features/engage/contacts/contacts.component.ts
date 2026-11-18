@@ -21,7 +21,7 @@ import {
 import {
   EngageContact,
   EngageContactFilters,
-  EngageService,CoreCustomer
+  EngageService,CoreCustomer,ConvertProspectPayload
 } from '../../../core/services/engage.service';
 
 @Component({
@@ -69,6 +69,23 @@ export class ContactsComponent implements OnInit, OnDestroy {
 
   coreCustomers: CoreCustomer[] = [];
   selectedCoreCustomer: CoreCustomer | null = null;
+
+  // Prospect conversion
+  showConversionModal = false;
+  convertingProspect = false;
+  conversionError = '';
+  conversionValidationErrors: string[] = [];
+
+  conversionForm: ConvertProspectPayload = {
+    name: '',
+    email: '',
+    phone: '',
+    company_name: '',
+    address: '',
+    city: '',
+    country: '',
+    notes: ''
+  };
 
   private customerSearchSubject = new Subject<string>();
 
@@ -387,6 +404,110 @@ confirmCustomerLink(): void {
   });
 }
 
+openConversionModal(): void {
+  const contact = this.selectedContact;
+
+  if (
+    !contact ||
+    contact.customer_id ||
+    contact.lifecycle_status === 'customer'
+  ) {
+    return;
+  }
+
+  this.conversionForm = {
+    name: contact.name || '',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    company_name: contact.company_name || '',
+    address: '',
+    city: '',
+    country: '',
+    notes: contact.notes || ''
+  };
+
+  this.conversionError = '';
+  this.conversionValidationErrors = [];
+  this.showConversionModal = true;
+}
+
+closeConversionModal(): void {
+  if (this.convertingProspect) return;
+
+  this.showConversionModal = false;
+  this.conversionError = '';
+  this.conversionValidationErrors = [];
+}
+
+submitConversion(): void {
+  if (
+    !this.selectedContact ||
+    this.convertingProspect ||
+    !this.conversionForm.name.trim()
+  ) {
+    return;
+  }
+
+  const payload: ConvertProspectPayload = {
+    ...this.conversionForm,
+    name: this.conversionForm.name.trim()
+  };
+
+  this.convertingProspect = true;
+  this.conversionError = '';
+  this.conversionValidationErrors = [];
+
+  this.engageService.convertProspectToCustomer(
+    this.selectedContact.id,
+    payload
+  )
+  .pipe(takeUntil(this.destroy$))
+  .subscribe({
+    next: response => {
+      if (!response.data) {
+        this.conversionError =
+          response.message || 'Unable to complete conversion.';
+        this.convertingProspect = false;
+        this.cdr.detectChanges();
+        return;
+      }
+
+      const updatedContact = response.data.contact;
+
+      this.selectedContact = updatedContact;
+
+      this.contacts = this.contacts.map(contact =>
+        contact.id === updatedContact.id ? updatedContact : contact
+      );
+
+      this.convertingProspect = false;
+      this.showConversionModal = false;
+
+      this.cdr.detectChanges();
+    },
+    error: error => {
+      this.convertingProspect = false;
+
+      const body = error?.error;
+
+      if (body?.customer) {
+        this.conversionError =
+          'A Core customer with this phone number already exists. You can link the existing customer instead.';
+      } else if (body?.matching_customers?.length) {
+        this.conversionError =
+          'Multiple Core customers have this phone number. Please use Link Core Customer to select the correct record.';
+      } else if (body?.errors) {
+        this.conversionValidationErrors =
+          Object.values(body.errors).flat() as string[];
+      } else {
+        this.conversionError =
+          body?.message || 'Unable to convert this prospect.';
+      }
+
+      this.cdr.detectChanges();
+    }
+  });
+}
 
   closeContactDrawer(): void {
     this.drawerOpen = false;
