@@ -297,32 +297,124 @@
       </div>
 
       <div class="customer-tabs">
-        <button class="active" type="button">Overview</button>
-        <button type="button">Orders</button>
-        <button type="button">Invoices</button>
-        <button type="button">Notes</button>
+        <button
+          type="button"
+          [class.active]="activeCustomerTab === 'overview'"
+          (click)="activeCustomerTab = 'overview'">
+          Overview
+        </button>
+
+        <button
+          type="button"
+          [class.active]="activeCustomerTab === 'orders'"
+          (click)="activeCustomerTab = 'orders'; loadCustomerOrders()">
+          Orders
+        </button>
+
+        <button
+          type="button"
+          [class.active]="activeCustomerTab === 'invoices'"
+          (click)="activeCustomerTab = 'invoices'">
+          Invoices
+        </button>
+
+        <button
+          type="button"
+          [class.active]="activeCustomerTab === 'notes'"
+          (click)="activeCustomerTab = 'notes'">
+          Notes
+        </button>
       </div>
 
-      <div class="customer-fields">
-        <div>
-          <span>Email</span>
-          <strong>{{ selectedConversation.email }}</strong>
+      <div *ngIf="activeCustomerTab === 'overview'">
+        <div class="customer-fields">
+          <div>
+            <span>Email</span>
+            <strong>{{ selectedConversation.email }}</strong>
+          </div>
+
+          <div>
+            <span>Company</span>
+            <strong>{{ selectedConversation.company }}</strong>
+          </div>
+
+          <div>
+            <span>Location</span>
+            <strong>{{ selectedConversation.location }}</strong>
+          </div>
+
+          <div>
+            <span>Contact source</span>
+            <strong>WhatsApp</strong>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="activeCustomerTab === 'orders'" class="customer-tab-content">
+
+        <div *ngIf="!selectedConversation.customerId" class="empty-state">
+          This contact is not linked to a Core customer yet.
         </div>
 
-        <div>
-          <span>Company</span>
-          <strong>{{ selectedConversation.company }}</strong>
+        <div *ngIf="loadingCustomerOrders" class="empty-state">
+          Loading customer orders...
         </div>
 
-        <div>
-          <span>Location</span>
-          <strong>{{ selectedConversation.location }}</strong>
+        <div *ngIf="customerOrdersError" class="assignment-feedback error">
+          {{ customerOrdersError }}
         </div>
 
-        <div>
-          <span>Contact source</span>
-          <strong>WhatsApp</strong>
+        <div *ngIf="
+          !loadingCustomerOrders &&
+          !customerOrdersError &&
+          selectedConversation.customerId &&
+          !customerOrders.length
+        " class="empty-state">
+          No orders found for this customer.
         </div>
+
+        <div *ngFor="let order of customerOrders" class="customer-order-card">
+
+          <div class="order-card-header">
+            <strong>{{ order.order_number }}</strong>
+            <span>{{ order.created_at | date:'mediumDate' }}</span>
+          </div>
+
+          <div class="order-card-details">
+            <span>{{ order.items.length }} item(s)</span>
+            <strong>GH₵ {{ order.total | number:'1.2-2' }}</strong>
+          </div>
+
+          <div class="order-card-footer">
+            <span class="order-status">
+              {{ order.status.replaceAll('_', ' ') }}
+            </span>
+
+            <span class="payment-status">
+              {{ order.payment_status.replaceAll('_', ' ') }}
+            </span>
+          </div>
+
+        </div>
+
+        <div class="orders-pagination" *ngIf="ordersLastPage > 1">
+          <button
+            type="button"
+            [disabled]="ordersCurrentPage === 1"
+            (click)="loadCustomerOrders(ordersCurrentPage - 1)">
+            Previous
+          </button>
+
+          <span>{{ ordersCurrentPage }} / {{ ordersLastPage }}</span>
+
+          <button
+            type="button"
+            [disabled]="ordersCurrentPage === ordersLastPage"
+            (click)="loadCustomerOrders(ordersCurrentPage + 1)">
+            Next
+          </button>
+        </div>
+
       </div>
 
       <section class="recent-activity">

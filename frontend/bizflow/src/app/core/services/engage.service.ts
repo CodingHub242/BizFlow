@@ -67,6 +67,8 @@ export interface EngageConversation {
 
   last_page?: number;
   current_page?: number;
+
+  customerId:number | null;
 }
 
 export interface ApiResponse<T> {
@@ -258,6 +260,42 @@ export interface CreateEngageContactPayload {
   source: string;
   lifecycle_status: 'prospect' | 'lead';
   notes?: string | null;
+}
+
+export interface CustomerOrderItem {
+  id: number;
+  catalog_item_id: number;
+  quantity: string;
+  unit_price: string;
+  line_total: string;
+  catalog_item?: {
+    id: number;
+    name: string;
+    sku: string | null;
+    type: string;
+  } | null;
+}
+
+export interface CustomerOrder {
+  id: number;
+  customer_id: number | null;
+  order_number: string;
+  status: string;
+  payment_status: string;
+  subtotal: string;
+  discount: string;
+  tax: string;
+  total: string;
+  created_at: string;
+  items: CustomerOrderItem[];
+}
+
+export interface CustomerOrdersResponse {
+  current_page: number;
+  data: CustomerOrder[];
+  last_page: number;
+  per_page: number;
+  total: number;
 }
 
 
@@ -513,6 +551,22 @@ convertProspectToCustomer(
   return this.http.post<ConvertProspectResponse>(
     `${this.apiUrl}/contacts/${contactId}/convert`,
     payload
+  );
+}
+
+getCustomerOrders(
+  customerId: number,
+  page = 1,
+  perPage = 10
+): Observable<CustomerOrdersResponse> {
+  const params = new HttpParams()
+    .set('customer_id', customerId)
+    .set('page', page)
+    .set('per_page', perPage);
+
+  return this.http.get<CustomerOrdersResponse>(
+    `${API_URL}/sales`,
+    { params }
   );
 }
 

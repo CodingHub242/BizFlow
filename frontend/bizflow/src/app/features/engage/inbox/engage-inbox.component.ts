@@ -6,7 +6,7 @@ import { finalize, timer,Subscription } from 'rxjs';
 import {
   EngageService,
   EngageConversation,
-  EngageMessage,EngageEmployee
+  EngageMessage,EngageEmployee,CustomerOrder
 } from '../../../core/services/engage.service';
 
 type ConversationStatus = 'open' | 'closed' | 'pending';
@@ -34,6 +34,7 @@ interface EngageConversationView {
   location: string;
   assignedTo: number | null;
   assigneeName: string | null;
+  customerId: number | null;
 }
 
 @Component({
@@ -81,6 +82,16 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   conversationStatusSuccess = '';
 
   isChatPanelOpen = false;
+
+  activeCustomerTab: 'overview' | 'orders' | 'invoices' | 'notes' = 'overview';
+
+  customerOrders: CustomerOrder[] = [];
+  loadingCustomerOrders = false;
+  customerOrdersError = '';
+
+  ordersCurrentPage = 1;
+  ordersLastPage = 1;
+  ordersTotal = 0;
 
   ngOnInit(): void {
     this.loadConversations();
@@ -234,6 +245,7 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       location: '',
       assignedTo: conversation.assigned_to ?? null,
       assigneeName: conversation.assignee?.name ?? null,
+      customerId : contact?.customer_id ?? null,
     };
   }
 
@@ -649,6 +661,39 @@ private scrollToBottom(smooth = true): void {
     top: element.scrollHeight,
     behavior: smooth ? 'smooth' : 'auto'
   });
+}
+
+loadCustomerOrders(page = 1): void {
+  const customerId = this.selectedConversation?.customerId;
+
+  if (!customerId) {
+    this.customerOrders = [];
+    return;
+  }
+
+  this.loadingCustomerOrders = true;
+  this.customerOrdersError = '';
+
+  this.engageService
+    .getCustomerOrders(customerId, page, 10)
+    .pipe(
+      finalize(() => {
+        this.loadingCustomerOrders = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: response => {
+        this.customerOrders = response.data ?? [];
+        this.ordersCurrentPage = response.current_page;
+        this.ordersLastPage = response.last_page;
+        this.ordersTotal = response.total;
+      },
+      error: error => {
+        this.customerOrdersError =
+          error?.error?.message || 'Unable to load customer orders.';
+      }
+    });
 }
 
 closeChatPanel(): void {
