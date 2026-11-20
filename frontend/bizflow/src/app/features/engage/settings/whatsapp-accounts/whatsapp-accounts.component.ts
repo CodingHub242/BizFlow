@@ -113,13 +113,14 @@ export class WhatsappAccountsComponent implements OnInit {
     .pipe(finalize(() => (this.loading = false)))
     .subscribe({
       next: (response) => {
-        this.loading = false;
+       
         const pagination = response?.data;
 
         this.accounts = pagination?.data ?? [];
         this.currentPage = pagination.meta.current_page;
         this.lastPage = pagination.meta.last_page;
         this.totalAccounts = pagination.meta.total;
+        this.loading = false;
 
         this.cdr.detectChanges();
       },
