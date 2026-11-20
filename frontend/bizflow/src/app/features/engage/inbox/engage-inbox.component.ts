@@ -6,7 +6,8 @@ import { finalize, timer,Subscription } from 'rxjs';
 import {
   EngageService,
   EngageConversation,
-  EngageMessage,EngageEmployee,CustomerOrder,CustomerInvoice
+  EngageMessage,EngageEmployee,CustomerOrder,CustomerInvoice,InvoicePaymentMethod,
+  RecordInvoicePaymentPayload
 } from '../../../core/services/engage.service';
 
 type ConversationStatus = 'open' | 'closed' | 'pending';
@@ -108,6 +109,22 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
 
   selectedInvoice: CustomerInvoice | null = null;
   showInvoiceModal = false;
+
+  showRecordPaymentForm = false;
+  recordingInvoicePayment = false;
+
+  paymentError = '';
+  paymentSuccess = '';
+
+  paymentFieldErrors: Record<string, string> = {};
+
+  paymentForm: RecordInvoicePaymentPayload = {
+    amount: 0,
+    method: 'cash',
+    reference: '',
+    notes: '',
+    paid_at: this.getLocalDateTime()
+  };
 
   ngOnInit(): void {
     this.loadConversations();
@@ -750,6 +767,16 @@ loadCustomerInvoices(page = 1): void {
       next: response => {
         this.customerInvoices = response.data ?? [];
 
+        if (this.selectedInvoice) {
+          const refreshedInvoice = this.customerInvoices.find(
+            invoice => invoice.id === this.selectedInvoice?.id
+          );
+
+          if (refreshedInvoice) {
+            this.selectedInvoice = refreshedInvoice;
+          }
+        }
+
         this.invoicesCurrentPage = response.meta.current_page;
         this.invoicesLastPage = response.meta.last_page;
         this.invoicesTotal = response.meta.total;
@@ -781,7 +808,148 @@ openInvoiceModal(invoice: CustomerInvoice): void {
   this.cdr.detectChanges();
 }
 
+canRecordInvoicePayment(invoice: CustomerInvoice): boolean {
+  return (
+    Number(invoice.balance_due) > 0 &&
+    !['draft', 'cancelled'].includes(
+      invoice.status.toLowerCase()
+    )
+  );
+}
+
+private getLocalDateTime(): string {
+  const date = new Date();
+  const offset = date.getTimezoneOffset() * 60000;
+
+  return new Date(date.getTime() - offset)
+    .toISOString()
+    .slice(0, 16);
+}
+
+openRecordPaymentForm(): void {
+  if (!this.selectedInvoice) {
+    return;
+  }
+
+  if (!this.canRecordInvoicePayment(this.selectedInvoice)) {
+    return;
+  }
+
+  this.paymentForm = {
+    amount: Number(this.selectedInvoice.balance_due),
+    method: 'cash',
+    reference: '',
+    notes: '',
+    paid_at: this.getLocalDateTime()
+  };
+
+  this.paymentError = '';
+  this.paymentSuccess = '';
+  this.paymentFieldErrors = {};
+  this.showRecordPaymentForm = true;
+
+  this.cdr.detectChanges();
+}
+
+cancelRecordPayment(): void {
+  if (this.recordingInvoicePayment) {
+    return;
+  }
+
+  this.showRecordPaymentForm = false;
+  this.paymentError = '';
+  this.paymentFieldErrors = {};
+
+  this.cdr.detectChanges();
+}
+
+recordInvoicePayment(): void {
+  const invoice = this.selectedInvoice;
+
+  if (!invoice || this.recordingInvoicePayment) {
+    return;
+  }
+
+  const amount = Number(this.paymentForm.amount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    this.paymentFieldErrors = {
+      amount: 'Enter a valid payment amount greater than zero.'
+    };
+    return;
+  }
+
+  if (amount > Number(invoice.balance_due)) {
+    this.paymentFieldErrors = {
+      amount: 'Payment cannot exceed the outstanding balance.'
+    };
+    return;
+  }
+
+  this.recordingInvoicePayment = true;
+  this.paymentError = '';
+  this.paymentSuccess = '';
+  this.paymentFieldErrors = {};
+
+  const payload: RecordInvoicePaymentPayload = {
+    amount,
+    method: this.paymentForm.method,
+    reference: this.paymentForm.reference?.trim() || null,
+    notes: this.paymentForm.notes?.trim() || null,
+    paid_at: this.paymentForm.paid_at
+  };
+
+  this.engageService
+    .recordInvoicePayment(invoice.id, payload)
+    .pipe(
+      finalize(() => {
+        this.recordingInvoicePayment = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: response => {
+        this.showRecordPaymentForm = false;
+
+        this.paymentSuccess =
+          response.message || 'Payment recorded successfully.';
+
+        // Reload Core invoices so the balance and payment status
+        // reflect the newly recorded payment.
+        this.loadCustomerInvoices(this.invoicesCurrentPage);
+
+        this.cdr.detectChanges();
+      },
+
+      error: error => {
+        console.error('Invoice payment failed:', error);
+
+        const errors = error?.error?.errors;
+
+        if (errors && typeof errors === 'object') {
+          this.paymentFieldErrors = Object.fromEntries(
+            Object.entries(errors).map(([key, value]) => [
+              key,
+              Array.isArray(value) ? value[0] : String(value)
+            ])
+          );
+        }
+
+        this.paymentError =
+          error?.error?.message ||
+          'Unable to record this payment. Please check the details.';
+
+        this.cdr.detectChanges();
+      }
+    });
+}
+
 closeInvoiceModal(): void {
+  this.showRecordPaymentForm = false;
+  this.paymentError = '';
+  this.paymentSuccess = '';
+  this.paymentFieldErrors = {};
+
   this.showInvoiceModal = false;
   this.selectedInvoice = null;
   this.cdr.detectChanges();

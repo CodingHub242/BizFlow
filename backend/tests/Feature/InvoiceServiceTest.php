@@ -3391,4 +3391,85 @@ public function test_it_rejects_a_manual_line_without_a_description(): void
         'invoice_number' => 'INV-MANUAL-INVALID',
     ]);
 }
+
+public function test_invoice_can_receive_replacement_payment_after_previous_payment_is_reversed(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $branch = Branch::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $user = User::factory()->create([
+        'tenant_id' => $tenant->id,
+    ]);
+
+    $catalogItem = CatalogItem::factory()->create([
+        'tenant_id' => $tenant->id,
+        'type' => CatalogItemType::PRODUCT,
+        'selling_price' => 1000,
+    ]);
+
+    $invoiceService = app(InvoiceService::class);
+
+    $invoice = $invoiceService->create([
+        'tenant_id' => $tenant->id,
+        'branch_id' => $branch->id,
+        'created_by' => $user->id,
+        'invoice_number' => 'INV-REPLACEMENT-PAYMENT-001',
+        'items' => [
+            [
+                'catalog_item_id' => $catalogItem->id,
+                'quantity' => 1,
+                'unit_price' => 1000,
+                'discount' => 0,
+                'tax' => 0,
+            ],
+        ],
+    ]);
+
+    $invoiceService->issue($invoice);
+
+    $originalPayment = $invoiceService->recordPayment($invoice, [
+        'recorded_by' => $user->id,
+        'amount' => 1000,
+        'method' => InvoicePaymentMethod::CASH,
+        'reference' => 'ORIGINAL-PAYMENT-001',
+        'paid_at' => now(),
+    ]);
+
+    $invoiceService->reversePayment(
+        $originalPayment,
+        $user->id,
+        'Customer refund'
+    );
+
+    $replacementPayment = $invoiceService->recordPayment(
+        $invoice->fresh(),
+        [
+            'recorded_by' => $user->id,
+            'amount' => 1000,
+            'method' => InvoicePaymentMethod::MOBILE_MONEY,
+            'reference' => 'REPLACEMENT-PAYMENT-001',
+            'paid_at' => now(),
+        ]
+    );
+
+    $this->assertDatabaseHas('invoice_payments', [
+        'id' => $replacementPayment->id,
+        'invoice_id' => $invoice->id,
+        'amount' => 1000,
+    ]);
+
+    $this->assertDatabaseHas('invoice_payment_reversals', [
+        'invoice_payment_id' => $originalPayment->id,
+        'amount' => 1000,
+    ]);
+
+    $this->assertSame(
+        PaymentStatus::PAID,
+        $invoice->fresh()->payment_status
+    );
+}
+
 }

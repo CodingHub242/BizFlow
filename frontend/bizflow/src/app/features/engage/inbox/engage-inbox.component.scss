@@ -1800,3 +1800,98 @@
     padding: 14px 18px;
   }
 }
+
+.payment-entry-section {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #e8e5df;
+  border-radius: 12px;
+  background: #faf9f6;
+}
+
+.payment-entry-description {
+  color: #77736c;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+
+.payment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.payment-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.payment-form-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.payment-form-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #45433e;
+}
+
+.payment-form-field input,
+.payment-form-field select,
+.payment-form-field textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #dedbd4;
+  border-radius: 8px;
+  background: #fff;
+  color: #292821;
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.payment-form-field input:focus,
+.payment-form-field select:focus,
+.payment-form-field textarea:focus {
+  outline: none;
+  border-color: #8b7652;
+  box-shadow: 0 0 0 3px rgba(139, 118, 82, 0.12);
+}
+
+.payment-field-error {
+  color: #b42318;
+  font-size: 12px;
+}
+
+.payment-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.invoice-primary-action {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 17px;
+  background: #806b49;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.invoice-primary-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .payment-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-form-field.full-width {
+    grid-column: auto;
+  }
+}

@@ -367,6 +367,35 @@ export interface CustomerInvoicesResponse {
   };
 }
 
+export type InvoicePaymentMethod =
+  | 'cash'
+  | 'mobile_money'
+  | 'bank_transfer'
+  | 'card'
+  | 'cheque'
+  | 'other';
+
+export interface RecordInvoicePaymentPayload {
+  amount: number;
+  method: InvoicePaymentMethod;
+  reference?: string | null;
+  notes?: string | null;
+  paid_at?: string;
+}
+
+export interface RecordInvoicePaymentResponse {
+  success: boolean;
+  message: string;
+  data: {
+    id: number;
+    invoice_id: number;
+    amount: string | number;
+    method: InvoicePaymentMethod;
+    reference?: string | null;
+    notes?: string | null;
+    paid_at: string;
+  };
+}
 
 
 export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
@@ -655,6 +684,16 @@ getCustomerOrders(
   );
 }
 
+
+recordInvoicePayment(
+  invoiceId: number,
+  payload: RecordInvoicePaymentPayload
+): Observable<RecordInvoicePaymentResponse> {
+  return this.http.post<RecordInvoicePaymentResponse>(
+    `${API_URL}/invoices/${invoiceId}/payments`,
+    payload
+  );
+}
 
 
 }

@@ -461,7 +461,9 @@ class InvoiceService
                 ]);
             }
 
-            $paidAmount = (float) $invoice->payments()->sum('amount');
+            $paidAmount = (float) $invoice->payments()
+            ->whereDoesntHave('reversal')
+            ->sum('amount');
             $outstandingBalance = (float) $invoice->total - $paidAmount;
             $amount = (float) $data['amount'];
 
