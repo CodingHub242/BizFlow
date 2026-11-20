@@ -707,12 +707,12 @@
               {{ invoice.status.replaceAll('_', ' ') | titlecase }}
             </span>
 
-            <span
+            <!-- <span
               class="payment-status"
               [class.unpaid]="invoice.payment_status === 'unpaid'"
               [class.paid]="invoice.payment_status === 'paid'">
               {{ invoice.payment_status.replaceAll('_', ' ') | titlecase }}
-            </span>
+            </span> -->
           </div>
 
           <div class="invoice-date-grid">
