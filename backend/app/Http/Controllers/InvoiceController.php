@@ -81,6 +81,10 @@ public function index(\Illuminate\Http\Request $request): JsonResponse
 {
     $tenantId = (int) $request->user()->tenant_id;
 
+    $validated = $request->validate([
+        'customer_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
+    ]);
+
     $query = Invoice::query()
         ->where('tenant_id', $tenantId)
         ->with([
@@ -90,6 +94,10 @@ public function index(\Illuminate\Http\Request $request): JsonResponse
             'payments.reversal',
             'creditMemoApplications',
         ]);
+
+        if (!empty($validated['customer_id'])) {
+		    $query->where('customer_id', $validated['customer_id']);
+		}
 
     // Search across all invoices belonging to this tenant.
     $search = trim((string) $request->query('search', ''));
@@ -141,9 +149,14 @@ public function index(\Illuminate\Http\Request $request): JsonResponse
 
     $matchingTotal = (clone $query)->sum('total');
 
+    $perPage = min(
+        max((int) $request->query('per_page', 15), 1),
+        100
+    );
+
     $invoices = (clone $query)
         ->latest()
-        ->paginate(15)
+        ->paginate($perPage)
         ->appends($request->query());
 
     return response()->json([

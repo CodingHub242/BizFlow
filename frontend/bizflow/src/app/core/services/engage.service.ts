@@ -298,6 +298,75 @@ export interface CustomerOrdersResponse {
   total: number;
 }
 
+export interface CustomerInvoiceItem {
+  id: number;
+  catalog_item_id: number | null;
+  name: string;
+  quantity: string;
+  unit_price: string;
+  discount: string;
+  tax: string;
+  line_total: string;
+}
+
+export interface CustomerInvoice {
+  id: number;
+  invoice_number: string;
+  status: string;
+  payment_status: string;
+  subtotal: string;
+  discount: string;
+  tax: string;
+  total: string;
+  issued_at: string | null;
+  due_at: string | null;
+  notes: string | null;
+  customer_id: number;
+  branch_id: number;
+  order_id: number | null;
+  items: CustomerInvoiceItem[];
+  customer: {
+    id: number;
+    name: string;
+    company_name: string | null;
+  } | null;
+  branch: {
+    id: number;
+    name: string;
+    code: string | null;
+  } | null;
+  net_paid: number;
+  credit_applied: number;
+  payments: unknown[];
+  balance_due: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerInvoicesResponse {
+  success: boolean;
+  data: CustomerInvoice[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+  };
+  links: {
+    first: string | null;
+    last: string | null;
+    prev: string | null;
+    next: string | null;
+  };
+  summary: {
+    matching_invoice_count: number;
+    matching_invoice_total: number;
+    outstanding_invoice_total: number;
+  };
+}
+
 
 
 export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
@@ -551,6 +620,22 @@ convertProspectToCustomer(
   return this.http.post<ConvertProspectResponse>(
     `${this.apiUrl}/contacts/${contactId}/convert`,
     payload
+  );
+}
+
+getCustomerInvoices(
+  customerId: number,
+  page = 1,
+  perPage = 10
+): Observable<CustomerInvoicesResponse> {
+  const params = new HttpParams()
+    .set('customer_id', customerId)
+    .set('page', page)
+    .set('per_page', perPage);
+
+  return this.http.get<CustomerInvoicesResponse>(
+    `${API_URL}/invoices`,
+    { params }
   );
 }
 

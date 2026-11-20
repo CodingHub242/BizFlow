@@ -6,7 +6,7 @@ import { finalize, timer,Subscription } from 'rxjs';
 import {
   EngageService,
   EngageConversation,
-  EngageMessage,EngageEmployee,CustomerOrder
+  EngageMessage,EngageEmployee,CustomerOrder,CustomerInvoice
 } from '../../../core/services/engage.service';
 
 type ConversationStatus = 'open' | 'closed' | 'pending';
@@ -92,6 +92,19 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   ordersCurrentPage = 1;
   ordersLastPage = 1;
   ordersTotal = 0;
+
+  customerInvoices: CustomerInvoice[] = [];
+  loadingCustomerInvoices = false;
+  customerInvoicesError = '';
+
+  invoicesCurrentPage = 1;
+  invoicesLastPage = 1;
+  invoicesTotal = 0;
+
+  invoiceSummary = {
+    matching_invoice_count: 0,
+    matching_invoice_total: 0
+  };
 
   ngOnInit(): void {
     this.loadConversations();
@@ -358,6 +371,19 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   this.stopMessagePolling();
 
   this.selectedConversation = conversation;
+  this.activeCustomerTab = 'overview';
+  this.customerInvoices = [];
+  this.customerInvoicesError = '';
+  this.invoicesCurrentPage = 1;
+  this.invoicesLastPage = 1;
+  this.invoicesTotal = 0;
+
+  this.customerOrders = [];
+  this.customerOrdersError = '';
+  this.ordersCurrentPage = 1;
+  this.ordersLastPage = 1;
+  this.ordersTotal = 0;
+
 
   this.conversationStatusError = '';
   this.conversationStatusSuccess = '';
@@ -692,6 +718,55 @@ loadCustomerOrders(page = 1): void {
       error: error => {
         this.customerOrdersError =
           error?.error?.message || 'Unable to load customer orders.';
+      }
+    });
+}
+
+loadCustomerInvoices(page = 1): void {
+  const customerId = this.selectedConversation?.customerId;
+
+  if (!customerId) {
+    this.customerInvoices = [];
+    this.invoicesTotal = 0;
+    return;
+  }
+
+  this.loadingCustomerInvoices = true;
+  this.customerInvoicesError = '';
+
+  this.engageService
+    .getCustomerInvoices(customerId, page, 10)
+    .pipe(
+      finalize(() => {
+        this.loadingCustomerInvoices = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: response => {
+        this.customerInvoices = response.data ?? [];
+
+        this.invoicesCurrentPage = response.meta.current_page;
+        this.invoicesLastPage = response.meta.last_page;
+        this.invoicesTotal = response.meta.total;
+
+        this.invoiceSummary = {
+          matching_invoice_count:
+            response.summary?.matching_invoice_count ?? 0,
+          matching_invoice_total:
+            response.summary?.matching_invoice_total ?? 0
+        };
+
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        console.error('Failed to load customer invoices:', error);
+
+        this.customerInvoicesError =
+          error?.error?.message ||
+          'Unable to load customer invoices.';
+
+        this.cdr.detectChanges();
       }
     });
 }

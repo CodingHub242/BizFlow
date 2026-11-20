@@ -314,7 +314,7 @@
         <button
           type="button"
           [class.active]="activeCustomerTab === 'invoices'"
-          (click)="activeCustomerTab = 'invoices'">
+          (click)="activeCustomerTab = 'invoices'; loadCustomerInvoices()">
           Invoices
         </button>
 
@@ -413,6 +413,166 @@
             (click)="loadCustomerOrders(ordersCurrentPage + 1)">
             Next
           </button>
+        </div>
+
+      </div>
+
+      <div
+        *ngIf="activeCustomerTab === 'invoices'"
+        class="customer-tab-content">
+
+        <!-- Not linked to a Core customer -->
+        <div
+          *ngIf="!selectedConversation.customerId"
+          class="empty-state">
+          This contact is not linked to a Core customer yet.
+        </div>
+
+        <!-- Loading -->
+        <div
+          *ngIf="loadingCustomerInvoices"
+          class="empty-state">
+          Loading customer invoices...
+        </div>
+
+        <!-- Error -->
+        <div
+          *ngIf="customerInvoicesError"
+          class="assignment-feedback error">
+          {{ customerInvoicesError }}
+
+          <button
+            type="button"
+            (click)="loadCustomerInvoices(invoicesCurrentPage)">
+            Retry
+          </button>
+        </div>
+
+        <!-- Invoice summary -->
+        <div
+          *ngIf="
+            selectedConversation.customerId &&
+            !loadingCustomerInvoices &&
+            !customerInvoicesError &&
+            invoiceSummary.matching_invoice_count > 0
+          "
+          class="invoice-summary">
+
+          <div>
+            <span>Total invoices</span>
+            <strong>{{ invoiceSummary.matching_invoice_count }}</strong>
+          </div>
+
+          <div>
+            <span>Invoice value</span>
+            <strong>
+              GH₵ {{ invoiceSummary.matching_invoice_total | number:'1.2-2' }}
+            </strong>
+          </div>
+
+        </div>
+
+        <!-- Empty state -->
+        <div
+          *ngIf="
+            selectedConversation.customerId &&
+            !loadingCustomerInvoices &&
+            !customerInvoicesError &&
+            !customerInvoices.length
+          "
+          class="empty-state">
+          No invoices found for this customer.
+        </div>
+
+        <!-- Invoice cards -->
+        <div
+          *ngFor="let invoice of customerInvoices"
+          class="customer-invoice-card">
+
+          <div class="invoice-card-header">
+            <div>
+              <strong>INV-{{ invoice.invoice_number }}</strong>
+              <small>
+                Issued:
+                {{ invoice.issued_at ? (invoice.issued_at | date:'mediumDate') : '—' }}
+              </small>
+            </div>
+
+            <span class="invoice-total">
+              GH₵ {{ invoice.total | number:'1.2-2' }}
+            </span>
+          </div>
+
+          <div class="invoice-card-details">
+
+            <div>
+              <span>Due date</span>
+              <strong>
+                {{ invoice.due_at ? (invoice.due_at | date:'mediumDate') : '—' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Paid</span>
+              <strong>
+                GH₵ {{ invoice.net_paid | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Credit applied</span>
+              <strong>
+                GH₵ {{ invoice.credit_applied | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Balance due</span>
+              <strong class="invoice-balance">
+                GH₵ {{ invoice.balance_due | number:'1.2-2' }}
+              </strong>
+            </div>
+
+          </div>
+
+          <div class="invoice-card-footer">
+            <span class="invoice-status">
+              {{ invoice.status.replaceAll('_', ' ') | titlecase }}
+            </span>
+
+            <span
+              class="payment-status"
+              [class.unpaid]="invoice.payment_status === 'unpaid'"
+              [class.paid]="invoice.payment_status === 'paid'">
+              {{ invoice.payment_status.replaceAll('_', ' ') | titlecase }}
+            </span>
+          </div>
+
+        </div>
+
+        <!-- Pagination -->
+        <div
+          class="orders-pagination"
+          *ngIf="invoicesLastPage > 1">
+
+          <button
+            type="button"
+            [disabled]="invoicesCurrentPage === 1 || loadingCustomerInvoices"
+            (click)="loadCustomerInvoices(invoicesCurrentPage - 1)">
+            Previous
+          </button>
+
+          <span>
+            {{ invoicesCurrentPage }} / {{ invoicesLastPage }}
+          </span>
+
+          <button
+            type="button"
+            [disabled]="invoicesCurrentPage === invoicesLastPage || loadingCustomerInvoices"
+            (click)="loadCustomerInvoices(invoicesCurrentPage + 1)">
+            Next
+          </button>
+
         </div>
 
       </div>
