@@ -234,7 +234,7 @@ export const routes: Routes = [
               .then(m => m.EngageInboxComponent),
         },
         {
-          path: 'settings',
+          path: 'settings/main',
           loadComponent: () =>
             import('./features/engage/settings/settings.component')
               .then(m => m.SettingsComponent),
