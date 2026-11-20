@@ -106,6 +106,9 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     matching_invoice_total: 0
   };
 
+  selectedInvoice: CustomerInvoice | null = null;
+  showInvoiceModal = false;
+
   ngOnInit(): void {
     this.loadConversations();
     this.loadEmployees();
@@ -389,6 +392,7 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
   this.conversationStatusSuccess = '';
   this.assignmentError = '';
   this.assignmentSuccess = '';
+  this.closeInvoiceModal();
 
   this.loadMessages(conversation);
 
@@ -769,6 +773,18 @@ loadCustomerInvoices(page = 1): void {
         this.cdr.detectChanges();
       }
     });
+}
+
+openInvoiceModal(invoice: CustomerInvoice): void {
+  this.selectedInvoice = invoice;
+  this.showInvoiceModal = true;
+  this.cdr.detectChanges();
+}
+
+closeInvoiceModal(): void {
+  this.showInvoiceModal = false;
+  this.selectedInvoice = null;
+  this.cdr.detectChanges();
 }
 
 closeChatPanel(): void {

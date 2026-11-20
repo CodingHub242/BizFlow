@@ -485,9 +485,12 @@
         </div>
 
         <!-- Invoice cards -->
-        <div
+        <button
           *ngFor="let invoice of customerInvoices"
-          class="customer-invoice-card">
+          type="button"
+          class="customer-invoice-card"
+          (click)="openInvoiceModal(invoice)"
+          [attr.aria-label]="'View invoice ' + invoice.invoice_number">
 
           <div class="invoice-card-header">
             <div>
@@ -548,7 +551,7 @@
             </span>
           </div>
 
-        </div>
+        </button>
 
         <!-- Pagination -->
         <div
@@ -662,4 +665,197 @@
 
   </section>
 
+  <!-- Invoice detail modal -->
+  <div
+    *ngIf="showInvoiceModal && selectedInvoice as invoice"
+    class="invoice-modal-backdrop"
+    (click)="closeInvoiceModal()">
+
+    <section
+      class="invoice-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="invoiceModalTitle"
+      (click)="$event.stopPropagation()">
+
+      <header class="invoice-modal-header">
+        <div>
+          <span class="modal-eyebrow">CUSTOMER INVOICE</span>
+          <h2 id="invoiceModalTitle">
+            INV-{{ invoice.invoice_number }}
+          </h2>
+          <p>
+            {{ invoice.customer?.company_name || invoice.customer?.name || selectedConversation?.name }}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="invoice-modal-close"
+          aria-label="Close invoice details"
+          (click)="closeInvoiceModal()">
+          &times;
+        </button>
+      </header>
+
+      <div class="invoice-modal-body">
+
+        <!-- Status and dates -->
+        <div class="invoice-detail-top">
+          <div class="invoice-detail-status">
+            <span class="invoice-status">
+              {{ invoice.status.replaceAll('_', ' ') | titlecase }}
+            </span>
+
+            <span
+              class="payment-status"
+              [class.unpaid]="invoice.payment_status === 'unpaid'"
+              [class.paid]="invoice.payment_status === 'paid'">
+              {{ invoice.payment_status.replaceAll('_', ' ') | titlecase }}
+            </span>
+          </div>
+
+          <div class="invoice-date-grid">
+            <div>
+              <span>Issue date</span>
+              <strong>
+                {{ invoice.issued_at ? (invoice.issued_at | date:'mediumDate') : '—' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Due date</span>
+              <strong>
+                {{ invoice.due_at ? (invoice.due_at | date:'mediumDate') : '—' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Branch</span>
+              <strong>{{ invoice.branch?.name || '—' }}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line items -->
+        <section class="invoice-detail-section">
+          <h3>Invoice items</h3>
+
+          <div class="invoice-items-table">
+            <div class="invoice-items-heading">
+              <span>Item</span>
+              <span>Qty</span>
+              <span>Unit price</span>
+              <span>Amount</span>
+            </div>
+
+            <div
+              class="invoice-items-row"
+              *ngFor="let item of invoice.items">
+
+              <div class="invoice-item-name">
+                <strong>{{ item.name }}</strong>
+              </div>
+
+              <span>{{ item.quantity }}</span>
+
+              <span>
+                GH₵ {{ item.unit_price | number:'1.2-2' }}
+              </span>
+
+              <strong>
+                GH₵ {{ item.line_total | number:'1.2-2' }}
+              </strong>
+
+            </div>
+
+            <div
+              *ngIf="!invoice.items?.length"
+              class="invoice-no-items">
+              No invoice line items available.
+            </div>
+          </div>
+        </section>
+
+        <!-- Financial breakdown -->
+        <section class="invoice-detail-section">
+          <h3>Payment summary</h3>
+
+          <div class="invoice-financial-breakdown">
+
+            <div>
+              <span>Subtotal</span>
+              <strong>
+                GH₵ {{ invoice.subtotal | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Discount</span>
+              <strong>
+                GH₵ {{ invoice.discount | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Tax</span>
+              <strong>
+                GH₵ {{ invoice.tax | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div class="financial-total">
+              <span>Invoice total</span>
+              <strong>
+                GH₵ {{ invoice.total | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Amount paid</span>
+              <strong class="amount-positive">
+                GH₵ {{ invoice.net_paid | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div>
+              <span>Credit applied</span>
+              <strong>
+                GH₵ {{ invoice.credit_applied | number:'1.2-2' }}
+              </strong>
+            </div>
+
+            <div class="financial-balance">
+              <span>Balance due</span>
+              <strong>
+                GH₵ {{ invoice.balance_due | number:'1.2-2' }}
+              </strong>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Notes -->
+        <section
+          class="invoice-detail-section"
+          *ngIf="invoice.notes">
+
+          <h3>Invoice notes</h3>
+          <p class="invoice-notes">{{ invoice.notes }}</p>
+
+        </section>
+
+      </div>
+
+      <footer class="invoice-modal-footer">
+        <button
+          type="button"
+          class="invoice-secondary-action"
+          (click)="closeInvoiceModal()">
+          Close
+        </button>
+      </footer>
+
+    </section>
+  </div>
 </section>
