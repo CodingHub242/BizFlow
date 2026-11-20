@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject,ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EngageService } from '../../../core/services/engage.service';
 
@@ -12,6 +12,7 @@ import { EngageService } from '../../../core/services/engage.service';
 export class SettingsComponent implements OnInit {
 
   private engageService = inject(EngageService);
+  private cdr = inject(ChangeDetectorRef);
 
   beezBudEnabled = false;
   loading = true;
@@ -32,10 +33,13 @@ export class SettingsComponent implements OnInit {
       next: (response) => {
         this.beezBudEnabled = response.data.is_enabled;
         this.loading = false;
+
+        this.cdr.detectChanges();
       },
       error: () => {
         this.errorMessage = 'Unable to load BeezBud settings.';
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -55,12 +59,16 @@ export class SettingsComponent implements OnInit {
         this.beezBudEnabled = response.data.is_enabled;
         this.saving = false;
         this.successMessage = 'BeezBud settings updated successfully.';
+
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.beezBudEnabled = previousValue;
         this.saving = false;
         this.errorMessage =
           error?.error?.message || 'Unable to update BeezBud settings.';
+
+          this.cdr.detectChanges();
       }
     });
   }
