@@ -117,6 +117,7 @@ export class WhatsappAccountsComponent implements OnInit {
         const pagination = response?.data;
 
         this.accounts = pagination?.data ?? [];
+        console.log(this.accounts);
         this.currentPage = pagination.meta.current_page;
         this.lastPage = pagination.meta.last_page;
         this.totalAccounts = pagination.meta.total;
