@@ -700,6 +700,146 @@
 
       <div class="invoice-modal-body">
 
+         <!-- Record payment form -->
+        <section
+          *ngIf="showRecordPaymentForm"
+          class="invoice-detail-section payment-entry-section">
+
+          <h3>Record payment</h3>
+
+          <p class="payment-entry-description">
+            Record a payment against this invoice. The payment will be saved
+            in Bizflow Core.
+          </p>
+
+          <div
+            *ngIf="paymentError"
+            class="assignment-feedback error">
+            {{ paymentError }}
+          </div>
+
+          <div class="payment-form-grid">
+
+            <div class="payment-form-field">
+              <label for="paymentAmount">Payment amount (GHS)</label>
+
+              <input
+                id="paymentAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                [max]="invoice.balance_due"
+                [(ngModel)]="paymentForm.amount"
+                [disabled]="recordingInvoicePayment">
+
+              <small
+                class="payment-field-error"
+                *ngIf="paymentFieldErrors['amount']">
+                {{ paymentFieldErrors['amount'] }}
+              </small>
+            </div>
+
+            <div class="payment-form-field">
+              <label for="paymentMethod">Payment method</label>
+
+              <select
+                id="paymentMethod"
+                [(ngModel)]="paymentForm.method"
+                [disabled]="recordingInvoicePayment" style="height:40px;">
+
+                <option value="cash">Cash</option>
+                <option value="mobile_money">Mobile Money</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="card">Card</option>
+                <option value="cheque">Cheque</option>
+                <option value="other">Other</option>
+              </select>
+
+              <small
+                class="payment-field-error"
+                *ngIf="paymentFieldErrors['method']">
+                {{ paymentFieldErrors['method'] }}
+              </small>
+            </div>
+
+            <div class="payment-form-field">
+              <label for="paymentDate">Payment date</label>
+
+              <input
+                id="paymentDate"
+                type="datetime-local"
+                [(ngModel)]="paymentForm.paid_at"
+                [disabled]="recordingInvoicePayment">
+
+              <small
+                class="payment-field-error"
+                *ngIf="paymentFieldErrors['paid_at']">
+                {{ paymentFieldErrors['paid_at'] }}
+              </small>
+            </div>
+
+            <div class="payment-form-field">
+              <label for="paymentReference">Reference (optional)</label>
+
+              <input
+                id="paymentReference"
+                type="text"
+                maxlength="255"
+                placeholder="Transaction ID or receipt number"
+                [(ngModel)]="paymentForm.reference"
+                [disabled]="recordingInvoicePayment">
+
+              <small
+                class="payment-field-error"
+                *ngIf="paymentFieldErrors['reference']">
+                {{ paymentFieldErrors['reference'] }}
+              </small>
+            </div>
+
+            <div class="payment-form-field full-width">
+              <label for="paymentNotes">Notes (optional)</label>
+
+              <textarea
+                id="paymentNotes"
+                rows="3"
+                placeholder="Additional payment details..."
+                [(ngModel)]="paymentForm.notes"
+                [disabled]="recordingInvoicePayment">
+              </textarea>
+
+              <small
+                class="payment-field-error"
+                *ngIf="paymentFieldErrors['notes']">
+                {{ paymentFieldErrors['notes'] }}
+              </small>
+            </div>
+
+          </div>
+
+          <div class="payment-form-actions">
+
+            <button
+              type="button"
+              class="invoice-secondary-action"
+              (click)="cancelRecordPayment()"
+              [disabled]="recordingInvoicePayment">
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              class="invoice-primary-action"
+              (click)="recordInvoicePayment()"
+              [disabled]="recordingInvoicePayment">
+
+              {{ recordingInvoicePayment ? 'Recording payment...' : 'Confirm payment' }}
+
+            </button>
+
+          </div>
+
+        </section>
+
         <!-- Status and dates -->
         <div class="invoice-detail-top">
           <div class="invoice-detail-status">
@@ -845,145 +985,7 @@
 
         </section>
 
-        <!-- Record payment form -->
-        <section
-          *ngIf="showRecordPaymentForm"
-          class="invoice-detail-section payment-entry-section">
-
-          <h3>Record payment</h3>
-
-          <p class="payment-entry-description">
-            Record a payment against this invoice. The payment will be saved
-            in Bizflow Core.
-          </p>
-
-          <div
-            *ngIf="paymentError"
-            class="assignment-feedback error">
-            {{ paymentError }}
-          </div>
-
-          <div class="payment-form-grid">
-
-            <div class="payment-form-field">
-              <label for="paymentAmount">Payment amount (GHS)</label>
-
-              <input
-                id="paymentAmount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                [max]="invoice.balance_due"
-                [(ngModel)]="paymentForm.amount"
-                [disabled]="recordingInvoicePayment">
-
-              <small
-                class="payment-field-error"
-                *ngIf="paymentFieldErrors['amount']">
-                {{ paymentFieldErrors['amount'] }}
-              </small>
-            </div>
-
-            <div class="payment-form-field">
-              <label for="paymentMethod">Payment method</label>
-
-              <select
-                id="paymentMethod"
-                [(ngModel)]="paymentForm.method"
-                [disabled]="recordingInvoicePayment">
-
-                <option value="cash">Cash</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="card">Card</option>
-                <option value="cheque">Cheque</option>
-                <option value="other">Other</option>
-              </select>
-
-              <small
-                class="payment-field-error"
-                *ngIf="paymentFieldErrors['method']">
-                {{ paymentFieldErrors['method'] }}
-              </small>
-            </div>
-
-            <div class="payment-form-field">
-              <label for="paymentDate">Payment date</label>
-
-              <input
-                id="paymentDate"
-                type="datetime-local"
-                [(ngModel)]="paymentForm.paid_at"
-                [disabled]="recordingInvoicePayment">
-
-              <small
-                class="payment-field-error"
-                *ngIf="paymentFieldErrors['paid_at']">
-                {{ paymentFieldErrors['paid_at'] }}
-              </small>
-            </div>
-
-            <div class="payment-form-field">
-              <label for="paymentReference">Reference (optional)</label>
-
-              <input
-                id="paymentReference"
-                type="text"
-                maxlength="255"
-                placeholder="Transaction ID or receipt number"
-                [(ngModel)]="paymentForm.reference"
-                [disabled]="recordingInvoicePayment">
-
-              <small
-                class="payment-field-error"
-                *ngIf="paymentFieldErrors['reference']">
-                {{ paymentFieldErrors['reference'] }}
-              </small>
-            </div>
-
-            <div class="payment-form-field full-width">
-              <label for="paymentNotes">Notes (optional)</label>
-
-              <textarea
-                id="paymentNotes"
-                rows="3"
-                placeholder="Additional payment details..."
-                [(ngModel)]="paymentForm.notes"
-                [disabled]="recordingInvoicePayment">
-              </textarea>
-
-              <small
-                class="payment-field-error"
-                *ngIf="paymentFieldErrors['notes']">
-                {{ paymentFieldErrors['notes'] }}
-              </small>
-            </div>
-
-          </div>
-
-          <div class="payment-form-actions">
-
-            <button
-              type="button"
-              class="invoice-secondary-action"
-              (click)="cancelRecordPayment()"
-              [disabled]="recordingInvoicePayment">
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              class="invoice-primary-action"
-              (click)="recordInvoicePayment()"
-              [disabled]="recordingInvoicePayment">
-
-              {{ recordingInvoicePayment ? 'Recording payment...' : 'Confirm payment' }}
-
-            </button>
-
-          </div>
-
-        </section>
+       
 
       </div>
 
