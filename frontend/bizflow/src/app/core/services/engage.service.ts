@@ -95,6 +95,13 @@ export interface PaginatedResponse<T> {
     from: number | null;
     to: number | null;
   };
+
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
 }
 
 export interface EngageMessageResponse {
@@ -138,7 +145,7 @@ export interface EngageWhatsAppAccount {
   created_at: string;
   updated_at: string;
 
-  current_page?: number;
+  current_page?: number | null;
 }
 
 export interface EngageWhatsAppNumberResponse {
