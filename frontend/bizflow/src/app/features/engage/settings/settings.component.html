@@ -1,0 +1,92 @@
+<div class="settings-page">
+
+  <div class="settings-header">
+    <div>
+      <h2>Engage Settings</h2>
+      <p>Manage your customer engagement experience.</p>
+    </div>
+  </div>
+
+  <section class="settings-section">
+
+    <div class="section-heading">
+      <div>
+        <h3>AI Assistant</h3>
+        <p>Configure your BeezBud experience.</p>
+      </div>
+    </div>
+
+    <div class="settings-card">
+
+      <div class="beezbud-info">
+        <div class="beezbud-icon">
+          <span>✦</span>
+        </div>
+
+        <div class="beezbud-description">
+          <h3>BeezBud</h3>
+          <span class="subtitle">Your AI-powered engagement assistant</span>
+        </div>
+
+        <span
+          class="status-indicator"
+          [class.enabled]="beezBudEnabled"
+          [class.disabled]="!beezBudEnabled">
+          {{ beezBudEnabled ? 'Enabled' : 'Disabled' }}
+        </span>
+      </div>
+
+      <p class="description">
+        BeezBud helps your business respond to customer enquiries,
+        discover products and prepare orders through WhatsApp.
+      </p>
+
+      <div class="settings-divider"></div>
+
+      <div class="setting-control">
+        <div>
+          <h4>Enable BeezBud</h4>
+          <p>
+            Allow BeezBud to automatically handle new inbound
+            conversations when enabled.
+          </p>
+        </div>
+
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [checked]="beezBudEnabled"
+            [disabled]="loading || saving"
+            (change)="toggleBeezBud($event)">
+
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div *ngIf="saving" class="feedback">
+        Saving your settings...
+      </div>
+
+      <div *ngIf="successMessage" class="success-message">
+        {{ successMessage }}
+      </div>
+
+      <div *ngIf="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
+      <div *ngIf="loading" class="loading-message">
+        Loading settings...
+      </div>
+
+    </div>
+
+    <div class="information-note">
+      <strong>Important:</strong>
+      Your team can take over any conversation at any time.
+      Disabling BeezBud does not change existing human-owned conversations.
+    </div>
+
+  </section>
+
+</div>

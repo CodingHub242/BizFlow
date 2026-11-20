@@ -601,6 +601,16 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 	            EngageConversationController::class,
 	            'index',
 	        ])->middleware('permission:engage.conversations.view');
+
+            Route::get('/settings/beezbud', [
+			    TenantSettingsController::class,
+			    'showBeezBud',
+			])->middleware('permission:settings.view');
+			
+			Route::patch('/settings/beezbud', [
+			    TenantSettingsController::class,
+			    'updateBeezBud',
+			])->middleware('permission:settings.update');
 	
 	        Route::get('/conversations/{conversation}', [
 	            EngageConversationController::class,

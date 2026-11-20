@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\TenantFeatureSetting;
 use Illuminate\Validation\Rules\File;
 //use Illuminate\Validation\Rule;
 
@@ -191,5 +192,52 @@ class TenantSettingsController extends Controller
             ],
         ]);
     }
+
+
+public function showBeezBud(Request $request): JsonResponse
+{
+    $this->authorizeSettings($request, 'settings.view');
+
+    $tenant = $this->currentTenant($request);
+
+    $setting = $tenant->featureSettings()->firstOrCreate(
+        ['feature_key' => TenantFeatureSetting::FEATURE_BEEZBUD],
+        ['is_enabled' => true]
+    );
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'feature' => TenantFeatureSetting::FEATURE_BEEZBUD,
+            'is_enabled' => (bool) $setting->is_enabled,
+        ],
+    ]);
+}
+
+public function updateBeezBud(Request $request): JsonResponse
+{
+    $this->authorizeSettings($request, 'settings.update');
+
+    $validated = $request->validate([
+        'is_enabled' => ['required', 'boolean'],
+    ]);
+
+    $tenant = $this->currentTenant($request);
+
+    $setting = $tenant->featureSettings()->updateOrCreate(
+        ['feature_key' => TenantFeatureSetting::FEATURE_BEEZBUD],
+        ['is_enabled' => $validated['is_enabled']]
+    );
+
+    return response()->json([
+        'success' => true,
+        'message' => 'BeezBud settings updated successfully.',
+        'data' => [
+            'feature' => TenantFeatureSetting::FEATURE_BEEZBUD,
+            'is_enabled' => (bool) $setting->is_enabled,
+        ],
+    ]);
+}
+
 
 }

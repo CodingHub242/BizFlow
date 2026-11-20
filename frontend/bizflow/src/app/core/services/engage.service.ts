@@ -397,6 +397,17 @@ export interface RecordInvoicePaymentResponse {
   };
 }
 
+export interface BeezBudSettings {
+  feature: 'beezbud';
+  is_enabled: boolean;
+}
+
+export interface BeezBudSettingsResponse {
+  success: boolean;
+  data: BeezBudSettings;
+  message?: string;
+}
+
 
 export type EngageLifecycleStatus = 'prospect' | 'lead' | 'customer';
 
@@ -692,6 +703,21 @@ recordInvoicePayment(
   return this.http.post<RecordInvoicePaymentResponse>(
     `${API_URL}/invoices/${invoiceId}/payments`,
     payload
+  );
+}
+
+getBeezBudSettings(): Observable<BeezBudSettingsResponse> {
+  return this.http.get<BeezBudSettingsResponse>(
+    `${this.apiUrl}/settings/beezbud`
+  );
+}
+
+updateBeezBudSettings(
+  isEnabled: boolean
+): Observable<BeezBudSettingsResponse> {
+  return this.http.patch<BeezBudSettingsResponse>(
+    `${this.apiUrl}/settings/beezbud`,
+    { is_enabled: isEnabled }
   );
 }
 

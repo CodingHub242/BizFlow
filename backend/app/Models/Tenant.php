@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\TenantStatus;
+use App\Models\TenantFeatureSetting;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tenant extends Model
@@ -116,5 +117,30 @@ class Tenant extends Model
     public function employees(): HasMany
     {
         return $this->hasMany(Employee::class);
+    }
+
+    public function featureSettings(): HasMany
+	{
+	    return $this->hasMany(TenantFeatureSetting::class);
+	}
+
+    public function isBeezBudEnabled(): bool
+    {
+        $setting = $this->featureSettings()
+            ->where('feature_key', TenantFeatureSetting::FEATURE_BEEZBUD)
+            ->first();
+
+        // Safe default for tenants created without a setting record.
+        return $setting?->is_enabled ?? true;
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Tenant $tenant) {
+            $tenant->featureSettings()->firstOrCreate(
+                ['feature_key' => TenantFeatureSetting::FEATURE_BEEZBUD],
+                ['is_enabled' => true]
+            );
+        });
     }
 }
