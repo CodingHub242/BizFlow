@@ -53,9 +53,9 @@ export class WhatsappAccountsComponent implements OnInit {
       this.facebookSdkReady = true;
       this.cdr.detectChanges();
 
-      console.log('WhatsApp Embedded Signup is ready.');
+     // console.log('WhatsApp Embedded Signup is ready.');
     } catch (error) {
-      console.error('WhatsApp SDK initialization failed:', error);
+    //  console.error('WhatsApp SDK initialization failed:', error);
 
       this.errorMessage =
         'Unable to initialize WhatsApp connection. Please refresh and try again.';
@@ -81,11 +81,11 @@ export class WhatsappAccountsComponent implements OnInit {
       this.successMessage =
         'Meta onboarding completed. WhatsApp account details received.';
 
-      console.log('WhatsApp signup completed:', {
-        wabaId: result.wabaId,
-        phoneNumberId: result.phoneNumberId,
-        businessId: result.businessId,
-      });
+      // console.log('WhatsApp signup completed:', {
+      //   wabaId: result.wabaId,
+      //   phoneNumberId: result.phoneNumberId,
+      //   businessId: result.businessId,
+      // });
 
       this.cdr.detectChanges();
 
@@ -147,12 +147,14 @@ export class WhatsappAccountsComponent implements OnInit {
       .pipe(finalize(() => (this.busyAction = '')))
       .subscribe({
         next: () => {
+          this.loading = false;
           this.successMessage = 'Default WhatsApp number updated.';
           this.loadAccounts(this.currentPage);
 
           this.cdr.detectChanges();
         },
         error: (error) => {
+          this.loading = false;
           this.errorMessage =
             error?.error?.message ??
             'Unable to set the default WhatsApp number.';
