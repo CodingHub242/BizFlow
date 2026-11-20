@@ -234,6 +234,12 @@ export const routes: Routes = [
               .then(m => m.EngageInboxComponent),
         },
         {
+          path: 'settings',
+          loadComponent: () =>
+            import('./features/engage/settings/settings.component')
+              .then(m => m.SettingsComponent),
+        },
+        {
           path: 'settings/whatsapp',
           loadComponent: () =>
             import('./features/engage/settings/whatsapp-accounts/whatsapp-accounts.component')
