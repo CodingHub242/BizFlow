@@ -16,6 +16,10 @@ class EngageConversationResource extends JsonResource
             'channel' => $this->channel,
             'external_conversation_id' => $this->external_conversation_id,
             'status' => $this->status,
+			'handling_mode' => $this->handling_mode,
+			'handling_changed_by' => $this->handling_changed_by,
+			'handling_changed_at' => $this->handling_changed_at,
+			'handling_version' => $this->handling_version,
 
             'assigned_to' => $this->assigned_to,
             'unread_count' => $this->unread_count,

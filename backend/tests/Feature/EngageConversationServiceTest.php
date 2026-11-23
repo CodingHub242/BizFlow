@@ -247,4 +247,215 @@ class EngageConversationServiceTest extends TestCase
             'direction' => 'inbound',
         ]);
     }
+
+    public function test_new_conversation_starts_in_ai_mode_when_beezbud_is_enabled(): void
+{
+    $tenant = Tenant::factory()->create();
+    $contact = $this->createContact($tenant);
+
+    $message = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-ai-001',
+            'body' => 'Hello, I need help.',
+        ]
+    );
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $message->conversation_id,
+        'tenant_id' => $tenant->id,
+        'handling_mode' => EngageConversation::HANDLING_AI,
+        'handling_version' => 0,
+        'handling_changed_by' => null,
+        'handling_changed_at' => null,
+    ]);
+
+    $this->assertDatabaseHas('engage_messages', [
+    'id' => $message->id,
+    'conversation_id' => $message->conversation_id,
+    'direction' => 'inbound',
+    'handling_version' => 0,
+]);
+}
+
+public function test_inbound_message_captures_current_handling_version(): void
+{
+    $tenant = Tenant::factory()->create();
+    $contact = $this->createContact($tenant);
+
+    $conversation = EngageConversation::create([
+        'tenant_id' => $tenant->id,
+        'contact_id' => $contact->id,
+        'channel' => 'whatsapp',
+        'status' => 'open',
+        'handling_mode' => EngageConversation::HANDLING_AI,
+        'handling_version' => 2,
+        'unread_count' => 0,
+    ]);
+
+    $message = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-version-002',
+            'body' => 'I need some assistance.',
+        ]
+    );
+
+    $this->assertSame($conversation->id, $message->conversation_id);
+
+    $this->assertDatabaseHas('engage_messages', [
+        'id' => $message->id,
+        'conversation_id' => $conversation->id,
+        'direction' => 'inbound',
+        'handling_version' => 2,
+    ]);
+}
+
+public function test_new_conversation_starts_in_human_mode_when_beezbud_is_disabled(): void
+{
+    $tenant = Tenant::factory()->create();
+
+    $tenant->featureSettings()->updateOrCreate(
+        ['feature_key' => 'beezbud'],
+        ['is_enabled' => false]
+    );
+
+    $contact = $this->createContact($tenant);
+
+    $message = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-human-001',
+            'body' => 'Hello, I need assistance.',
+        ]
+    );
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $message->conversation_id,
+        'tenant_id' => $tenant->id,
+        'handling_mode' => EngageConversation::HANDLING_HUMAN,
+        'handling_version' => 0,
+    ]);
+}
+public function test_existing_human_conversation_remains_human_owned_after_inbound_message(): void
+{
+    $tenant = Tenant::factory()->create();
+    $contact = $this->createContact($tenant);
+
+    $conversation = EngageConversation::create([
+        'tenant_id' => $tenant->id,
+        'contact_id' => $contact->id,
+        'channel' => 'whatsapp',
+        'status' => 'open',
+        'handling_mode' => EngageConversation::HANDLING_HUMAN,
+        'handling_version' => 1,
+        'unread_count' => 0,
+    ]);
+
+    $message = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-human-existing-001',
+            'body' => 'I am following up.',
+        ]
+    );
+
+    $this->assertSame($conversation->id, $message->conversation_id);
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $conversation->id,
+        'handling_mode' => EngageConversation::HANDLING_HUMAN,
+        'handling_version' => 1,
+    ]);
+}
+public function test_existing_ai_conversation_retains_ownership_when_beezbud_is_disabled(): void
+{
+    $tenant = Tenant::factory()->create();
+    $contact = $this->createContact($tenant);
+
+    $conversation = EngageConversation::create([
+        'tenant_id' => $tenant->id,
+        'contact_id' => $contact->id,
+        'channel' => 'whatsapp',
+        'status' => 'open',
+        'handling_mode' => EngageConversation::HANDLING_AI,
+        'handling_version' => 0,
+        'unread_count' => 0,
+    ]);
+
+    $tenant->featureSettings()->updateOrCreate(
+        ['feature_key' => 'beezbud'],
+        ['is_enabled' => false]
+    );
+
+    $message = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-ai-existing-001',
+            'body' => 'Are you still there?',
+        ]
+    );
+
+    $this->assertSame($conversation->id, $message->conversation_id);
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $conversation->id,
+        'handling_mode' => EngageConversation::HANDLING_AI,
+        'handling_version' => 0,
+    ]);
+}
+public function test_duplicate_inbound_message_does_not_change_handling_ownership_or_version(): void
+{
+    $tenant = Tenant::factory()->create();
+    $contact = $this->createContact($tenant);
+
+    $first = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-ownership-duplicate',
+            'body' => 'Hello.',
+        ]
+    );
+
+    $conversation = EngageConversation::findOrFail(
+        $first->conversation_id
+    );
+
+    $originalMode = $conversation->handling_mode;
+    $originalVersion = $conversation->handling_version;
+
+    // Simulate ownership changing after the original message was received.
+    $conversation->update([
+        'handling_version' => 2,
+    ]);
+
+    $second = $this->service->receiveInboundMessage(
+        $tenant->id,
+        $contact,
+        [
+            'provider_message_id' => 'wamid-ownership-duplicate',
+            'body' => 'This should not be processed again.',
+        ]
+    );
+
+    $this->assertSame($first->id, $second->id);
+
+    $this->assertSame(0, $first->handling_version);
+    $this->assertSame(0, $second->handling_version);
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $conversation->id,
+        'handling_mode' => $originalMode,
+        'handling_version' => 2,
+        'unread_count' => 1,
+    ]);
+
+    $this->assertDatabaseCount('engage_messages', 1);
+}
 }

@@ -12,6 +12,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Services\AuditService;
 use App\EmploymentStatus;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Database\Eloquent\Builder;
@@ -95,6 +96,8 @@ class EngageConversationController extends Controller
             ->with([
                 'contact.customer',
                 'assignee:id,name',
+                'contact.customer',
+                'assignee',
                 'latestMessage',
             ])
             ->findOrFail($conversation);
@@ -297,11 +300,7 @@ class EngageConversationController extends Controller
 	    });
 	}
 
-
-/**
- * Close or reopen a conversation.
- */
-    public function updateStatus(
+	    public function updateStatus(
         Request $request,
         int $conversation,
         AuditService $auditService
@@ -361,5 +360,130 @@ class EngageConversationController extends Controller
         });
     }
 
+	public function takeOver(
+	    Request $request,
+	    int $conversation,
+	    AuditService $auditService
+	) {
+	    $user = $request->user();
+	
+	    abort_unless($user && $user->tenant_id, 403);
+	
+	    return DB::transaction(function () use (
+	        $request,
+	        $user,
+	        $conversation,
+	        $auditService
+	    ) {
+	        $conversationModel = EngageConversation::query()
+	            ->where('tenant_id', $user->tenant_id)
+	            ->lockForUpdate()
+	            ->findOrFail($conversation);
+	
+	        if ($conversationModel->handling_mode !== EngageConversation::HANDLING_HUMAN) {
+	            $oldMode = $conversationModel->handling_mode;
+	            $oldVersion = $conversationModel->handling_version;
+	
+	            $conversationModel->handling_mode = EngageConversation::HANDLING_HUMAN;
+	            $conversationModel->handling_changed_by = $user->id;
+	            $conversationModel->handling_changed_at = now();
+	            $conversationModel->handling_version = $oldVersion + 1;
+	
+	            $conversationModel->save();
+	
+	            $auditService->record(
+	                action: 'conversation.human_takeover',
+	                model: $conversationModel,
+	                oldValues: [
+	                    'handling_mode' => $oldMode,
+	                    'handling_version' => $oldVersion,
+	                ],
+	                newValues: [
+	                    'handling_mode' => $conversationModel->handling_mode,
+	                    'handling_version' => $conversationModel->handling_version,
+	                    'handling_changed_by' => $user->id,
+	                    'handling_changed_at' => $conversationModel->handling_changed_at,
+	                ],
+	                request: $request,
+	            );
+	        }
+	
+	        $conversationModel->load([
+	            'contact.customer',
+	            'assignee',
+	            'latestMessage',
+	        ]);
+	
+	        return new EngageConversationResource($conversationModel);
+	    });
+	}
+
+	public function handBackToBeezBud(
+	    Request $request,
+	    int $conversation,
+	    AuditService $auditService
+	) {
+	    $user = $request->user();
+	
+	    abort_unless($user && $user->tenant_id, 403);
+	
+	    return DB::transaction(function () use (
+	        $request,
+	        $user,
+	        $conversation,
+	        $auditService
+	    ) {
+	        $conversationModel = EngageConversation::query()
+	            ->where('tenant_id', $user->tenant_id)
+	            ->lockForUpdate()
+	            ->findOrFail($conversation);
+	
+	        $tenant = Tenant::query()->findOrFail($user->tenant_id);
+	
+	        if (!$tenant->isBeezBudEnabled()) {
+	            throw ValidationException::withMessages([
+	                'beezbud' => [
+	                    'BeezBud is disabled for this business. Enable it before handing back conversations.',
+	                ],
+	            ]);
+	        }
+	
+	        if ($conversationModel->handling_mode !== EngageConversation::HANDLING_AI) {
+	            $oldMode = $conversationModel->handling_mode;
+	            $oldVersion = $conversationModel->handling_version;
+	
+	            $conversationModel->handling_mode = EngageConversation::HANDLING_AI;
+	            $conversationModel->handling_changed_by = $user->id;
+	            $conversationModel->handling_changed_at = now();
+	            $conversationModel->handling_version = $oldVersion + 1;
+	
+	            $conversationModel->save();
+	
+	            $auditService->record(
+	                action: 'conversation.ai_handback',
+	                model: $conversationModel,
+	                oldValues: [
+	                    'handling_mode' => $oldMode,
+	                    'handling_version' => $oldVersion,
+	                ],
+	                newValues: [
+	                    'handling_mode' => $conversationModel->handling_mode,
+	                    'handling_version' => $conversationModel->handling_version,
+	                    'handling_changed_by' => $user->id,
+	                    'handling_changed_at' => $conversationModel->handling_changed_at,
+	                ],
+	                request: $request,
+	            );
+	        }
+	
+	        $conversationModel->load([
+	            'contact.customer',
+	            'assignee',
+	            'latestMessage',
+	        ]);
+	
+	        return new EngageConversationResource($conversationModel);
+	    });
+	}
 
 }

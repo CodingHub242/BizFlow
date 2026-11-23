@@ -602,7 +602,7 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 	            'index',
 	        ])->middleware('permission:engage.conversations.view');
 
-            Route::get('/settings/beezbud', [
+			Route::get('/settings/beezbud', [
 			    TenantSettingsController::class,
 			    'showBeezBud',
 			])->middleware('permission:settings.view');
@@ -635,13 +635,32 @@ Route::middleware('auth:sanctum','tenant.approved')->group(function () {
 			 Route::patch(
 	            '/conversations/{conversation}/assignment',
 	            [EngageConversationController::class, 'assign']
-	        );
+	        ) 
+			->whereNumber('conversation')
+    		->middleware('permission:engage.conversations.reply');
+			
 			Route::patch(
 			    '/conversations/{conversation}/status',
 			    [EngageConversationController::class, 'updateStatus']
 			)
 			->whereNumber('conversation')
 			->middleware('permission:engage.conversations.reply');
+
+			Route::post(
+			    '/conversations/{conversation}/takeover',
+			    [EngageConversationController::class, 'takeOver']
+			)
+			    ->whereNumber('conversation')
+			    ->middleware('permission:engage.conversations.reply');
+			
+			Route::post(
+			    '/conversations/{conversation}/hand-back',
+			    [EngageConversationController::class, 'handBackToBeezBud']
+			)
+			    ->whereNumber('conversation')
+			    ->middleware('permission:engage.conversations.reply');
+
+			
 
 			 // Contacts
             Route::get('/contacts', [

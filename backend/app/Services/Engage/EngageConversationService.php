@@ -5,6 +5,7 @@ namespace App\Services\Engage;
 use App\Models\EngageContact;
 use App\Models\EngageConversation;
 use App\Models\EngageMessage;
+use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -50,7 +51,7 @@ class EngageConversationService
             $payload,
             $channel,
             $providerMessageId,
-            $whatsappNumberId
+			$whatsappNumberId
         ) {
             // Check idempotency before creating or updating a conversation.
             if ($providerMessageId) {
@@ -76,16 +77,36 @@ class EngageConversationService
 
             $conversation = $query->lockForUpdate()->first();
 
-            if (!$conversation) {
-                $conversation = EngageConversation::create([
-                    'tenant_id' => $tenantId,
-                    'contact_id' => $contact->id,
-                    'channel' => $channel,
-                    'status' => 'open',
-                    'unread_count' => 0,
-                    'whatsapp_number_id' => $whatsappNumberId,
-                ]);
-            }
+            // if (!$conversation) {
+            //     $conversation = EngageConversation::create([
+            //         'tenant_id' => $tenantId,
+            //         'contact_id' => $contact->id,
+            //         'channel' => $channel,
+            //         'status' => 'open',
+            //         'unread_count' => 0,
+            //         'whatsapp_number_id' => $whatsappNumberId,
+            //     ]);
+            // }
+			if (!$conversation) {
+			    $tenant = Tenant::query()->findOrFail($tenantId);
+			
+			    $handlingMode = $tenant->isBeezBudEnabled()
+			        ? EngageConversation::HANDLING_AI
+			        : EngageConversation::HANDLING_HUMAN;
+			
+			    $conversation = EngageConversation::create([
+			        'tenant_id' => $tenantId,
+			        'contact_id' => $contact->id,
+			        'channel' => $channel,
+			        'status' => 'open',
+			        'handling_mode' => $handlingMode,
+			        'handling_version' => 0,
+			        'handling_changed_by' => null,
+			        'handling_changed_at' => null,
+			        'unread_count' => 0,
+			        'whatsapp_number_id' => $whatsappNumberId,
+			    ]);
+			}
 
             $receivedAt = $payload['received_at'] ?? now();
 
@@ -94,6 +115,7 @@ class EngageConversationService
                 'conversation_id' => $conversation->id,
                 'provider_message_id' => $providerMessageId,
                 'direction' => 'inbound',
+				'handling_version' => $conversation->handling_version,
                 'message_type' => $payload['message_type'] ?? 'text',
                 'body' => $payload['body'] ?? null,
                 'status' => 'received',

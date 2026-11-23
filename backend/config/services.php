@@ -44,14 +44,21 @@ return [
         'frontend_return_url' => env('QUICKBOOKS_FRONTEND_RETURN_URL', env('APP_URL')),
     ],
 
-    'whatsapp' => [
+	'whatsapp' => [
         'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
         'app_secret' => env('META_APP_SECRET'),
-        'test_access_token' => env('WHATSAPP_TEST_ACCESS_TOKEN'),
-        'test_waba_id' => env('WHATSAPP_TEST_WABA_ID'),
-        'test_phone_number_id' => env('WHATSAPP_TEST_PHONE_NUMBER_ID'),
-        'graph_api_version' => env('WHATSAPP_GRAPH_API_VERSION', 'v26.0'),
+		'test_access_token' => env('WHATSAPP_TEST_ACCESS_TOKEN'),
+	    'test_waba_id' => env('WHATSAPP_TEST_WABA_ID'),
+	    'test_phone_number_id' => env('WHATSAPP_TEST_PHONE_NUMBER_ID'),
+		'graph_api_version' => env('WHATSAPP_GRAPH_API_VERSION', 'v26.0'),
     ],
+
+	'openai' => [
+	    'api_key' => env('OPENAI_API_KEY'),
+	    'model' => env('OPENAI_MODEL'),
+	    'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+	    'timeout' => (int) env('OPENAI_TIMEOUT', 60),
+	],
 
 
 ];
