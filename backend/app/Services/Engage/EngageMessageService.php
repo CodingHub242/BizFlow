@@ -339,6 +339,104 @@ class EngageMessageService
 	    });
 	}
 
+    public function prepareAndCompleteInboundAiMessage(
+        int $tenantId,
+        int $conversationId,
+        int $inboundMessageId,
+        string $body,
+        string $processingToken,
+        int $expectedHandlingVersion
+    ): ?EngageMessage {
+        $body = trim($body);
+
+        if ($body === '') {
+            throw ValidationException::withMessages([
+                'body' => ['A message cannot be empty.'],
+            ]);
+        }
+
+        return DB::transaction(function () use (
+            $tenantId,
+            $conversationId,
+            $inboundMessageId,
+            $body,
+            $processingToken,
+            $expectedHandlingVersion
+        ) {
+            $tenant = Tenant::query()->findOrFail($tenantId);
+
+            $conversation = EngageConversation::query()
+                ->where('tenant_id', $tenantId)
+                ->lockForUpdate()
+                ->findOrFail($conversationId);
+
+            $inbound = EngageMessage::query()
+                ->where('tenant_id', $tenantId)
+                ->where('conversation_id', $conversationId)
+                ->lockForUpdate()
+                ->findOrFail($inboundMessageId);
+
+            // The worker may have lost its claim to another worker.
+            if (
+                $inbound->ai_processing_status !== 'processing' ||
+                $inbound->ai_processing_token !== $processingToken
+            ) {
+                return null;
+            }
+
+            // Revalidate all ownership and eligibility conditions.
+            if (
+                !$tenant->isBeezBudEnabled() ||
+                $conversation->handling_mode !== EngageConversation::HANDLING_AI ||
+                (int) $conversation->handling_version !== $expectedHandlingVersion ||
+                (int) $inbound->handling_version !== $expectedHandlingVersion
+            ) {
+                throw ValidationException::withMessages([
+                    'conversation' => [
+                        'BeezBud can no longer respond to this conversation.',
+                    ],
+                ]);
+            }
+
+            if (
+                $inbound->direction !== 'inbound' ||
+                $inbound->message_type !== 'text'
+            ) {
+                throw ValidationException::withMessages([
+                    'message' => [
+                        'Only inbound text messages can receive AI responses.',
+                    ],
+                ]);
+            }
+
+            // Create the outbound response.
+            $response = $conversation->messages()->create([
+                'tenant_id' => $tenantId,
+                'direction' => 'outbound',
+                'message_type' => 'text',
+                'body' => $body,
+                'status' => 'queued',
+                'sender_type' => 'ai',
+                'handling_version' => $expectedHandlingVersion,
+                'dispatched_at' => null,
+                'media' => null,
+                'metadata' => null,
+                'sent_at' => null,
+                'delivered_at' => null,
+                'read_at' => null,
+            ]);
+
+            // Complete and link the inbound message in the same transaction.
+            $inbound->update([
+                'ai_processing_status' => 'completed',
+                'ai_response_message_id' => $response->id,
+                'ai_processing_token' => null,
+            ]);
+
+            return $response->fresh();
+        }, 3);
+    }
+
 	
 	/**
 	 * Dispatch a prepared BeezBud message to WhatsApp.

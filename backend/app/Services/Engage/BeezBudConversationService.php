@@ -6,9 +6,15 @@ use App\Models\EngageConversation;
 use App\Models\EngageMessage;
 use App\Models\Tenant;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class BeezBudConversationService
 {
+    private const PROCESSING_LEASE_MINUTES = 10;
+
     public function __construct(
         private BeezBudPromptService $promptService,
         private BeezBudAiService $aiService,
@@ -19,96 +25,320 @@ class BeezBudConversationService
     /**
      * Process one inbound text message and prepare BeezBud's response.
      *
-     * Returns null when the message is not eligible for AI processing.
-     * This method does not dispatch anything to WhatsApp.
+     * Returns the prepared response, or null when processing is
+     * skipped or another worker already owns the claim.
+     *
+     * This method never dispatches directly to WhatsApp.
      */
     public function handleInboundTextMessage(
         int $tenantId,
         int $conversationId,
         int $inboundMessageId
     ): ?EngageMessage {
-        // Confirm that BeezBud is enabled for this tenant.
-        $tenant = Tenant::query()->findOrFail($tenantId);
-
-        if (!$tenant->isBeezBudEnabled()) {
-            return null;
-        }
-
-        // Always scope the conversation to its tenant.
-        $conversation = EngageConversation::query()
-            ->where('tenant_id', $tenantId)
-            ->findOrFail($conversationId);
-
-        if (
-            $conversation->handling_mode !==
-            EngageConversation::HANDLING_AI
-        ) {
-            return null;
-        }
-
-        // Retrieve the triggering message within the same tenant
-        // and conversation.
-        $inboundMessage = EngageMessage::query()
-            ->where('tenant_id', $tenantId)
-            ->where('conversation_id', $conversationId)
-            ->findOrFail($inboundMessageId);
-
-        // Only genuine inbound text messages can trigger AI generation.
-        if (
-            $inboundMessage->direction !== 'inbound' ||
-            $inboundMessage->message_type !== 'text' ||
-            !is_string($inboundMessage->body) ||
-            trim($inboundMessage->body) === ''
-        ) {
-            return null;
-        }
-
-        // The inbound message must belong to the current
-        // conversation ownership version.
-        if (
-            $inboundMessage->handling_version === null ||
-            (int) $inboundMessage->handling_version !==
-            (int) $conversation->handling_version
-        ) {
-            return null;
-        }
-
-        // Build a chronological text-only conversation history.
-        $messages = $this->buildConversationHistory(
+        $claim = $this->claimInboundMessage(
             $tenantId,
             $conversationId,
             $inboundMessageId
         );
 
-        if ($messages->isEmpty()) {
+        if ($claim['state'] === 'completed') {
+            return EngageMessage::query()
+                ->where('tenant_id', $tenantId)
+                ->find($claim['response_id']);
+        }
+
+        if ($claim['state'] !== 'claimed') {
             return null;
         }
 
-        $prompt = $this->promptService->buildInstructions(
-            $tenant->name
-        );
+        $token = $claim['token'];
+        $handlingVersion = $claim['handling_version'];
 
-        // Generate the response.
-        $response = $this->aiService->generateResponse(
-            $prompt,
-            $messages->all()
-        );
+        try {
+            $tenant = Tenant::query()->findOrFail($tenantId);
 
-        // This method rechecks tenant feature status, ownership,
-        // and handling version inside a database transaction.
-        // If a human took over during generation, preparation fails.
-        return $this->messageService->prepareOutboundAiMessage(
-            $tenantId,
-            $conversationId,
-            $response,
-            (int) $inboundMessage->handling_version
-        );
+            $messages = $this->buildConversationHistory(
+                $tenantId,
+                $conversationId,
+                $inboundMessageId
+            );
+
+            if ($messages->isEmpty()) {
+                throw new \RuntimeException(
+                    'No usable conversation history was found.'
+                );
+            }
+
+            $prompt = $this->promptService->buildInstructions(
+                $tenant->name
+            );
+
+            $responseBody = $this->aiService->generateResponse(
+                $prompt,
+                $messages->all()
+            );
+
+            // This existing method performs its own final ownership,
+            // tenant feature and handling-version checks.
+            // $response = $this->messageService->prepareOutboundAiMessage(
+            //     $tenantId,
+            //     $conversationId,
+            //     $responseBody,
+            //     $handlingVersion
+            // );
+            return $this->messageService->prepareAndCompleteInboundAiMessage(
+                $tenantId,
+                $conversationId,
+                $inboundMessageId,
+                $responseBody,
+                $token,
+                $handlingVersion
+            );
+
+            // return $this->completeClaim(
+            //     $tenantId,
+            //     $conversationId,
+            //     $inboundMessageId,
+            //     $response,
+            //     $token,
+            //     $handlingVersion
+            // );
+        } catch (Throwable $exception) {
+            $this->releaseFailedClaim(
+                $tenantId,
+                $conversationId,
+                $inboundMessageId,
+                $token
+            );
+
+            throw $exception;
+        }
     }
 
     /**
-     * Build the recent conversation history up to the triggering message.
+     * Atomically claim an eligible inbound message.
      *
-     * Media messages and unsuccessful outbound messages are excluded.
+     * @return array{
+     *     state: string,
+     *     token?: string,
+     *     handling_version?: int,
+     *     response_id?: int
+     * }
+     */
+    private function claimInboundMessage(
+        int $tenantId,
+        int $conversationId,
+        int $inboundMessageId
+    ): array {
+        return DB::transaction(function () use (
+            $tenantId,
+            $conversationId,
+            $inboundMessageId
+        ) {
+            $tenant = Tenant::query()->findOrFail($tenantId);
+
+            if (!$tenant->isBeezBudEnabled()) {
+                return ['state' => 'skipped'];
+            }
+
+            $conversation = EngageConversation::query()
+                ->where('tenant_id', $tenantId)
+                ->lockForUpdate()
+                ->findOrFail($conversationId);
+
+            if (
+                $conversation->handling_mode !==
+                EngageConversation::HANDLING_AI
+            ) {
+                return ['state' => 'skipped'];
+            }
+
+            $message = EngageMessage::query()
+                ->where('tenant_id', $tenantId)
+                ->where('conversation_id', $conversationId)
+                ->lockForUpdate()
+                ->findOrFail($inboundMessageId);
+
+            if (
+                $message->direction !== 'inbound' ||
+                $message->message_type !== 'text' ||
+                !is_string($message->body) ||
+                trim($message->body) === '' ||
+                $message->handling_version === null ||
+                (int) $message->handling_version !==
+                    (int) $conversation->handling_version
+            ) {
+                return ['state' => 'skipped'];
+            }
+
+            if ($message->ai_processing_status === 'completed') {
+                return [
+                    'state' => 'completed',
+                    'response_id' => $message->ai_response_message_id,
+                ];
+            }
+
+            if ($message->ai_processing_status === 'cancelled') {
+                return ['state' => 'skipped'];
+            }
+
+            if ($message->ai_processing_status === 'processing') {
+                $leaseExpired = !$message->ai_processing_started_at ||
+                    $message->ai_processing_started_at->lte(
+                        now()->subMinutes(self::PROCESSING_LEASE_MINUTES)
+                    );
+
+                if (!$leaseExpired) {
+                    return ['state' => 'already_processing'];
+                }
+            }
+
+            // Null or failed states can be claimed.
+            // Expired processing claims can also be reclaimed.
+            $token = (string) Str::uuid();
+
+            $message->update([
+                'ai_processing_status' => 'processing',
+                'ai_processing_started_at' => now(),
+                'ai_processing_token' => $token,
+                'ai_response_message_id' => null,
+            ]);
+
+            return [
+                'state' => 'claimed',
+                'token' => $token,
+                'handling_version' => (int) $message->handling_version,
+            ];
+        }, 3);
+    }
+
+    /**
+     * Link the prepared response and complete the inbound claim.
+     */
+    // private function completeClaim(
+    //     int $tenantId,
+    //     int $conversationId,
+    //     int $inboundMessageId,
+    //     EngageMessage $response,
+    //     string $token,
+    //     int $handlingVersion
+    // ): ?EngageMessage {
+    //     return DB::transaction(function () use (
+    //         $tenantId,
+    //         $conversationId,
+    //         $inboundMessageId,
+    //         $response,
+    //         $token,
+    //         $handlingVersion
+    //     ) {
+    //         $tenant = Tenant::query()->findOrFail($tenantId);
+
+    //         $conversation = EngageConversation::query()
+    //             ->where('tenant_id', $tenantId)
+    //             ->lockForUpdate()
+    //             ->findOrFail($conversationId);
+
+    //         $inbound = EngageMessage::query()
+    //             ->where('tenant_id', $tenantId)
+    //             ->where('conversation_id', $conversationId)
+    //             ->lockForUpdate()
+    //             ->findOrFail($inboundMessageId);
+
+    //         $currentClaim = $inbound->ai_processing_token === $token;
+
+    //         $stillEligible = $tenant->isBeezBudEnabled()
+    //             && $conversation->handling_mode ===
+    //                 EngageConversation::HANDLING_AI
+    //             && (int) $conversation->handling_version ===
+    //                 $handlingVersion;
+
+    //         if (!$currentClaim || !$stillEligible) {
+    //             $response->update([
+    //                 'status' => 'cancelled',
+    //                 'metadata' => [
+    //                     'provider' => 'whatsapp',
+    //                     'cancellation_reason' => !$stillEligible
+    //                         ? 'conversation_ownership_changed'
+    //                         : 'processing_claim_expired',
+    //                 ],
+    //             ]);
+
+    //             if ($currentClaim) {
+    //                 $inbound->update([
+    //                     'ai_processing_status' => 'cancelled',
+    //                     'ai_processing_token' => null,
+    //                 ]);
+    //             }
+
+    //             return null;
+    //         }
+
+    //         $inbound->update([
+    //             'ai_processing_status' => 'completed',
+    //             'ai_response_message_id' => $response->id,
+    //             'ai_processing_token' => null,
+    //         ]);
+
+    //         return $response->fresh();
+    //     }, 3);
+    // }
+
+    /**
+     * Release a failed or invalid claim.
+     *
+     * A worker can only update the claim if it still owns its token.
+     */
+    private function releaseFailedClaim(
+        int $tenantId,
+        int $conversationId,
+        int $inboundMessageId,
+        string $token
+    ): void {
+        DB::transaction(function () use (
+            $tenantId,
+            $conversationId,
+            $inboundMessageId,
+            $token
+        ) {
+            $conversation = EngageConversation::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($conversationId)
+                ->lockForUpdate()
+                ->first();
+
+            $message = EngageMessage::query()
+                ->where('tenant_id', $tenantId)
+                ->where('conversation_id', $conversationId)
+                ->lockForUpdate()
+                ->find($inboundMessageId);
+
+            if (
+                !$conversation ||
+                !$message ||
+                $message->ai_processing_token !== $token
+            ) {
+                return;
+            }
+
+            $tenant = Tenant::query()->find($tenantId);
+
+            $stillEligible = $tenant?->isBeezBudEnabled()
+                && $conversation->handling_mode ===
+                    EngageConversation::HANDLING_AI
+                && (int) $conversation->handling_version ===
+                    (int) $message->handling_version;
+
+            $message->update([
+                'ai_processing_status' => $stillEligible
+                    ? 'failed'
+                    : 'cancelled',
+                'ai_processing_token' => null,
+            ]);
+        }, 3);
+    }
+
+    /**
+     * Build chronological text-only conversation history.
      *
      * @return Collection<int, array{role: string, content: string}>
      */
@@ -117,7 +347,7 @@ class BeezBudConversationService
         int $conversationId,
         int $inboundMessageId
     ): Collection {
-        $history = EngageMessage::query()
+        return EngageMessage::query()
             ->where('tenant_id', $tenantId)
             ->where('conversation_id', $conversationId)
             ->where('id', '<=', $inboundMessageId)
@@ -139,9 +369,7 @@ class BeezBudConversationService
             ->limit(20)
             ->get()
             ->reverse()
-            ->values();
-
-        return $history
+            ->values()
             ->map(function (EngageMessage $message) {
                 return [
                     'role' => $message->direction === 'inbound'

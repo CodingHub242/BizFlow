@@ -27,6 +27,10 @@ class EngageMessage extends Model
 		'sender_type',
 		'handling_version',
 		'dispatched_at',
+        'ai_processing_status',
+        'ai_processing_started_at',
+        'ai_response_message_id',
+        'ai_processing_token',
     ];
 
     protected $casts = [
@@ -38,10 +42,27 @@ class EngageMessage extends Model
         'received_at' => 'datetime',
 		'handling_version' => 'integer',
 		'dispatched_at' => 'datetime',
+        'ai_processing_started_at' => 'datetime',
     ];
 
     public function conversation(): BelongsTo
     {
         return $this->belongsTo(EngageConversation::class, 'conversation_id');
+    }
+
+    public function aiResponseMessage(): BelongsTo
+    {
+        return $this->belongsTo(
+            self::class,
+            'ai_response_message_id'
+        );
+    }
+
+    public function aiTriggerMessage(): BelongsTo
+    {
+        return $this->belongsTo(
+            self::class,
+            'ai_response_message_id'
+        );
     }
 }
