@@ -131,7 +131,7 @@ class EngageConversationService
                 'last_inbound_at' => $receivedAt,
             ]);
 
-            return $message->fresh();
+            return $message;
         });
     }
 }

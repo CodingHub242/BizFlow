@@ -8,6 +8,8 @@ use App\Models\EngageWhatsAppNumber;
 use App\Models\EngageContact;
 use App\Models\EngageConversation;
 use App\Models\EngageMessage;
+use App\Jobs\Engage\ProcessBeezBudInboundMessage;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,6 +26,8 @@ class WhatsAppWebhookTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Queue::fake();
 
         config([
             'services.whatsapp.app_secret' => $this->appSecret,
@@ -121,6 +125,8 @@ class WhatsAppWebhookTest extends TestCase
 
     public function test_valid_meta_signature_is_accepted(): void
     {
+         Queue::fake();
+
         $response = $this->sendWebhook(
             $this->messagePayload()
         );
@@ -144,6 +150,19 @@ class WhatsAppWebhookTest extends TestCase
             'whatsapp_number_id' => $this->whatsappNumber->id,
             'unread_count' => 1,
         ]);
+
+        $message = EngageMessage::query()
+            ->where('provider_message_id', 'wamid.test-message-001')
+            ->firstOrFail();
+
+        Queue::assertPushed(
+            ProcessBeezBudInboundMessage::class,
+            function (ProcessBeezBudInboundMessage $job) use ($message) {
+                return $job->tenantId === $this->tenant->id
+                    && $job->conversationId === $message->conversation_id
+                    && $job->inboundMessageId === $message->id;
+            }
+        );
     }
 
     public function test_invalid_signature_is_rejected(): void
@@ -201,6 +220,12 @@ class WhatsAppWebhookTest extends TestCase
         $conversation = EngageConversation::firstOrFail();
 
         $this->assertEquals(1, $conversation->unread_count);
+
+        Queue::assertPushed(
+            ProcessBeezBudInboundMessage::class,
+            1
+        );
+         Queue::assertPushed(ProcessBeezBudInboundMessage::class, 1);
     }
 
     public function test_unknown_whatsapp_number_is_ignored(): void
@@ -240,88 +265,138 @@ class WhatsAppWebhookTest extends TestCase
     }
 
     public function test_same_customer_can_have_separate_conversations_for_two_whatsapp_numbers(): void
+    {
+        // Create a second number under the same WhatsApp Business Account.
+        $secondNumber = EngageWhatsAppNumber::create([
+            'tenant_id' => $this->tenant->id,
+            'whatsapp_account_id' => $this->whatsappNumber->whatsapp_account_id,
+            'phone_number_id' => '987654321098765',
+            'display_phone_number' => '+15551392568',
+            'verified_name' => 'Second Business Number',
+            'status' => 'active',
+            'is_default' => false,
+        ]);
+
+        // First incoming message goes to the first number.
+        $firstPayload = $this->messagePayload('wamid.first-number');
+        $this->sendWebhook($firstPayload)->assertOk();
+
+        // Second incoming message comes from the same customer,
+        // but is addressed to the second number.
+        $secondPayload = $this->messagePayload('wamid.second-number');
+
+        $secondPayload['entry'][0]['changes'][0]['value']['metadata']['phone_number_id']
+            = $secondNumber->phone_number_id;
+
+        $secondPayload['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
+            = $secondNumber->display_phone_number;
+
+        $this->sendWebhook($secondPayload)->assertOk();
+
+        $this->assertDatabaseCount('engage_contacts', 1);
+        $this->assertDatabaseCount('engage_conversations', 2);
+        $this->assertDatabaseCount('engage_messages', 2);
+
+        $this->assertDatabaseHas('engage_conversations', [
+            'whatsapp_number_id' => $this->whatsappNumber->id,
+            'unread_count' => 1,
+        ]);
+
+        $this->assertDatabaseHas('engage_conversations', [
+            'whatsapp_number_id' => $secondNumber->id,
+            'unread_count' => 1,
+        ]);
+    }
+
+    public function test_message_is_routed_to_the_tenant_owning_the_receiving_number(): void
+    {
+        $secondTenant = Tenant::factory()->create();
+
+        $secondAccount = EngageWhatsAppAccount::create([
+            'tenant_id' => $secondTenant->id,
+            'waba_id' => 'second-tenant-waba',
+            'name' => 'Second Tenant Account',
+            'status' => 'active',
+        ]);
+
+        $secondNumber = EngageWhatsAppNumber::create([
+            'tenant_id' => $secondTenant->id,
+            'whatsapp_account_id' => $secondAccount->id,
+            'phone_number_id' => '555555555555555',
+            'display_phone_number' => '+15551392569',
+            'status' => 'active',
+        ]);
+
+        $payload = $this->messagePayload('wamid.second-tenant');
+
+        $payload['entry'][0]['changes'][0]['value']['metadata']['phone_number_id']
+            = $secondNumber->phone_number_id;
+
+        $this->sendWebhook($payload)->assertOk();
+
+        $this->assertDatabaseHas('engage_contacts', [
+            'tenant_id' => $secondTenant->id,
+            'normalized_phone' => '+233241234567',
+        ]);
+
+        $this->assertDatabaseMissing('engage_contacts', [
+            'tenant_id' => $this->tenant->id,
+            'normalized_phone' => '+233241234567',
+        ]);
+
+        $this->assertDatabaseHas('engage_conversations', [
+            'tenant_id' => $secondTenant->id,
+            'whatsapp_number_id' => $secondNumber->id,
+        ]);
+    }
+
+    public function test_human_owned_conversation_does_not_dispatch_beezbud_job(): void
 {
-    // Create a second number under the same WhatsApp Business Account.
-    $secondNumber = EngageWhatsAppNumber::create([
+    Queue::fake();
+
+    $contact = EngageContact::factory()->create([
         'tenant_id' => $this->tenant->id,
-        'whatsapp_account_id' => $this->whatsappNumber->whatsapp_account_id,
-        'phone_number_id' => '987654321098765',
-        'display_phone_number' => '+15551392568',
-        'verified_name' => 'Second Business Number',
-        'status' => 'active',
-        'is_default' => false,
+        'phone' => '0241234567',
+        'normalized_phone' => '+233241234567',
     ]);
 
-    // First incoming message goes to the first number.
-    $firstPayload = $this->messagePayload('wamid.first-number');
-    $this->sendWebhook($firstPayload)->assertOk();
-
-    // Second incoming message comes from the same customer,
-    // but is addressed to the second number.
-    $secondPayload = $this->messagePayload('wamid.second-number');
-
-    $secondPayload['entry'][0]['changes'][0]['value']['metadata']['phone_number_id']
-        = $secondNumber->phone_number_id;
-
-    $secondPayload['entry'][0]['changes'][0]['value']['metadata']['display_phone_number']
-        = $secondNumber->display_phone_number;
-
-    $this->sendWebhook($secondPayload)->assertOk();
-
-    $this->assertDatabaseCount('engage_contacts', 1);
-    $this->assertDatabaseCount('engage_conversations', 2);
-    $this->assertDatabaseCount('engage_messages', 2);
-
-    $this->assertDatabaseHas('engage_conversations', [
+    EngageConversation::factory()->create([
+        'tenant_id' => $this->tenant->id,
+        'contact_id' => $contact->id,
         'whatsapp_number_id' => $this->whatsappNumber->id,
-        'unread_count' => 1,
+        'channel' => 'whatsapp',
+        'status' => 'open',
+        'handling_mode' => EngageConversation::HANDLING_HUMAN,
     ]);
 
-    $this->assertDatabaseHas('engage_conversations', [
-        'whatsapp_number_id' => $secondNumber->id,
-        'unread_count' => 1,
-    ]);
+    $this->sendWebhook($this->messagePayload())->assertOk();
+
+    Queue::assertNotPushed(ProcessBeezBudInboundMessage::class);
 }
 
-public function test_message_is_routed_to_the_tenant_owning_the_receiving_number(): void
-{
-    $secondTenant = Tenant::factory()->create();
+    public function test_media_message_does_not_dispatch_beezbud_job(): void
+    {
+        Queue::fake();
 
-    $secondAccount = EngageWhatsAppAccount::create([
-        'tenant_id' => $secondTenant->id,
-        'waba_id' => 'second-tenant-waba',
-        'name' => 'Second Tenant Account',
-        'status' => 'active',
-    ]);
+        $payload = $this->messagePayload('wamid.image-message');
 
-    $secondNumber = EngageWhatsAppNumber::create([
-        'tenant_id' => $secondTenant->id,
-        'whatsapp_account_id' => $secondAccount->id,
-        'phone_number_id' => '555555555555555',
-        'display_phone_number' => '+15551392569',
-        'status' => 'active',
-    ]);
+        $incoming = &$payload['entry'][0]['changes'][0]['value']['messages'][0];
 
-    $payload = $this->messagePayload('wamid.second-tenant');
+        $incoming['type'] = 'image';
+        $incoming['image'] = [
+            'id' => 'media-123',
+            'mime_type' => 'image/jpeg',
+        ];
 
-    $payload['entry'][0]['changes'][0]['value']['metadata']['phone_number_id']
-        = $secondNumber->phone_number_id;
+        unset($incoming['text']);
 
-    $this->sendWebhook($payload)->assertOk();
+        $this->sendWebhook($payload)->assertOk();
 
-    $this->assertDatabaseHas('engage_contacts', [
-        'tenant_id' => $secondTenant->id,
-        'normalized_phone' => '+233241234567',
-    ]);
+        Queue::assertNotPushed(ProcessBeezBudInboundMessage::class);
 
-    $this->assertDatabaseMissing('engage_contacts', [
-        'tenant_id' => $this->tenant->id,
-        'normalized_phone' => '+233241234567',
-    ]);
-
-    $this->assertDatabaseHas('engage_conversations', [
-        'tenant_id' => $secondTenant->id,
-        'whatsapp_number_id' => $secondNumber->id,
-    ]);
-}
+        $this->assertDatabaseHas('engage_messages', [
+            'provider_message_id' => 'wamid.image-message',
+            'direction' => 'inbound',
+        ]);
+    }
 }

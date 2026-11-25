@@ -69,6 +69,10 @@ export interface EngageConversation {
   current_page?: number;
 
   customerId:number | null;
+
+  handling_mode: 'ai' | 'human';
+  handling_version: number;
+  handling_changed_at: string | null;
 }
 
 export interface ApiResponse<T> {
@@ -725,6 +729,24 @@ updateBeezBudSettings(
   return this.http.patch<BeezBudSettingsResponse>(
     `${this.apiUrl}/settings/beezbud`,
     { is_enabled: isEnabled }
+  );
+}
+
+takeOverConversation(
+  conversationId: number
+): Observable<{ data: EngageConversation }> {
+  return this.http.post<{ data: EngageConversation }>(
+    `${this.apiUrl}/conversations/${conversationId}/takeover`,
+    {}
+  );
+}
+
+handBackToBeezBud(
+  conversationId: number
+): Observable<{ data: EngageConversation }> {
+  return this.http.post<{ data: EngageConversation }>(
+    `${this.apiUrl}/conversations/${conversationId}/hand-back`,
+    {}
   );
 }
 

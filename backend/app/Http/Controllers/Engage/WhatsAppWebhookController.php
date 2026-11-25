@@ -11,6 +11,8 @@ use App\Services\Engage\EngageConversationService;
 use Illuminate\Http\JsonResponse;
 use App\Models\EngageMessage;
 use Carbon\Carbon;
+use App\Jobs\Engage\ProcessBeezBudInboundMessage;
+use App\Models\EngageConversation;
 use Illuminate\Support\Facades\Log;
 
 class WhatsAppWebhookController extends Controller
@@ -275,7 +277,7 @@ class WhatsAppWebhookController extends Controller
                     ? \Carbon\Carbon::createFromTimestamp((int) $incoming['timestamp'])
                     : now();
 
-                $conversationService->receiveInboundMessage(
+                $savedMessage = $conversationService->receiveInboundMessage(
                     $tenantId,
                     $contact,
                     [
@@ -293,6 +295,26 @@ class WhatsAppWebhookController extends Controller
                         ],
                     ]
                 );
+
+                // Only text messages are eligible for BeezBud processing.
+               if ($type === 'text' && $savedMessage->wasRecentlyCreated) {
+                    $isAiOwned = EngageConversation::query()
+                        ->where('tenant_id', $tenantId)
+                        ->whereKey($savedMessage->conversation_id)
+                        ->where(
+                            'handling_mode',
+                            EngageConversation::HANDLING_AI
+                        )
+                        ->exists();
+
+                    if ($isAiOwned) {
+                        ProcessBeezBudInboundMessage::dispatch(
+                            $tenantId,
+                            (int) $savedMessage->conversation_id,
+                            (int) $savedMessage->id
+                        );
+                    }
+                }
             }
         }
     }

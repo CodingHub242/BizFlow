@@ -36,6 +36,8 @@ interface EngageConversationView {
   assignedTo: number | null;
   assigneeName: string | null;
   customerId: number | null;
+  handlingMode: 'ai' | 'human';
+  handlingVersion: number;
 }
 
 @Component({
@@ -125,6 +127,8 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     notes: '',
     paid_at: this.getLocalDateTime()
   };
+
+  
 
   ngOnInit(): void {
     this.loadConversations();
@@ -279,6 +283,8 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
       assignedTo: conversation.assigned_to ?? null,
       assigneeName: conversation.assignee?.name ?? null,
       customerId : contact?.customer_id ?? null,
+      handlingMode: conversation.handling_mode,
+      handlingVersion: conversation.handling_version,
     };
   }
 
