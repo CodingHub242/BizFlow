@@ -2197,3 +2197,93 @@
   }
 
 }
+
+@container engage-inbox (max-width: 750px) {
+
+  .chat-panel .chat-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "back contact contact"
+      "ownership ownership details"
+      "actions actions actions";
+    align-items: center;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .chat-header .mobile-back-button {
+    grid-area: back;
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 5px;
+  }
+
+  .chat-header .chat-contact {
+    grid-area: contact;
+    width: auto;
+    flex: none;
+  }
+
+  .chat-header .conversation-ownership {
+    grid-area: ownership;
+    width: auto;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .chat-header .mobile-details-button {
+    grid-area: details;
+    white-space: nowrap;
+    padding: 8px;
+  }
+
+  .chat-header .chat-actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .chat-header .conversation-assignment {
+    grid-column: 1;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+  }
+
+  .chat-header .chat-actions button {
+    min-width: 32px;
+    padding: 7px;
+    white-space: nowrap;
+  }
+
+  .chat-panel .messages-area {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+}
+
+@container engage-inbox (max-width: 420px) {
+  .chat-panel .chat-header {
+    padding: 8px;
+    gap: 7px;
+  }
+
+  .chat-header .conversation-ownership {
+    gap: 5px;
+  }
+
+  .chat-header .ownership-action {
+    min-width: 0;
+    padding: 7px;
+    font-size: 11px;
+  }
+
+  .chat-header .chat-actions {
+    gap: 4px;
+  }
+}
