@@ -128,7 +128,8 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
     paid_at: this.getLocalDateTime()
   };
 
-  
+  updatingHandlingMode = false;
+  handlingModeError = '';
 
   ngOnInit(): void {
     this.loadConversations();
@@ -944,6 +945,56 @@ recordInvoicePayment(): void {
         this.paymentError =
           error?.error?.message ||
           'Unable to record this payment. Please check the details.';
+
+        this.cdr.detectChanges();
+      }
+    });
+}
+
+toggleHandlingMode(): void {
+  const conversation = this.selectedConversation;
+
+  if (!conversation || this.updatingHandlingMode) {
+    return;
+  }
+
+  this.updatingHandlingMode = true;
+  this.handlingModeError = '';
+
+  const request$ =
+    conversation.handlingMode === 'ai'
+      ? this.engageService.takeOverConversation(conversation.id)
+      : this.engageService.handBackToBeezBud(conversation.id);
+
+  request$
+    .pipe(
+      finalize(() => {
+        this.updatingHandlingMode = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+      next: response => {
+        const updated = response.data;
+
+        conversation.handlingMode = updated.handling_mode;
+        conversation.handlingVersion = updated.handling_version;
+
+        const listItem = this.conversations.find(
+          item => item.id === conversation.id
+        );
+
+        if (listItem) {
+          listItem.handlingMode = updated.handling_mode;
+          listItem.handlingVersion = updated.handling_version;
+        }
+
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        this.handlingModeError =
+          error?.error?.message ||
+          'Unable to update conversation ownership.';
 
         this.cdr.detectChanges();
       }

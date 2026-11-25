@@ -1895,3 +1895,53 @@
     grid-column: auto;
   }
 }
+
+.conversation-ownership {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ownership-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ownership-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ai-mode .ownership-dot {
+  background: #16a34a;
+}
+
+.human-mode .ownership-dot {
+  background: #d97706;
+}
+
+.ownership-action {
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ownership-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ownership-error {
+  padding: 8px 16px;
+  color: #b91c1c;
+  font-size: 13px;
+}

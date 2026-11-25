@@ -163,6 +163,37 @@
           </div>
         </div>
 
+        <div class="conversation-ownership">
+          <span
+            class="ownership-indicator"
+            [class.ai-mode]="selectedConversation.handlingMode === 'ai'"
+            [class.human-mode]="selectedConversation.handlingMode === 'human'"
+          >
+            <span class="ownership-dot"></span>
+
+            {{
+              selectedConversation.handlingMode === 'ai'
+                ? 'BeezBud is handling'
+                : 'Human handling'
+            }}
+          </span>
+
+          <button
+            type="button"
+            class="ownership-action"
+            [disabled]="updatingHandlingMode"
+            (click)="toggleHandlingMode()"
+          >
+            {{
+              updatingHandlingMode
+                ? 'Updating...'
+                : selectedConversation.handlingMode === 'ai'
+                  ? 'Take over'
+                  : 'Hand back to BeezBud'
+            }}
+          </button>
+        </div>
+
         <div class="chat-actions">
           <div class="conversation-assignment">
             <label for="conversationAssignee">Assigned to</label>
@@ -216,6 +247,14 @@
           </button>
         </div>
       </header>
+
+      <div
+        class="ownership-error"
+        *ngIf="handlingModeError"
+        role="alert"
+      >
+        {{ handlingModeError }}
+      </div>
 
       <div class="messages-area" #messagesArea>
 
