@@ -1,12 +1,28 @@
-<div class="app-shell" [class.engage-shell]="isEngageWorkspace()">
+<div
+  class="app-shell"
+  [class.engage-shell]="isEngageWorkspace()"
+  [class.mobile-menu-open]="mobileMenuOpen()"
+>
   @if (isEngageWorkspace()) {
     <app-engage-sidebar />
   } @else {
     <app-sidebar />
   }
 
+  @if (mobileMenuOpen()) {
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      aria-label="Close navigation menu"
+      (click)="closeMobileMenu()"
+    ></button>
+  }
+
   <div class="main-area">
-    <app-topbar />
+    <app-topbar
+      [mobileMenuOpen]="mobileMenuOpen()"
+      (menuToggle)="toggleMobileMenu()"
+    />
 
     <main class="content">
       <router-outlet />

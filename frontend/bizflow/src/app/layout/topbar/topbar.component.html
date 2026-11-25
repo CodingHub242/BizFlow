@@ -8,6 +8,18 @@
   </div>
 
   <div class="topbar-actions">
+    <button
+      type="button"
+      class="mobile-menu-button"
+      aria-label="Toggle navigation menu"
+      [attr.aria-expanded]="mobileMenuOpen"
+      (click)="menuToggle.emit()"
+    >
+      <ion-icon
+        [name]="mobileMenuOpen ? 'close-outline' : 'menu-outline'"
+      ></ion-icon>
+    </button>
+    
     <button class="search-button" type="button" aria-label="Search">
       <ion-icon name="search-outline"></ion-icon>
       <span>Search</span>

@@ -286,3 +286,46 @@
   color: #475569;
   display: none;
 }
+
+.mobile-menu-button {
+  display: none;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 800px) {
+  .mobile-menu-button {
+    display: inline-flex;
+  }
+
+  .topbar {
+    gap: 10px;
+    padding: 0 12px;
+  }
+
+  .topbar-actions {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+
+  .topbar.engage-topbar {
+    padding: 0 12px;
+  }
+
+  .topbar.engage-topbar .topbar-actions {
+    justify-content: space-between;
+  }
+}

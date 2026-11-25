@@ -40,6 +40,7 @@ export class AppShellComponent implements OnInit, OnDestroy {
   private routerSubscription?: Subscription;
 
   readonly isEngageWorkspace = signal(false);
+  readonly mobileMenuOpen = signal(false);
 
   ngOnInit(): void {
     this.inactivityService.start();
@@ -53,14 +54,30 @@ export class AppShellComponent implements OnInit, OnDestroy {
       )
       .subscribe(event => {
         this.updateWorkspace((event as NavigationEnd).urlAfterRedirects);
+        this.closeMobileMenu();
       });
   }
 
+  // private updateWorkspace(url: string): void {
+  //   this.isEngageWorkspace.set(
+  //     url.split('?')[0].split('#')[0] === '/engage' ||
+  //     url.split('?')[0].split('#')[0].startsWith('/engage/')
+  //   );
+  // }
   private updateWorkspace(url: string): void {
+    const path = url.split('?')[0].split('#')[0];
+
     this.isEngageWorkspace.set(
-      url.split('?')[0].split('#')[0] === '/engage' ||
-      url.split('?')[0].split('#')[0].startsWith('/engage/')
+      path === '/engage' || path.startsWith('/engage/')
     );
+  }
+
+   toggleMobileMenu(): void {
+    this.mobileMenuOpen.update(open => !open);
+  }
+
+   closeMobileMenu(): void {
+    this.mobileMenuOpen.set(false);
   }
 
   ngOnDestroy(): void {

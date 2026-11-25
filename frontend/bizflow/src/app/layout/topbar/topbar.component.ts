@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal,Output,Input,EventEmitter } from '@angular/core';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,6 +9,8 @@ import {
   notificationsOutline,
   searchOutline,
   chevronDownOutline,
+  menuOutline,
+  closeOutline,
 } from 'ionicons/icons';
 
 @Component({
@@ -23,7 +25,8 @@ export class TopbarComponent {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly isEngageWorkspace = signal(false);
-
+  @Input() mobileMenuOpen = false;
+  @Output() menuToggle = new EventEmitter<void>();
   readonly currentUser = signal<AuthUser | null>(null);
 
   isProfileMenuOpen = false;
@@ -33,6 +36,8 @@ export class TopbarComponent {
       notificationsOutline,
       searchOutline,
       chevronDownOutline,
+      menuOutline,
+      closeOutline,
     });
 
     this.authService.currentUser$
