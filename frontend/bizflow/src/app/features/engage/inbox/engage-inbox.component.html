@@ -1,4 +1,4 @@
-<section class="engage-inbox">
+<section class="engage-inbox" [class.mobile-conversation-open]="isChatPanelOpen && selectedConversation">
 
   <header class="inbox-heading">
     <div>
@@ -44,7 +44,8 @@
     </article>
   </section>
 
-  <section class="inbox-layout" [class.chat-panel-hidden]="!isChatPanelOpen || !selectedConversation">
+  <section class="inbox-layout" [class.chat-panel-hidden]="!isChatPanelOpen || !selectedConversation" [class.mobile-chat-open]="isChatPanelOpen && selectedConversation"
+[class.mobile-details-open]="isCustomerDetailsOpen">
 
     <!-- Conversation list -->
     <aside class="conversation-panel">
@@ -152,6 +153,13 @@
     <section class="chat-panel" *ngIf="isChatPanelOpen && selectedConversation">
 
       <header class="chat-header">
+        <button
+          type="button"
+          class="mobile-back-button"
+          (click)="closeChatPanel()"
+          aria-label="Back to conversations">
+          ←
+        </button>
         <div class="chat-contact">
           <div class="contact-avatar large">
             {{ selectedConversation.initials }}
@@ -191,6 +199,13 @@
                   ? 'Take over'
                   : 'Hand back to BeezBud'
             }}
+          </button>
+
+          <button
+            type="button"
+            class="mobile-details-button"
+            (click)="showCustomerDetails()">
+            Customer Details
           </button>
         </div>
 
@@ -320,6 +335,12 @@
     <aside class="customer-panel" *ngIf="isChatPanelOpen && selectedConversation">
 
       <div class="panel-heading">
+        <button
+          type="button"
+          class="mobile-back-button"
+          (click)="backToChat()">
+          ← Back to chat
+        </button>
         <h2>Customer Details</h2>
         <button type="button">Edit</button>
       </div>

@@ -130,6 +130,7 @@ export class EngageInboxComponent implements OnInit,OnDestroy {
 
   updatingHandlingMode = false;
   handlingModeError = '';
+  isCustomerDetailsOpen = false;
 
   ngOnInit(): void {
     this.loadConversations();
@@ -999,6 +1000,14 @@ toggleHandlingMode(): void {
         this.cdr.detectChanges();
       }
     });
+}
+
+showCustomerDetails(): void {
+  this.isCustomerDetailsOpen = true;
+}
+
+backToChat(): void {
+  this.isCustomerDetailsOpen = false;
 }
 
 closeInvoiceModal(): void {

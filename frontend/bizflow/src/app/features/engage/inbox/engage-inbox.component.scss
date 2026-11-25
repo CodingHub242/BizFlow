@@ -1945,3 +1945,165 @@
   color: #b91c1c;
   font-size: 13px;
 }
+
+/* =========================================
+   XBeez Engage - Mobile Conversation Views
+   ========================================= */
+
+.mobile-back-button,
+.mobile-details-button {
+  display: none;
+}
+
+@container engage-inbox (max-width: 750px) {
+
+  .mobile-back-button,
+  .mobile-details-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #172033;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Hide dashboard heading and metrics
+     when viewing an individual conversation */
+
+  .engage-inbox.mobile-conversation-open {
+    padding-top: 8px;
+  }
+
+  .mobile-conversation-open .inbox-heading,
+  .mobile-conversation-open .metrics {
+    display: none;
+  }
+
+  .inbox-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
+  }
+
+  /* Conversation list view */
+
+  .inbox-layout.mobile-chat-open .conversation-panel {
+    display: none;
+  }
+
+  /* Full-width chat view */
+
+  .inbox-layout.mobile-chat-open .chat-panel {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    height: calc(100dvh - 145px);
+    min-height: 450px;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .chat-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .chat-contact {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .conversation-ownership {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .conversation-assignment {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .messages-area {
+    flex: 1 1 0;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .message-composer {
+    flex-shrink: 0;
+  }
+
+  .quick-actions {
+    flex-shrink: 0;
+  }
+
+  /* Customer details as a separate screen */
+
+  .inbox-layout.mobile-details-open .chat-panel {
+    display: none;
+  }
+
+  .inbox-layout.mobile-details-open .customer-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: calc(100dvh - 145px);
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  .customer-panel .panel-heading {
+    flex-wrap: wrap;
+  }
+
+}
+
+@container engage-inbox (max-width: 420px) {
+
+  .chat-header {
+    padding: 10px;
+  }
+
+  .conversation-ownership {
+    gap: 6px;
+  }
+
+  .chat-actions button {
+    font-size: 11px;
+  }
+
+  .messages-area {
+    padding: 10px 8px;
+  }
+
+  .message-composer {
+    padding: 8px;
+  }
+
+}
