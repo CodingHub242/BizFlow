@@ -2293,3 +2293,159 @@
     padding: 8px;
   }
 }
+
+/* ==========================================
+   XBEEZ ENGAGE — DESKTOP & LAPTOP REFINEMENT
+   Uses available application width.
+   ========================================== */
+
+/* Wide desktop and standard laptops */
+
+@container engage-inbox (min-width: 901px) {
+
+  .engage-inbox {
+    min-width: 0;
+  }
+
+  .inbox-layout {
+    display: grid !important;
+    grid-template-columns:
+      minmax(190px, 0.85fr)
+      minmax(300px, 1.45fr)
+      minmax(200px, 0.85fr);
+    gap: 12px;
+    align-items: stretch;
+    min-height: 570px;
+  }
+
+  .conversation-panel,
+  .chat-panel,
+  .customer-panel {
+    display: flex !important;
+    flex-direction: column;
+    min-width: 0;
+    width: auto;
+    grid-column: auto;
+  }
+
+  .chat-panel {
+    min-height: 570px;
+    overflow: hidden;
+  }
+
+  .customer-panel {
+    overflow: hidden;
+  }
+
+  .chat-header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .chat-contact {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+
+  .conversation-ownership {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .chat-actions {
+    flex: 1 1 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .conversation-assignment {
+    flex: 1 1 150px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .messages-area {
+    flex: 1 1 0;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .mobile-back-button,
+  .mobile-details-button {
+    display: none !important;
+  }
+}
+
+/* Compact laptop: two-column workspace */
+
+@container engage-inbox (min-width: 751px) and (max-width: 900px) {
+
+  .inbox-layout {
+    display: grid !important;
+    grid-template-columns:
+      minmax(190px, 0.8fr)
+      minmax(0, 1.5fr);
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .conversation-panel,
+  .chat-panel {
+    display: flex !important;
+    min-width: 0;
+  }
+
+  .customer-panel {
+    display: none !important;
+  }
+
+  .chat-panel {
+    flex-direction: column;
+    min-height: 570px;
+    overflow: hidden;
+  }
+
+  .chat-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 9px;
+  }
+
+  .chat-contact {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .chat-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .conversation-assignment {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .messages-area {
+    flex: 1 1 0;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .mobile-back-button,
+  .mobile-details-button {
+    display: none !important;
+  }
+}
