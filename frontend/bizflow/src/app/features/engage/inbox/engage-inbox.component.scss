@@ -1946,123 +1946,239 @@
   font-size: 13px;
 }
 
-/* =========================================
-   XBeez Engage - Mobile Conversation Views
-   ========================================= */
+
+/* ==============================================
+   XBEEZ ENGAGE — CONSOLIDATED RESPONSIVE INBOX
+   Desktop styles remain unchanged.
+   ============================================== */
 
 .mobile-back-button,
 .mobile-details-button {
   display: none;
 }
 
+/* TABLET AND MOBILE */
 @container engage-inbox (max-width: 750px) {
 
-  .mobile-back-button,
-  .mobile-details-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    min-height: 38px;
-    padding: 8px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: #fff;
-    color: #172033;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  /* Hide dashboard heading and metrics
-     when viewing an individual conversation */
+  /* Hide dashboard content while a conversation
+     is open on mobile. */
 
   .engage-inbox.mobile-conversation-open {
     padding-top: 8px;
   }
 
   .mobile-conversation-open .inbox-heading,
-  .mobile-conversation-open .metrics {
-    display: none;
+  .mobile-conversation-open .metrics,
+  .engage-inbox.mobile-conversation-open .bottom-sections {
+    display: none !important;
   }
+
+  /* Mobile screen navigation */
 
   .inbox-layout {
     display: flex;
     flex-direction: column;
-    min-height: 0;
     gap: 0;
+    min-height: 0;
   }
-
-  /* Conversation list view */
 
   .inbox-layout.mobile-chat-open .conversation-panel {
     display: none;
   }
 
-  /* Full-width chat view */
+  /* Full-screen chat */
 
   .inbox-layout.mobile-chat-open .chat-panel {
     display: flex;
+    flex-direction: column;
     width: 100%;
-    min-width: 0;
     height: calc(100dvh - 145px);
-    min-height: 450px;
+    min-height: 0;
+    max-height: none;
     overflow: hidden;
     box-sizing: border-box;
   }
 
-  .chat-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    padding: 12px;
-  }
+  /* Compact chat header */
 
-  .chat-contact {
-    width: 100%;
+  .chat-panel .chat-header {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "back contact details"
+      "status status handback"
+      "actions actions actions";
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    flex: 0 0 auto;
     min-width: 0;
   }
 
-  .conversation-ownership {
-    display: flex;
-    flex-wrap: wrap;
+  /* Back button */
+
+  .chat-header .mobile-back-button {
+    display: inline-flex;
+    grid-area: back;
     align-items: center;
+    justify-content: center;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 5px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #172033;
+  }
+
+  /* Customer identity */
+
+  .chat-header .chat-contact {
+    grid-area: contact;
+    display: flex;
+    align-items: center;
+    flex: none;
+    width: auto;
+    min-width: 0;
     gap: 8px;
   }
 
-  .chat-actions {
-    display: flex;
-    flex-wrap: wrap;
-    width: 100%;
-    gap: 6px;
+  .chat-header .chat-contact .contact-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
   }
 
-  .conversation-assignment {
-    flex: 1 1 100%;
+  .chat-header .chat-contact strong {
+    font-size: 13px;
+  }
+
+  /* IMPORTANT:
+     The ownership wrapper must not become a grid item.
+     Its children must participate directly in the header grid. */
+
+  .chat-header .conversation-ownership {
+    display: contents;
+  }
+
+  .chat-header .ownership-indicator {
+    grid-area: status;
+    min-width: 0;
+    white-space: normal;
+    font-size: 11px;
+  }
+
+  .chat-header .ownership-action {
+    grid-area: handback;
+    justify-self: start;
+    min-width: 0;
+    max-width: 100%;
+    width: auto;
+    padding: 7px 9px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #fff;
+    color: #172033;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .chat-header .mobile-details-button {
+    display: inline-flex;
+    grid-area: details;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 7px 9px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #172033;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Assignment and secondary actions in one row */
+
+  .chat-header .chat-actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+    align-items: center;
+    gap: 6px;
     width: 100%;
     min-width: 0;
   }
 
-  .messages-area {
+  .chat-header .conversation-assignment {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    flex: none;
+  }
+
+  .chat-header .conversation-assignment label {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .chat-header .conversation-assignment select {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    font-size: 11px;
+  }
+
+  .chat-header .chat-actions > button {
+    min-width: 34px;
+    height: 36px;
+    padding: 6px;
+    font-size: 11px;
+  }
+
+  /* The X performs the same action as the mobile back button. */
+
+  .chat-header .close-chat-panel {
+    display: none;
+  }
+
+  /* Messages occupy all remaining vertical space */
+
+  .chat-panel .messages-area {
     flex: 1 1 0;
     width: 100%;
     height: auto;
     max-height: none;
     min-height: 0;
-    overflow-y: auto;
+    padding: 12px 10px;
     overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  .message-composer {
-    flex-shrink: 0;
+  .chat-panel .message-composer {
+    flex: 0 0 auto;
+    min-width: 0;
   }
 
-  .quick-actions {
-    flex-shrink: 0;
+  .chat-panel .message-composer input {
+    min-width: 0;
+    flex: 1;
   }
 
-  /* Customer details as a separate screen */
+  .chat-panel .quick-actions {
+    flex: 0 0 auto;
+  }
+
+  /* Customer details as a separate mobile screen */
 
   .inbox-layout.mobile-details-open .chat-panel {
     display: none;
@@ -2074,6 +2190,7 @@
     width: 100%;
     min-width: 0;
     min-height: calc(100dvh - 145px);
+    height: auto;
     overflow-y: auto;
     box-sizing: border-box;
   }
@@ -2081,209 +2198,59 @@
   .customer-panel .panel-heading {
     flex-wrap: wrap;
   }
-
 }
 
+/* SMALL PHONES */
 @container engage-inbox (max-width: 420px) {
 
-  .chat-header {
-    padding: 10px;
-  }
-
-  .conversation-ownership {
+  .chat-panel .chat-header {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
     gap: 6px;
-  }
-
-  .chat-actions button {
-    font-size: 11px;
-  }
-
-  .messages-area {
-    padding: 10px 8px;
-  }
-
-  .message-composer {
     padding: 8px;
-  }
-
-}
-
-/* =========================================
-   Final Mobile Engage Layout Refinements
-   ========================================= */
-
-@container engage-inbox (max-width: 750px) {
-
-  /* Hide dashboard sections underneath
-     the active mobile conversation screen */
-
-  .engage-inbox.mobile-conversation-open
-  .bottom-sections {
-    display: none !important;
-  }
-
-  /* Prevent chat header from expanding */
-
-  .chat-panel .chat-header {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    gap: 10px;
-    flex: 0 0 auto;
-    height: auto;
-    min-height: 0;
-  }
-
-  /* Back button should never stretch */
-
-  .chat-header .mobile-back-button {
-    align-self: flex-start;
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 42px;
-    min-height: 38px;
-  }
-
-  /* Contact must not consume remaining header space */
-
-  .chat-header .chat-contact {
-    flex: 0 0 auto;
-    width: 100%;
-    min-width: 0;
-    margin: 0;
-  }
-
-  .chat-header .conversation-ownership {
-    flex: 0 0 auto;
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  /* Restore visible takeover button text */
-
-  .chat-header .ownership-action {
-    flex: 0 0 auto;
-    width: auto;
-    min-width: 120px;
-    color: #172033;
-    background: #fff;
-    border: 1px solid #d1d5db;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .chat-header .chat-actions {
-    flex: 0 0 auto;
-    width: 100%;
-    min-width: 0;
-  }
-
-  /* Let messages occupy the remaining space */
-
-  .chat-panel .messages-area {
-    flex: 1 1 0;
-    min-height: 0;
-    height: auto;
-    max-height: none;
-  }
-
-  /* Customer details should occupy its own view */
-
-  .inbox-layout.mobile-details-open .customer-panel {
-    min-height: calc(100dvh - 145px);
-    height: auto;
-  }
-
-}
-
-@container engage-inbox (max-width: 750px) {
-
-  .chat-panel .chat-header {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "back contact contact"
-      "ownership ownership details"
-      "actions actions actions";
-    align-items: center;
-    gap: 9px;
-    padding: 10px;
-  }
-
-  .chat-header .mobile-back-button {
-    grid-area: back;
-    width: 36px;
-    min-width: 36px;
-    min-height: 36px;
-    padding: 5px;
-  }
-
-  .chat-header .chat-contact {
-    grid-area: contact;
-    width: auto;
-    flex: none;
-  }
-
-  .chat-header .conversation-ownership {
-    grid-area: ownership;
-    width: auto;
-    flex-wrap: wrap;
-    gap: 7px;
   }
 
   .chat-header .mobile-details-button {
-    grid-area: details;
-    white-space: nowrap;
-    padding: 8px;
-  }
-
-  .chat-header .chat-actions {
-    grid-area: actions;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) repeat(4, auto);
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-  }
-
-  .chat-header .conversation-assignment {
-    grid-column: 1;
-    min-width: 0;
-    width: 100%;
-    margin: 0;
-  }
-
-  .chat-header .chat-actions button {
-    min-width: 32px;
     padding: 7px;
-    white-space: nowrap;
+    font-size: 10px;
   }
 
-  .chat-panel .messages-area {
-    flex: 1 1 0;
-    min-height: 0;
-  }
-}
-
-@container engage-inbox (max-width: 420px) {
-  .chat-panel .chat-header {
-    padding: 8px;
-    gap: 7px;
-  }
-
-  .chat-header .conversation-ownership {
-    gap: 5px;
+  .chat-header .ownership-indicator {
+    font-size: 10px;
   }
 
   .chat-header .ownership-action {
-    min-width: 0;
     padding: 7px;
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .chat-header .chat-actions {
     gap: 4px;
+  }
+
+  .chat-header .chat-actions > button {
+    min-width: 30px;
+    padding: 5px;
+    font-size: 10px;
+  }
+
+  .chat-header .conversation-assignment {
+    gap: 4px;
+  }
+
+  .chat-header .conversation-assignment label {
+    font-size: 9px;
+  }
+
+  .chat-header .conversation-assignment select {
+    font-size: 10px;
+    padding: 5px;
+  }
+
+  .chat-panel .messages-area {
+    padding: 10px 8px;
+  }
+
+  .chat-panel .message-composer {
+    padding: 8px;
   }
 }
