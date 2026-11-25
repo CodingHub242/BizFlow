@@ -2107,3 +2107,93 @@
   }
 
 }
+
+/* =========================================
+   Final Mobile Engage Layout Refinements
+   ========================================= */
+
+@container engage-inbox (max-width: 750px) {
+
+  /* Hide dashboard sections underneath
+     the active mobile conversation screen */
+
+  .engage-inbox.mobile-conversation-open
+  .bottom-sections {
+    display: none !important;
+  }
+
+  /* Prevent chat header from expanding */
+
+  .chat-panel .chat-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 10px;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+  }
+
+  /* Back button should never stretch */
+
+  .chat-header .mobile-back-button {
+    align-self: flex-start;
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 42px;
+    min-height: 38px;
+  }
+
+  /* Contact must not consume remaining header space */
+
+  .chat-header .chat-contact {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .chat-header .conversation-ownership {
+    flex: 0 0 auto;
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* Restore visible takeover button text */
+
+  .chat-header .ownership-action {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 120px;
+    color: #172033;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .chat-header .chat-actions {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Let messages occupy the remaining space */
+
+  .chat-panel .messages-area {
+    flex: 1 1 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+  }
+
+  /* Customer details should occupy its own view */
+
+  .inbox-layout.mobile-details-open .customer-panel {
+    min-height: calc(100dvh - 145px);
+    height: auto;
+  }
+
+}
