@@ -6,6 +6,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Illuminate\Support\Str;
 
 class BeezBudAiService
 {
@@ -88,15 +89,25 @@ class BeezBudAiService
             );
         }
 
-        if (!$response->successful()) {
-            Log::warning('BeezBud OpenAI request failed.', [
-                'http_status' => $response->status(),
-            ]);
-
-            throw new RuntimeException(
-                'BeezBud could not generate a response.'
-            );
-        }
+       if (!$response->successful()) {
+		    $providerError = $response->json('error', []);
+		
+		    Log::error('BeezBud OpenAI request failed.', [
+		        'http_status' => $response->status(),
+		        'request_id' => $response->header('x-request-id'),
+		        'error_type' => data_get($providerError, 'type'),
+		        'error_code' => data_get($providerError, 'code'),
+		        'error_message' => Str::limit(
+		            (string) data_get($providerError, 'message', 'No provider error message returned.'),
+		            1000
+		        ),
+		        'model' => $model,
+		    ]);
+		
+		    throw new RuntimeException(
+		        'BeezBud could not generate a response.'
+		    );
+		}
 
         $output = $response->json('output', []);
 
