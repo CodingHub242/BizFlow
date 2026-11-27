@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use App\Models\Tenant;
+use App\Services\AuditService;
 use Illuminate\Http\Client\ConnectionException;
 
 class EngageMessageService
@@ -339,7 +340,7 @@ class EngageMessageService
 	    });
 	}
 
-    public function prepareAndCompleteInboundAiMessage(
+	public function prepareAndCompleteInboundAiMessage(
         int $tenantId,
         int $conversationId,
         int $inboundMessageId,
@@ -689,5 +690,148 @@ class EngageMessageService
 	    }
 	}
 
+	public function prepareAndCompleteInboundHandover(
+    int $tenantId,
+    int $conversationId,
+    int $inboundMessageId,
+    string $customerReply,
+    string $handoverReason,
+    string $processingToken,
+    int $expectedHandlingVersion
+): ?EngageMessage {
+    $customerReply = trim($customerReply);
+
+    $allowedReasons = [
+        'customer_requested_human',
+        'complex_or_unresolved_issue',
+        'complaint_or_sensitive_issue',
+        'ai_confidence_insufficient',
+    ];
+
+    if (!in_array($handoverReason, $allowedReasons, true)) {
+        throw ValidationException::withMessages([
+            'handover_reason' => ['Invalid BeezBud handover reason.'],
+        ]);
+    }
+
+    if ($customerReply === '') {
+        throw ValidationException::withMessages([
+            'body' => ['A customer-facing handover reply cannot be empty.'],
+        ]);
+    }
+
+    return DB::transaction(function () use (
+        $tenantId,
+        $conversationId,
+        $inboundMessageId,
+        $customerReply,
+        $handoverReason,
+        $processingToken,
+        $expectedHandlingVersion
+    ) {
+        $tenant = Tenant::query()->findOrFail($tenantId);
+
+        $conversation = EngageConversation::query()
+            ->where('tenant_id', $tenantId)
+            ->lockForUpdate()
+            ->findOrFail($conversationId);
+
+        $inbound = EngageMessage::query()
+            ->where('tenant_id', $tenantId)
+            ->where('conversation_id', $conversationId)
+            ->lockForUpdate()
+            ->findOrFail($inboundMessageId);
+
+        // This worker must still own the inbound processing claim.
+        if (
+            $inbound->ai_processing_status !== 'processing' ||
+            $inbound->ai_processing_token !== $processingToken
+        ) {
+            return null;
+        }
+
+        // Revalidate tenant feature and conversation ownership.
+        if (
+            !$tenant->isBeezBudEnabled() ||
+            $conversation->handling_mode !== EngageConversation::HANDLING_AI ||
+            (int) $conversation->handling_version !== $expectedHandlingVersion ||
+            (int) $inbound->handling_version !== $expectedHandlingVersion
+        ) {
+            $inbound->update([
+                'ai_processing_status' => 'cancelled',
+                'ai_processing_token' => null,
+            ]);
+
+            return null;
+        }
+
+        if (
+            $inbound->direction !== 'inbound' ||
+            $inbound->message_type !== 'text'
+        ) {
+            throw ValidationException::withMessages([
+                'message' => ['Only inbound text messages can trigger handover.'],
+            ]);
+        }
+
+        $oldMode = $conversation->handling_mode;
+        $oldVersion = (int) $conversation->handling_version;
+
+        // Transfer ownership to a human.
+        $conversation->handling_mode = EngageConversation::HANDLING_HUMAN;
+        $conversation->handling_changed_by = null;
+        $conversation->handling_changed_at = now();
+        $conversation->handling_version = $oldVersion + 1;
+        $conversation->save();
+
+        // This is a system acknowledgement, not an AI or human message.
+        $acknowledgement = $conversation->messages()->create([
+            'tenant_id' => $tenantId,
+            'direction' => 'outbound',
+            'message_type' => 'text',
+            'body' => "I've brought a member of our team into this conversation. They'll assist you shortly.",
+            'status' => 'queued',
+            'sender_type' => 'system',
+            'handling_version' => $conversation->handling_version,
+            'dispatched_at' => null,
+            'media' => null,
+            'metadata' => [
+                'system_action' => 'beezbud_handover_acknowledgement',
+                'handover_reason' => $handoverReason,
+                'customer_reply' => $customerReply,
+            ],
+            'sent_at' => null,
+            'delivered_at' => null,
+            'read_at' => null,
+        ]);
+
+        // Complete the inbound claim and link the generated message.
+        $inbound->update([
+            'ai_processing_status' => 'completed',
+            'ai_response_message_id' => $acknowledgement->id,
+            'ai_processing_token' => null,
+        ]);
+
+        app(AuditService::class)->recordSystem(
+            action: 'conversation.ai_handover_requested',
+            model: $conversation,
+            actorName: 'BeezBud',
+            oldValues: [
+                'handling_mode' => $oldMode,
+                'handling_version' => $oldVersion,
+            ],
+            newValues: [
+                'handling_mode' => $conversation->handling_mode,
+                'handling_version' => $conversation->handling_version,
+                'handling_changed_by' => null,
+                'handling_changed_at' => $conversation->handling_changed_at,
+                'handover_reason' => $handoverReason,
+                'acknowledgement_message_id' => $acknowledgement->id,
+            ],
+        );
+
+        return $acknowledgement->fresh();
+    }, 3);
+}
 
 }

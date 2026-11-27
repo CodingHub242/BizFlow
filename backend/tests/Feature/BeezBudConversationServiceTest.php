@@ -59,16 +59,20 @@ class BeezBudConversationServiceTest extends TestCase
     }
 
     private function mockAiResponse(
-        string $response = 'Hello! How can I help you today?'
-    ): void {
-        $ai = Mockery::mock(BeezBudAiService::class);
+    string $response = 'Hello! How can I help you today?'
+): void {
+    $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldReceive('generateResponse')
-            ->once()
-            ->andReturn($response);
+    $ai->shouldReceive('generateStructuredResponse')
+        ->once()
+        ->andReturn([
+            'reply' => $response,
+            'handover_required' => false,
+            'handover_reason' => null,
+        ]);
 
-        $this->app->instance(BeezBudAiService::class, $ai);
-    }
+    $this->app->instance(BeezBudAiService::class, $ai);
+}
 
     public function test_it_prepares_an_ai_response_for_a_valid_inbound_text_message(): void
     {
@@ -115,7 +119,7 @@ class BeezBudConversationServiceTest extends TestCase
 
         $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldNotReceive('generateResponse');
+       $ai->shouldNotReceive('generateStructuredResponse');
 
         $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -139,7 +143,7 @@ class BeezBudConversationServiceTest extends TestCase
 
         $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldNotReceive('generateResponse');
+        $ai->shouldNotReceive('generateStructuredResponse');
 
         $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -165,7 +169,7 @@ class BeezBudConversationServiceTest extends TestCase
 
         $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldNotReceive('generateResponse');
+       $ai->shouldNotReceive('generateStructuredResponse');
 
         $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -192,7 +196,7 @@ class BeezBudConversationServiceTest extends TestCase
 
         $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldNotReceive('generateResponse');
+       $ai->shouldNotReceive('generateStructuredResponse');
 
         $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -232,7 +236,7 @@ class BeezBudConversationServiceTest extends TestCase
 
         $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldNotReceive('generateResponse');
+       $ai->shouldNotReceive('generateStructuredResponse');
 
         $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -257,7 +261,7 @@ class BeezBudConversationServiceTest extends TestCase
 
         $ai = Mockery::mock(BeezBudAiService::class);
 
-        $ai->shouldNotReceive('generateResponse');
+       $ai->shouldNotReceive('generateStructuredResponse');
 
         $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -305,35 +309,39 @@ public function test_it_sends_only_the_correct_chronological_text_history_to_ai(
 
     $ai = Mockery::mock(BeezBudAiService::class);
 
-    $ai->shouldReceive('generateResponse')
-        ->once()
-        ->withArgs(function ($instructions, $messages) use (
-            $first,
-            $outbound,
-            $trigger,
-            $later,
-            $image
-        ) {
-            $this->assertIsString($instructions);
+    $ai->shouldReceive('generateStructuredResponse')
+    ->once()
+    ->withArgs(function ($instructions, $messages) use (
+        $first,
+        $outbound,
+        $trigger,
+        $later,
+        $image
+    ) {
+        $this->assertIsString($instructions);
 
-            $this->assertSame([
-                [
-                    'role' => 'user',
-                    'content' => 'Good morning.',
-                ],
-                [
-                    'role' => 'assistant',
-                    'content' => 'Good morning! How can I help?',
-                ],
-                [
-                    'role' => 'user',
-                    'content' => 'I want to know your prices.',
-                ],
-            ], $messages);
+        $this->assertSame([
+            [
+                'role' => 'user',
+                'content' => 'Good morning.',
+            ],
+            [
+                'role' => 'assistant',
+                'content' => 'Good morning! How can I help?',
+            ],
+            [
+                'role' => 'user',
+                'content' => 'I want to know your prices.',
+            ],
+        ], $messages);
 
-            return true;
-        })
-        ->andReturn('I would be happy to help with our prices.');
+        return true;
+    })
+    ->andReturn([
+        'reply' => 'I would be happy to help with our prices.',
+        'handover_required' => false,
+        'handover_reason' => null,
+    ]);
 
     $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -354,17 +362,21 @@ public function test_it_does_not_prepare_ai_response_if_human_takes_over_during_
 
     $ai = Mockery::mock(BeezBudAiService::class);
 
-    $ai->shouldReceive('generateResponse')
-        ->once()
-        ->andReturnUsing(function () {
-            // Simulate a human taking over while OpenAI is generating.
-            $this->conversation->update([
-                'handling_mode' => EngageConversation::HANDLING_HUMAN,
-                'handling_version' => 1,
-            ]);
+   $ai->shouldReceive('generateStructuredResponse')
+    ->once()
+    ->andReturnUsing(function () {
+        // Simulate a human taking over while OpenAI is generating.
+        $this->conversation->update([
+            'handling_mode' => EngageConversation::HANDLING_HUMAN,
+            'handling_version' => 1,
+        ]);
 
-            return 'This response must never be queued.';
-        });
+        return [
+            'reply' => 'This response must never be queued.',
+            'handover_required' => false,
+            'handover_reason' => null,
+        ];
+    });
 
     $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -452,7 +464,7 @@ public function test_it_does_not_process_an_inbound_message_with_an_active_proce
 
     $ai = Mockery::mock(BeezBudAiService::class);
 
-    $ai->shouldNotReceive('generateResponse');
+    $ai->shouldNotReceive('generateStructuredResponse');
 
     $this->app->instance(BeezBudAiService::class, $ai);
 
@@ -517,7 +529,7 @@ public function test_it_retries_an_inbound_message_after_previous_processing_fai
 
     $ai = Mockery::mock(BeezBudAiService::class);
 
-    $ai->shouldReceive('generateResponse')
+    $ai->shouldReceive('generateStructuredResponse')
         ->twice()
         ->andReturnUsing(function () {
             static $attempt = 0;
@@ -528,7 +540,12 @@ public function test_it_retries_an_inbound_message_after_previous_processing_fai
                 throw new \RuntimeException('Temporary AI provider failure.');
             }
 
-            return 'Hello again! How can I help?';
+            return [
+            'reply' => 'Hello again! How can I help?',
+            'handover_required' => false,
+            'handover_reason' => null,
+        ];
+           // return 'Hello again! How can I help?';
         });
 
     $this->app->instance(BeezBudAiService::class, $ai);
@@ -581,7 +598,7 @@ public function test_it_does_not_create_a_response_when_another_worker_reclaims_
 
     $ai = Mockery::mock(BeezBudAiService::class);
 
-    $ai->shouldReceive('generateResponse')
+    $ai->shouldReceive('generateStructuredResponse')
         ->once()
         ->andReturnUsing(function () use ($inbound, $newToken) {
             // Simulate another worker reclaiming the message
@@ -592,7 +609,12 @@ public function test_it_does_not_create_a_response_when_another_worker_reclaims_
                 'ai_processing_token' => $newToken,
             ]);
 
-            return 'This response belongs to the old worker.';
+           // return 'This response belongs to the old worker.';
+            return [
+            'reply' => 'This response belongs to the old worker.',
+            'handover_required' => false,
+            'handover_reason' => null,
+        ];
         });
 
     $this->app->instance(BeezBudAiService::class, $ai);
@@ -621,5 +643,138 @@ public function test_it_does_not_create_a_response_when_another_worker_reclaims_
         'ai_processing_token' => $newToken,
     ]);
 }
+public function test_it_transfers_conversation_to_human_when_ai_requests_handover(): void
+{
+    $inbound = $this->createInboundMessage();
 
+    $ai = Mockery::mock(BeezBudAiService::class);
+
+    $ai->shouldReceive('generateStructuredResponse')
+        ->once()
+        ->andReturn([
+            'reply' => 'A team member will need to review this issue.',
+            'handover_required' => true,
+            'handover_reason' => 'complex_or_unresolved_issue',
+        ]);
+
+    $this->app->instance(BeezBudAiService::class, $ai);
+
+    $response = app(BeezBudConversationService::class)
+        ->handleInboundTextMessage(
+            $this->tenant->id,
+            $this->conversation->id,
+            $inbound->id
+        );
+
+    $this->assertInstanceOf(EngageMessage::class, $response);
+
+    $this->assertSame('outbound', $response->direction);
+    $this->assertSame('text', $response->message_type);
+    $this->assertSame('system', $response->sender_type);
+    $this->assertSame('queued', $response->status);
+    $this->assertSame(1, $response->handling_version);
+
+    $this->assertSame(
+        "I've brought a member of our team into this conversation. They'll assist you shortly.",
+        $response->body
+    );
+
+    $this->assertSame(
+        'beezbud_handover_acknowledgement',
+        $response->metadata['system_action']
+    );
+
+    $this->assertSame(
+        'complex_or_unresolved_issue',
+        $response->metadata['handover_reason']
+    );
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $this->conversation->id,
+        'handling_mode' => EngageConversation::HANDLING_HUMAN,
+        'handling_version' => 1,
+        'handling_changed_by' => null,
+    ]);
+
+    $this->assertDatabaseHas('engage_messages', [
+        'id' => $inbound->id,
+        'ai_processing_status' => 'completed',
+        'ai_response_message_id' => $response->id,
+        'ai_processing_token' => null,
+    ]);
+
+    $this->assertDatabaseMissing('engage_messages', [
+        'conversation_id' => $this->conversation->id,
+        'direction' => 'outbound',
+        'sender_type' => 'ai',
+    ]);
+
+    $this->assertSame(
+        1,
+        EngageMessage::query()
+            ->where('conversation_id', $this->conversation->id)
+            ->where('sender_type', 'system')
+            ->count()
+    );
+}
+public function test_it_does_not_handover_when_another_worker_reclaims_the_processing_claim(): void
+{
+    $inbound = $this->createInboundMessage();
+
+    $newToken = (string) \Illuminate\Support\Str::uuid();
+
+    $ai = Mockery::mock(BeezBudAiService::class);
+
+    $ai->shouldReceive('generateStructuredResponse')
+        ->once()
+        ->andReturnUsing(function () use ($inbound, $newToken) {
+            // Simulate another worker taking ownership of the claim.
+            $inbound->update([
+                'ai_processing_status' => 'processing',
+                'ai_processing_started_at' => now(),
+                'ai_processing_token' => $newToken,
+            ]);
+
+            return [
+                'reply' => 'A team member will assist you.',
+                'handover_required' => true,
+                'handover_reason' => 'customer_requested_human',
+            ];
+        });
+
+    $this->app->instance(BeezBudAiService::class, $ai);
+
+    $response = app(BeezBudConversationService::class)
+        ->handleInboundTextMessage(
+            $this->tenant->id,
+            $this->conversation->id,
+            $inbound->id
+        );
+
+    $this->assertNull($response);
+
+    $this->assertDatabaseHas('engage_conversations', [
+        'id' => $this->conversation->id,
+        'handling_mode' => EngageConversation::HANDLING_AI,
+        'handling_version' => 0,
+    ]);
+
+    $this->assertDatabaseHas('engage_messages', [
+        'id' => $inbound->id,
+        'ai_processing_status' => 'processing',
+        'ai_processing_token' => $newToken,
+    ]);
+
+    $this->assertDatabaseMissing('engage_messages', [
+        'conversation_id' => $this->conversation->id,
+        'direction' => 'outbound',
+        'sender_type' => 'system',
+    ]);
+
+    $this->assertDatabaseMissing('engage_messages', [
+        'conversation_id' => $this->conversation->id,
+        'direction' => 'outbound',
+        'sender_type' => 'ai',
+    ]);
+}
 }

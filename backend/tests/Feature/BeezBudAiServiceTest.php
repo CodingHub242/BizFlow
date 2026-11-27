@@ -263,4 +263,168 @@ class BeezBudAiServiceTest extends TestCase
             ]
         );
     }
+
+    public function test_beezbud_generates_structured_response_without_handover(): void
+{
+    Http::fake([
+        '*' => Http::response([
+            'output' => [
+                [
+                    'type' => 'message',
+                    'content' => [
+                        [
+                            'type' => 'output_text',
+                            'text' => json_encode([
+                                'reply' => 'Hello! How can I help you today?',
+                                'handover_required' => false,
+                                'handover_reason' => null,
+                            ]),
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $result = app(BeezBudAiService::class)->generateStructuredResponse(
+        'You are BeezBud.',
+        [
+            ['role' => 'user', 'content' => 'Hello'],
+        ],
+    );
+
+    $this->assertSame([
+        'reply' => 'Hello! How can I help you today?',
+        'handover_required' => false,
+        'handover_reason' => null,
+    ], $result);
+}
+public function test_beezbud_generates_structured_response_with_handover(): void
+{
+    Http::fake([
+        '*' => Http::response([
+            'output' => [
+                [
+                    'type' => 'message',
+                    'content' => [
+                        [
+                            'type' => 'output_text',
+                            'text' => json_encode([
+                                'reply' => 'I will connect you with a member of our team who can assist you.',
+                                'handover_required' => true,
+                                'handover_reason' => 'customer_requested_human',
+                            ]),
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $result = app(BeezBudAiService::class)->generateStructuredResponse(
+        'You are BeezBud.',
+        [
+            ['role' => 'user', 'content' => 'I want to speak to a human'],
+        ],
+    );
+
+    $this->assertSame([
+        'reply' => 'I will connect you with a member of our team who can assist you.',
+        'handover_required' => true,
+        'handover_reason' => 'customer_requested_human',
+    ], $result);
+}
+public function test_beezbud_rejects_invalid_handover_reason(): void
+{
+    Http::fake([
+        '*' => Http::response([
+            'output' => [
+                [
+                    'type' => 'message',
+                    'content' => [
+                        [
+                            'type' => 'output_text',
+                            'text' => json_encode([
+                                'reply' => 'I will connect you with our team.',
+                                'handover_required' => true,
+                                'handover_reason' => 'some_invalid_reason',
+                            ]),
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->expectException(RuntimeException::class);
+
+    app(BeezBudAiService::class)->generateStructuredResponse(
+        'You are BeezBud.',
+        [
+            ['role' => 'user', 'content' => 'I need help'],
+        ],
+    );
+}
+public function test_beezbud_rejects_handover_without_reason(): void
+{
+    Http::fake([
+        '*' => Http::response([
+            'output' => [
+                [
+                    'type' => 'message',
+                    'content' => [
+                        [
+                            'type' => 'output_text',
+                            'text' => json_encode([
+                                'reply' => 'I will connect you with our team.',
+                                'handover_required' => true,
+                                'handover_reason' => null,
+                            ]),
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->expectException(RuntimeException::class);
+
+    app(BeezBudAiService::class)->generateStructuredResponse(
+        'You are BeezBud.',
+        [
+            ['role' => 'user', 'content' => 'I need help'],
+        ],
+    );
+}
+public function test_beezbud_rejects_empty_structured_reply(): void
+{
+    Http::fake([
+        '*' => Http::response([
+            'output' => [
+                [
+                    'type' => 'message',
+                    'content' => [
+                        [
+                            'type' => 'output_text',
+                            'text' => json_encode([
+                                'reply' => '   ',
+                                'handover_required' => false,
+                                'handover_reason' => null,
+                            ]),
+                        ],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $this->expectException(RuntimeException::class);
+
+    app(BeezBudAiService::class)->generateStructuredResponse(
+        'You are BeezBud.',
+        [
+            ['role' => 'user', 'content' => 'Hello'],
+        ],
+    );
+}
 }

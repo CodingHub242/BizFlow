@@ -54,4 +54,39 @@ class AuditService
             'created_at' => now(),
         ]);
     }
+
+	public function recordSystem(
+    string $action,
+    Model $model,
+    string $actorName,
+    array $oldValues = [],
+    array $newValues = [],
+    ?Request $request = null
+): AuditLog {
+    $request ??= request();
+
+    $requestId = $request->header('X-Request-ID');
+
+    if (!$requestId || strlen($requestId) > 100) {
+        $requestId = (string) Str::uuid();
+    }
+
+    return AuditLog::create([
+        'tenant_id' => $model->getAttribute('tenant_id'),
+        'user_id' => null,
+        'actor_name' => $actorName,
+        'actor_email' => null,
+        'action' => $action,
+        'auditable_type' => $model->getMorphClass(),
+        'auditable_id' => $model->getKey(),
+        'old_values' => $oldValues ?: null,
+        'new_values' => $newValues ?: null,
+        'ip_address' => $request->ip(),
+        'user_agent' => $request->userAgent(),
+        'url' => $request->url(),
+        'http_method' => $request->method(),
+        'request_id' => $requestId,
+        'created_at' => now(),
+    ]);
+}
 }

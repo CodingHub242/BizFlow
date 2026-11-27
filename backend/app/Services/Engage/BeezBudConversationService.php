@@ -69,14 +69,34 @@ class BeezBudConversationService
                 );
             }
 
-            $prompt = $this->promptService->buildInstructions(
-                $tenant->name
-            );
+            // $prompt = $this->promptService->buildInstructions(
+            //     $tenant->name
+            // );
 
-            $responseBody = $this->aiService->generateResponse(
-                $prompt,
-                $messages->all()
-            );
+            // $responseBody = $this->aiService->generateResponse(
+            //     $prompt,
+            //     $messages->all()
+            // );
+			$prompt = $this->promptService->buildStructuredInstructions(
+			    $tenant->name
+			);
+			
+			$aiResponse = $this->aiService->generateStructuredResponse(
+			    $prompt,
+			    $messages->all()
+			);
+
+			if ($aiResponse['handover_required']) {
+			    return $this->messageService->prepareAndCompleteInboundHandover(
+			        $tenantId,
+			        $conversationId,
+			        $inboundMessageId,
+			        $aiResponse['reply'],
+			        $aiResponse['handover_reason'],
+			        $token,
+			        $handlingVersion
+			    );
+			}
 
             // This existing method performs its own final ownership,
             // tenant feature and handling-version checks.
@@ -86,14 +106,24 @@ class BeezBudConversationService
             //     $responseBody,
             //     $handlingVersion
             // );
-            return $this->messageService->prepareAndCompleteInboundAiMessage(
-                $tenantId,
-                $conversationId,
-                $inboundMessageId,
-                $responseBody,
-                $token,
-                $handlingVersion
-            );
+
+			return $this->messageService->prepareAndCompleteInboundAiMessage(
+			    $tenantId,
+			    $conversationId,
+			    $inboundMessageId,
+			    $aiResponse['reply'],
+			    $token,
+			    $handlingVersion
+			);
+			
+			// return $this->messageService->prepareAndCompleteInboundAiMessage(
+   //              $tenantId,
+   //              $conversationId,
+   //              $inboundMessageId,
+   //              $responseBody,
+   //              $token,
+   //              $handlingVersion
+   //          );
 
             // return $this->completeClaim(
             //     $tenantId,
@@ -302,7 +332,7 @@ class BeezBudConversationService
         ) {
             $conversation = EngageConversation::query()
                 ->where('tenant_id', $tenantId)
-                ->whereKey($conversationId)
+				->whereKey($conversationId)
                 ->lockForUpdate()
                 ->first();
 
